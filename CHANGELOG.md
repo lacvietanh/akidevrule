@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.2.1] - 2026-08-14
+
+### Fixed
+- **`.sh`→`.py` migration completed in living docs — five references the 2.2.0 sweep missed.** 2.2.0 renamed the akiflow helper scripts to `.py` (SSOT) and corrected the `.sh` names across the docs, but left the `akiflow` skill description in `README.md` (`council-open.sh`, `council-verify.sh`) and three mechanism references in `docs/arch/akiflow.md` (`scripts/council-read.sh` in the Phase-A retrieval note, `council-open.sh` in the anchor mermaid node, `scripts/council-open.sh` in the 30-day-prune note) naming the transitional Unix wrappers instead of the canonical `council_open.py` / `council_read.py` / `council_verify.py`. Corrected to the `.py` SSOT, matching the arch doc's own established prose convention (bare `council_open.py`, no `scripts/` prefix). Deliberately left unchanged: the transitional `*.sh` wrapper files (they exist so external prompts naming `council-open.sh` keep working on Unix during the transition) and the `docs/index.md` research-table captions (faithful summaries of immutable `docs/research/` records that themselves use the `.sh` names).
+- **`docs/arch/akiflow.md` anchor stamp bumped `v2.1.0` → `v2.2.0`** per `docs.A4` — rewritten in the same edit as the content change; `<version>` is the last released version at edit time.
+
 ## [2.2.0] - 2026-08-12
 
 ### Added

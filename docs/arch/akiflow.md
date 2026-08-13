@@ -1,6 +1,6 @@
 # Architecture — akiflow, a lead-coordinated agent council
 
-> updated 2026-08-12 · v2.1.0
+> updated 2026-08-14 · v2.2.0
 
 `/akiflow` is the multi-agent skill in this baseline. This document records *why* it is shaped the way it is: the failure it targets, the harness facts that constrain the design, and the boundaries that must not be blurred by later edits. The runnable contract lives in `skills/akiflow/SKILL.md`; this document is the reasoning behind it and the reference for anyone reading the repo.
 
@@ -167,7 +167,7 @@ A reviewer briefed with the lead's entire self-justifying chain — the room, th
 
 ## Two phases, one gate
 
-**Phase A — analysis room.** Roster convened in one batch, named explicitly. The room is a meeting, so it is written and read **in time order**, the way a participant experiences one — an earlier design that sharded the record by item was rejected: it makes a conversation unreadable as a conversation, and a specialist cannot tell what it walked into. The context-flood risk is answered by *selective retrieval* instead: fixed heading levels make the room greppable, and `scripts/council-read.sh` slices it by agent, by turn range, or by tail, so nobody has to load the whole file to stay current. No code is written.
+**Phase A — analysis room.** Roster convened in one batch, named explicitly. The room is a meeting, so it is written and read **in time order**, the way a participant experiences one — an earlier design that sharded the record by item was rejected: it makes a conversation unreadable as a conversation, and a specialist cannot tell what it walked into. The context-flood risk is answered by *selective retrieval* instead: fixed heading levels make the room greppable, and `council_read.py` slices it by agent, by turn range, or by tail, so nobody has to load the whole file to stay current. No code is written.
 
 **Steering is judgment, not a counter.** Depth is the point of the council, so a long argument is not by itself a problem, and a fixed round limit would punish exactly the deliberation the skill exists to produce. The lead watches for four real signals — ground re-covered with no new evidence, a closing criterion that has stopped getting closer, drift outside the mandates, cost outrunning the value of the decision — which `--stats` and `--index` surface without reading everything. The intervention is minimal by design: one pinned CHECKPOINT line naming what is settled and what is open, addressed only to the agents that are drifting. A room that cannot converge is the lead's call to close, not a reason to keep it running.
 
@@ -185,7 +185,7 @@ A reviewer briefed with the lead's entire self-justifying chain — the room, th
 
 ```mermaid
 flowchart TD
-    REQ["Owner request"] --> ANCHOR["council-open.sh pins the message VERBATIM\nas chat.md's immutable anchor block\n(refuses to open without it)"]
+    REQ["Owner request"] --> ANCHOR["council_open.py pins the message VERBATIM\nas chat.md's immutable anchor block\n(refuses to open without it)"]
     ANCHOR --> LEDGER["aki-hands drafts REQ-1..n,\neach quoting a fragment of the anchor;\nthe lead ratifies before cutting"]
     LEDGER --> GATE{"Activation gate:\ndecomposable? +\n2+ kinds of 'correct'? +\ncost of error &gt; cost of coordination?"}
     GATE -->|"any condition fails"| SOLO["No council — direct work,\nclosed by a verifier subagent"]
@@ -223,7 +223,7 @@ flowchart TD
 
 ## The session workspace: three artifacts, never conflated
 
-A run lives in `~/.aki/agent-council/<project>/<YYYY.MM.DD-HHMM>-<slug>/`. It sits inside the Aki ecosystem rather than `/tmp` because a council record has value for days, not minutes — but that immediately raises the question `/tmp` used to answer for free: who deletes it. The answer is mechanical, not a rule anyone must remember: `scripts/council-open.sh` prunes sessions older than 30 days every time a run opens, matching the window Claude Code already uses for its own `projects/` directory, so the two age out on the same clock. The slug is the lead's, timestamp-prefixed for uniqueness, chosen to be recognisable a week later.
+A run lives in `~/.aki/agent-council/<project>/<YYYY.MM.DD-HHMM>-<slug>/`. It sits inside the Aki ecosystem rather than `/tmp` because a council record has value for days, not minutes — but that immediately raises the question `/tmp` used to answer for free: who deletes it. The answer is mechanical, not a rule anyone must remember: `council_open.py` prunes sessions older than 30 days every time a run opens, matching the window Claude Code already uses for its own `projects/` directory, so the two age out on the same clock. The slug is the lead's, timestamp-prefixed for uniqueness, chosen to be recognisable a week later.
 
 | | Agent file | Room | Checklist / plan |
 |---|---|---|---|
