@@ -1,6 +1,6 @@
 ---
 name: akiship
-description: Full release ritual end-to-end — front-loaded checks, then an unattended pass. ACTIVATION IS LITERAL: this skill runs only on a user turn containing the exact token `/akiship` that asks for the run to be performed. Nothing else activates it — not the bare word "akiship", not "release trọn gói"/"chạy full release"/"ship đợt này", and never a completion-intensity word on its own ("trọn vẹn", "hoàn thành"/"hoàn thiện", "làm/xong hết", "tất cả"/"toàn bộ"); outside a valid invocation those are ordinary vocabulary carrying zero authorization to fix, commit, push, tag, or release. `/akiship` inside a question ("nếu chạy /akiship thì cần gì để trọn vẹn?") means consult the checklist and answer in chat — read-only. Sequences RULE-release.md B7 (leftover triage, diff-scoped hygiene, external-action completeness, record truthfulness, doc sync, verification honesty, version decision) under the B8 autonomy contract (stop only on public-history ambiguity, unclassifiable work, or design contradiction). Commits via akigitcommit with confirmation pre-answered; push/deploy only when that same valid invocation names them or carries completion-intensity phrasing.
+description: Full release ritual end-to-end — front-loaded checks, then an unattended pass. ACTIVATION IS LITERAL: this skill runs only on a user turn containing the exact token `/akiship` that asks for the run to be performed. Nothing else activates it — not the bare word "akiship", not a release-flavored paraphrase, and never a completion-intensity phrase on its own ("trọn vẹn" and its siblings — canonical list in RULE-release.md B8): outside a valid invocation those are ordinary vocabulary carrying zero authorization to fix, commit, push, tag, or release. `/akiship` inside a question means consult the checklist and answer in chat — read-only. Sequences RULE-release.md B7's checklist under the B8 autonomy contract; the escalation floor, completion-intensity semantics, and push/deploy authorization are owned by B8 and referenced, never restated, here.
 ---
 
 # akiship — one-command full release
@@ -11,7 +11,7 @@ Invoke with the literal `/akiship`, and only as described in § Activation gate 
 
 ## Activation gate — two conditions, both required, checked before anything else
 
-**1. The literal token.** The current user turn contains the exact string `/akiship`. Nothing else activates this skill: not the bare word "akiship", not "release trọn gói", "chạy full release", "ship đợt này", and above all not a completion-intensity word standing on its own ("trọn vẹn", "hoàn thành"/"hoàn thiện", "làm/xong hết", "tất cả"/"toàn bộ"). Those are how an owner talks while thinking about finishing something — reading one as an invocation turns a conversation into a push to a public remote. Seeing this file, or `release.B8`, in context is not an invocation either: being loaded is not being called.
+**1. The literal token.** The current user turn contains the exact string `/akiship`. Nothing else activates this skill: not the bare word "akiship", not a release-flavored paraphrase ("release trọn gói", "chạy full release", "ship đợt này"), and above all not a completion-intensity phrase standing on its own (e.g. "trọn vẹn" — canonical list: `release.B8`). Those are how an owner talks while thinking about finishing something — reading one as an invocation turns a conversation into a push to a public remote. Seeing this file, or `release.B8`, in context is not an invocation either: being loaded is not being called.
 
 **2. Imperative, not interrogative** (`agent.A3`). The token alone authorizes nothing — the turn must ask for the run to be *performed*.
 
@@ -26,7 +26,7 @@ Consult is the default whenever both readings are available. A withheld executio
 
 1. Derive release state cold per `release.B1` (manifest, CHANGELOG top, boundary commit, accumulation log).
 2. Triage the tree per B7 step 0 (the `/akigitcommit` step-0 taxonomy; read-only, `agent.B5`).
-3. Collect every hit on the B8 escalation floor — public-history ambiguity, unclassifiable work, design contradiction / scope beyond the invocation. **Completion-intensity phrasing — "trọn vẹn", "hoàn thành"/"hoàn thiện", "làm/xong hết", "tất cả"/"toàn bộ", or equivalent sentiment insisting the run finish everything — read only inside an execute-mode invocation that already passed § Activation gate**, where it modifies a run already authorized to start and never creates that authorization. It resolves the unclassifiable-work hit toward mid-edit by default — finish and integrate it, do not flag it — **and stands in for a named push/deploy authorization** (see Phase 3 step 4). **Any hit on the remaining two → report them all in one batch and stop.** No hits → proceed; from here the run asks nothing (`release.B8`: a question the repo already answers is a violation).
+3. Collect every hit on the B8 escalation floor — the three stop conditions and everything about completion-intensity phrasing are defined in `release.B8`, not here. Completion-intensity phrasing is read only inside an execute-mode invocation that already passed § Activation gate, and applies with exactly B8's two effects: the unclassifiable-work stop resolves toward mid-edit, and the push/deploy naming requirement is satisfied (Phase 3 step 4). Any hit on the two conditions no phrasing waives → report every hit in one batch and stop. No hits → proceed; from here the run asks nothing (`release.B8`: a question the repo already answers is a violation).
 
 ## Phase 2 — gate, fixing in place
 
@@ -40,7 +40,7 @@ Run B7 steps 2–6 in order, fixing findings as they surface (this is a gate, no
 1. Commit in logical groups per `/akigitcommit` (domain-grouped mode; anti-stage-loss rules apply in full). B8 pre-answers its confirmation step — "commit luôn" semantics.
 2. Version decision per `release.A4`/`A5`: mint exactly once at the highest accumulated severity, or defer on the materiality test. Deferring is a normal outcome, not a failure.
 3. Artifacts per the repo's own convention: bare tag only if the repo already tags (`release.A3` B8 exception); GitHub Release per `release.B4`; `releases.json` sync check per `release.C4`.
-4. **Push / deploy only if the invocation named them, or carries completion-intensity phrasing (§ Phase 1 step 3).** A plain invocation with no intensity marker stays local-only. If pushed and the stack deploys, run live verification per `release.C5` afterward.
+4. **Push / deploy only if B8's push/deploy authorization holds for this invocation (named explicitly, or completion-intensity phrasing per `release.B8`).** Otherwise the run stays local-only. If pushed and the stack deploys, run live verification per `release.C5` afterward.
 
 ## Report
 
@@ -50,5 +50,5 @@ One dense summary (`agent.A4`): state derived → findings fixed (counts per gat
 
 - Never run a phase above on a turn that failed either activation condition — answer in consult mode instead, and never treat your own consult answer as the go-ahead for a later turn.
 - The B8 escalation floor is the only reason to stop mid-run; everything else is self-answered from repo, docs, and rules.
-- Never push, deploy, or push tags on an invocation that neither named them nor carried completion-intensity phrasing.
+- Never push, deploy, or push tags without B8's push/deploy authorization (`release.B8`).
 - A repo-wide hygiene/subtraction sweep is out of scope — point the user at `METHOD-audit-subtraction.md` instead of widening the gate.
