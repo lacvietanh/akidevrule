@@ -102,6 +102,21 @@ Family names, not version ids — the mapping outlives any single release.
 | Mechanical sweeps: inventory, grep, call-site lists, stats | cheapest capable tier, low effort | the task describes itself; instruct it to aggregate in-shell rather than pulling raw data into context |
 | Read-only retrieval via the cross-CLI worker (agy headless, flash tier, `--mode plan`) | cheapest available tier, mechanical retrieval only, never judgment | `--mode plan` enforces read-only by mechanism rather than by prompt; the FACT/CONSTRAINT/ASSUMPTION judgment stays with the lead — see § Cross-CLI worker |
 
+### Host resolution — a tier is a word, the host supplies the model
+
+Skills are deployed unmodified to five hosts, and **[doc]** Cursor additionally reads `~/.claude/skills/`, `~/.agents/skills/`, `~/.claude/agents/` and `~/.codex/agents/` for compatibility (cursor.com/docs/skills, cursor.com/docs/subagents, checked 2026-09-08). So any model name written into a skill or agent file is read by every host, and a Claude alias in a shared file becomes a Claude call on a host that has cheaper native models. The rule: **a roster, lane, or brief names a tier — `top` / `mid` / `cheap` — and the host running the skill resolves it through its own row below. A skill never names another vendor's model.** The one deliberate exception is `claude/agents/*.md` frontmatter: `model: sonnet` / `model: haiku` are the Claude Code row written in the only syntax Claude Code reads, and Claude Code is the primary host, so they stay exact rather than degrading to `inherit`. On a non-Claude host that value is not a native model id: declare the seat's model explicitly at spawn from the host's row, and treat the frontmatter as Claude-only.
+
+| Host | `cheap` — retrieval, never judgment | `mid` — implementation, verification | `top` — lead, adversarial judgment | Where the tier is set | Status |
+|---|---|---|---|---|---|
+| Claude Code | `haiku` (no `--effort`) | `sonnet` | `opus`, or `inherit` from the lead | agent frontmatter `model:`; Agent tool `model`; `claude -p --model <alias> --effort <e>` | **[obs]** verified across this file |
+| Cursor (IDE + `agent` CLI) | Composer family — the current id from Cursor's model picker (`composer-2`-style), never an API-pool Claude/GPT model | `inherit` (the session's model) | `inherit`, or the session's top API-pool model | `.cursor/agents/*.md` or `~/.claude/agents/*.md` frontmatter `model: inherit \| <id>[effort=…]`; `agent -p --model <id>` | **[doc]** field and syntax; **UNCONFIRMED** how Cursor treats a Claude alias (`haiku`) it cannot resolve — reopen trigger: one measured Cursor run of an `aki-hands` spawn |
+| Antigravity `agy` | `gemini-3.7-flash-high` (§ Cross-CLI worker) | `gemini-3.1-pro-low` | `gemini-3.1-pro-high` (`claude-opus-4-6-thinking` is quota-scarce, § agy headless) | `agy --model <slug>` — effort is inside the slug; agy 1.1.6+ agent markdown carries `model` | **[obs]** 2026-08-15 |
+| Codex CLI | UNCONFIRMED low-cost alias | `[agents] default_subagent_model` in `config.toml`; `codex exec -c model=<id> -c model_reasoning_effort=medium` | same model, `model_reasoning_effort=xhigh` | `config.toml [agents]`, per-agent `model`; `codex exec -c …` | **[doc, secondary]** 2026-09-08, model ids drift monthly — read them from `codex` itself |
+| Kiro CLI | `qwen3-coder-next` (0.05×) or `claude-haiku-4.5` (0.4×) | `auto` (1×) or `claude-sonnet-4.5` (1.3×) | Opus-class, ~22× — rarely worth it on this host | `kiro-cli chat --no-interactive --model <id> --effort <e>`; custom agent JSON `model` | **[obs]** 2026-08-02 list; multipliers re-read with `--list-models` |
+| Grok CLI | UNCONFIRMED | `grok-build-0.1` default | UNCONFIRMED | `grok -p` (`--model` flag unconfirmed) | **[doc, secondary]** 2026-09-08 |
+
+The `model` key in `SKILL.md` frontmatter is a Claude Code extension, rejected by the open-standard validator (github.com/anthropics/claude-code/issues/25380) — never put a tier or a model there.
+
 ## Headless — the cost levers, per CLI
 
 Full narrative and the measurements behind these rows: `docs/research/headless-cli-workers-aug1.md`.
@@ -191,5 +206,10 @@ Claude Code and Antigravity documentation both move; verify a detail before rely
 - CLI reference (`-p` / non-interactive) — <https://code.claude.com/docs/en/cli-reference>
 - Settings and permissions — <https://code.claude.com/docs/en/settings>
 - Prompt caching and TTL — <https://docs.claude.com/en/docs/build-with-claude/prompt-caching>
+- Cursor skills discovery paths (incl. `~/.claude/skills/`, `~/.agents/skills/`) — <https://cursor.com/docs/skills>
+- Cursor subagent frontmatter (`model: inherit | <id>[effort=…]`, reads `~/.claude/agents/`) — <https://cursor.com/docs/subagents>
+- Cursor headless CLI (`agent -p --model`) — <https://cursor.com/docs/cli/headless>
+- Antigravity headless model slugs — <https://antigravity.google/docs/cli/headless/>
+- `model` in SKILL.md is a Claude Code extension, rejected by the open-standard validator — <https://github.com/anthropics/claude-code/issues/25380>
 
 Entries marked **[obs]** are not in these pages, including all of the Antigravity/AGY and cross-CLI rows above — no equivalent published reference for `agy`'s internal mechanisms was found; they were observed directly against the `claude` and `agy` binaries and a live transcript, and are recorded here so a future reader can tell the difference between what is documented and what is merely believed.

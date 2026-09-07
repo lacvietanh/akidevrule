@@ -49,7 +49,7 @@ Declare both before any other output:
 
 ```
 [akiflow] mode=execute · REQ 1-6 → 4 items · trigger: schema + API shape + migration ordering
-roster: judge-schema(sonnet) · challenger(sonnet) · hands-callsites(haiku, ro:--tools Read,Grep,Glob) · maker-api(sonnet)
+roster: judge-schema(mid) · challenger(mid) · hands-callsites(cheap, ro:--tools Read,Grep,Glob) · maker-api(mid)
 ```
 
 **Shape comes before the gate: is there anything to arbitrate?** If two competent seats could reach different defensible answers, this is a **council** and the rest of this step applies. If the answer is knowable and the work is merely large, it is a **dispatch** (Step 1b) — the same anchor, ledger, receipts and closure gate, partitioned into lanes with exclusive file ownership instead of items with an adversary. Shape and mode are independent: a dispatch can be `audit` or `execute` just as a council can.
@@ -72,7 +72,7 @@ A fan-out with a paper trail. Reuses this skill's workspace, its three file kind
 
 ```
 [akiflow] shape=dispatch · mode=execute · REQ 1-4 → 3 lanes
-lanes: scripts(maker sonnet, writes skills/akiflow/scripts/*.py) · docs(maker sonnet, writes docs/** + CHANGELOG.md) · sweep(hands haiku, ro:--tools Read,Grep,Glob, writes none)
+lanes: scripts(maker mid, writes skills/akiflow/scripts/*.py) · docs(maker mid, writes docs/** + CHANGELOG.md) · sweep(hands cheap, ro:--tools Read,Grep,Glob, writes none)
 ```
 
 **A lane is an item whose adversary is replaced by an exclusive file set.** Every lane carries `covers` (the REQs it satisfies), `worker`, `writes`, `reads` and `returns`. `writes` is exclusive: a path claimed by two lanes is a gate failure, refused by `council_open.py --convene` before a token is spent, because two workers editing one file is the failure a fan-out actually dies of and it is invisible until the second one clobbers the first. `returns` exists because the lead merges the lanes and cannot merge a shape that was never specified.
@@ -109,7 +109,7 @@ python3 ~/.claude/skills/akiflow/scripts/council_open.py --convene <session-dir>
 
 Exit 1 unless ≥1 `ITEM` carries all of `owner` / `challenger` / `closes when`. It gates *convening*, not file creation: the anchor has to be pinned before the ledger can quote it (R1), so `chat.md` necessarily exists first — the cost this prevents is N agents circling an undecomposed question, and that cost is paid at spawn.
 
-**The tier lives in each agent definition's frontmatter — that file is the single source of truth for `model`.** A spawn passes `model` only to override that default, not as a ritual on every call. The real remaining hazard is a generic subagent such as `general-purpose`, which carries no tier of its own and therefore inherits the lead's expensive default — this matters concretely at Step 6, where the cost seat must hold `Bash` and is spawned generically. The in-session Agent tool has **no `effort` parameter**; only headless calls take `--effort`, so do not declare per-seat effort for in-session spawns. A read-only seat names its enforcing mechanism (`--tools`, `--mode plan`, `--trust-tools=`) on the roster line; read-only by wording is not read-only.
+**A seat is declared by tier — `top` / `mid` / `cheap` — never by a model name; the host running this skill resolves the tier through its own row in `references/harness-facts.md` § Model tiers › Host resolution.** On Claude Code the tier lives in each agent definition's frontmatter — that file is the Claude row, and a spawn passes `model` only to override it, not as a ritual on every call. On any other host (Cursor reads the same `~/.claude/agents/` files) the frontmatter value is a Claude alias the host cannot resolve, so the lead declares each seat's model explicitly at spawn from the host's row — a Claude alias written into a Cursor or Codex spawn buys an expensive API-pool model where a native cheap tier existed. The real remaining hazard is a generic subagent such as `general-purpose`, which carries no tier of its own and therefore inherits the lead's expensive default — this matters concretely at Step 6, where the cost seat must hold `Bash` and is spawned generically. The in-session Agent tool has **no `effort` parameter**; only headless calls take `--effort`, so do not declare per-seat effort for in-session spawns. A read-only seat names its enforcing mechanism (`--tools`, `--mode plan`, `--trust-tools=`) on the roster line; read-only by wording is not read-only.
 
 **The lead does no menial work — ever.** Arbitration quality is its only product and it degrades with every unrelated token. Bulk reads, greps, inventory scans go to `aki-hands` even when doing it directly feels faster, because "faster" spends the one context the run cannot replace. The lead reads at orientation depth: the anchor, the checklist, `--stats`, and the specific excerpt a decision turns on.
 

@@ -33,7 +33,7 @@ Consult is the default whenever both readings are available. A withheld executio
 Run B7 steps 2–6 in order, fixing findings as they surface (this is a gate, not an audit — no findings doc):
 
 - **Hygiene, diff scope only**: `python3 ~/.claude/skills/akiflow/scripts/scythe.py <files changed since boundary>` for `[WRAP]`/`[YAP]`; dead code / redundant guards / duplication the accumulation introduced (`pattern.A8`); doc refs in touched comments still resolve (`docs.B3`). Never widen to the whole repo.
-- External-action completeness, record truthfulness (CHANGELOG + `releases.json` parity where it exists), doc sync (plans → `done/`, `arch`/`feat` stamps per `docs.A4`), verification honesty — anything runtime-only is carried to the final report as **unverified**, never silently assumed (`coding.B3`).
+- External-action completeness — a pending migration qualifying under `stack.C8`'s execution-ownership clause (additive, idempotent, backup path available) is run here, not deferred; record truthfulness (CHANGELOG + `releases.json` parity where it exists), doc sync over every record surface B7 step 5 enumerates (plans → `done/`, `arch`/`feat` stamps per `docs.A4`, `README.md`, the task-note file via `akidevsync-notes`, any standards doc the project `CLAUDE.md` binds to), verification honesty — anything else runtime-only, or a migration that does not qualify, is carried to the final report as **unverified**, never silently assumed (`coding.B3`).
 
 ## Phase 3 — commit, mint, artifacts
 
