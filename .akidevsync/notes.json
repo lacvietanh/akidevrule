@@ -62,7 +62,47 @@
       "title": "Nghiên cứu tối ưu /akiflow",
       "updated_at": 1786758013139,
       "wish": false
+    },
+    {
+      "created_at": 1787719224421,
+      "detail": "",
+      "done": false,
+      "id": "task-1787719224421",
+      "pin": true,
+      "title": "Nghiên cứu bổ sung vào preallowlist cho cursor: mọi script trong bộ /akirule",
+      "updated_at": 1787719227104,
+      "wish": false
+    },
+    {
+      "created_at": 1787719262700,
+      "detail": "nghiên cứu qua khoảng 6 vòng /akithink để phân tích và chọn ra phương án tốt nhất, chiến lược và tư duy tốt nhất, triết lý tốt nhất, cách viết tốt nhất",
+      "done": true,
+      "id": "task-1787719262700",
+      "pin": true,
+      "title": "rule docs: research không nhất thiết là immutable, nó nên như vậy, chứ vẫn cần edit cập nhật, đính chính",
+      "updated_at": 1788814612555,
+      "wish": false
+    },
+    {
+      "created_at": 1787720399834,
+      "detail": "Tình hình: bộ rule này còn một số model bị khóa cứng vào trong claudecode, nên khi chạy agy/cursor,.. sẽ bị gọi sang model sonnet mặc dù thiết kế mong muốn đúng ra phải là “model tier nào” thay vì đích danh model. ví dụ cursor chạy /akiflow đang bị gọi sang các model claude đắt đỏ thay vì tận dụng chính các model của cursor (composer và grok\n)",
+      "done": true,
+      "id": "task-1787720399834",
+      "pin": true,
+      "title": "CURSOR support & hệ thống hóa models tier của cursor, claude, agy, kiro-cli",
+      "updated_at": 1757289915000,
+      "wish": false
+    },
+    {
+      "created_at": 1787986110424,
+      "detail": "",
+      "done": true,
+      "id": "task-1787986110424",
+      "pin": true,
+      "title": "/akiship: cần đảm bảo rà soát đủ để update mọi nội dung: FROM UNIDOC, akidevsync notes, docs plan, README,v..",
+      "updated_at": 1788815452293,
+      "wish": false
     }
   ],
-  "updated_at": 1786758013142
+  "updated_at": 1788815452293
 }

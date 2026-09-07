@@ -11,7 +11,7 @@ Treat this repository as a standards distribution project, not as an application
 ## Source of truth
 
 - Edit canonical rule and skill content in this Git repository first.
-- `payload/` contains the packaged Aki rule corpus installed to `~/.aki/akidevrule`.
+- `payload/` contains the packaged Aki rule corpus installed to `~/.aki/akidevrule`. `docs/` is repo-internal and never installed, with one exception: `docs/ref/macos-codesign-tcc.md`, a lookup with no `RULE-`/`METHOD-` shape, which `install.py` deploys to `~/.aki/akidevrule/docs/ref/`.
 - `skills/` contains the shared Agent Skills corpus (the `SKILL.md` open standard) deployed unmodified to `~/.claude/skills/`, `~/.gemini/config/skills/`, `~/.agents/skills/` (Codex CLI), `~/.kiro/skills/` (Kiro CLI), and `~/.grok/skills/` (Grok CLI) — see `docs/ref/agent-skills-standard.md`.
 - `claude/` contains Claude Code-only runtime assets (CLAUDE.md template, `agents/` definitions, hooks, settings fragment) installed to `~/.claude`. `agents/*.md` is Claude Code's own agent format and lives here, not in a vendor-neutral top-level folder, because that format currently has one implementation — unlike `SKILL.md`, which has five. It is copied per file into a directory shared with the user's own agents, so it is never mirrored with `--delete`.
 - `README.md` documents the architecture, file conventions, and install flow for both humans and agents. Read it when you need to understand the full layout or how the smart router works. It is not an agent instruction file — it does not override this CLAUDE.md.

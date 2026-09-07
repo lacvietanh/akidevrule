@@ -61,7 +61,7 @@ Interpreter convention (documented once): **Unix** uses `python3` (via `./instal
 | `aki-article-writer` | `/aki-article-writer` or natural language | Per-project article writing pipeline: research & fact-verification, SEO metadata, JSON-LD schema, UX-psychology-aware content, and a dedicated Image Scout subagent (Gemini Flash / Haiku) for search → download → visual inspection → ffmpeg processing → slug-named WebP output. One subagent per article; image work is always isolated to a separate lightweight subagent. |
 | `akidevsync-notes` | natural language | Reads/edits a project's `.akidevsync/notes.json` — the per-project task list the Aki-Dev-Sync app itself writes (list/add/pin/mark-done/edit/delete tasks) via a bundled script that preserves the app's own JSON formatting, plus a workflow for cross-checking pinned notes against a shipped release (CHANGELOG + code) before marking them done. |
 | `akilint` | `/akilint` or a penalty card | Mechanical format lint for the penalty-card classes of `RULE-agent-behavior.md` §0: hard-wrapped code comments and markdown prose (`[WRAP]`) and oversize comments (`[YAP]`, always labeled *review* — a flag for judgment against `coding.B4`, never an auto-delete verdict). Thin wrapper over the shared `scythe.py` detector (deterministic line matching, exit-code aware, cannot fabricate evidence) — the same script akiflow's `aki-conduct` seat uses, so a card name means the same thing everywhere. `[FLUFF]` (density) is content judgment and explicitly out of a script's reach. |
-| `akiship` | `/akiship` | One-command full release: front-loads every check (release state, tree triage), then runs `RULE-release.md` B7's checklist unattended — diff-scoped hygiene (scythe, dead code, comment doc-refs on the accumulation only), external-action completeness, record truthfulness, doc sync, version mint or defer — committing via `akigitcommit` with confirmation pre-answered. **Activation is literal**: only a turn containing the exact token `/akiship` and asking for the run to be *performed* starts it — `/akiship` inside a question is a consult (answer in chat, change nothing), and words like "trọn vẹn" or "release trọn gói" on their own are vocabulary, not a trigger. Governed by the B8 contract: that invocation is the authorization, blockers are reported once as a batch or the run completes with zero mid-run questions, and it stops only for public-history ambiguity, unclassifiable work, or a design contradiction. Push/deploy stay opt-in — named explicitly, or via completion-intensity phrasing (canonical list in `RULE-release.md` B8, e.g. "trọn vẹn"). |
+| `akiship` | `/akiship` | One-command full release: front-loads every check (release state, tree triage), then runs `RULE-release.md` B7's checklist unattended — diff-scoped hygiene (scythe, dead code, comment doc-refs on the accumulation only), external-action completeness, record truthfulness, doc sync across every record surface (plans, `arch`/`feat`, README, task notes, bound standards docs), version mint or defer — committing via `akigitcommit` with confirmation pre-answered. **Activation is literal**: only a turn containing the exact token `/akiship` and asking for the run to be *performed* starts it — `/akiship` inside a question is a consult (answer in chat, change nothing), and words like "trọn vẹn" or "release trọn gói" on their own are vocabulary, not a trigger. Governed by the B8 contract: that invocation is the authorization, blockers are reported once as a batch or the run completes with zero mid-run questions, and it stops only for public-history ambiguity, unclassifiable work, or a design contradiction. Push/deploy stay opt-in — named explicitly, or via completion-intensity phrasing (canonical list in `RULE-release.md` B8, e.g. "trọn vẹn"). |
 
 ### Five agent definitions
 
@@ -121,7 +121,17 @@ Content-wise, active is a superset of passive; mechanically, only `/akithink` ru
 
 ### Update notifications — notify-only
 
-A `SessionStart` hook compares the installed `CHANGELOG.md` against the public repo copy (at most once per 24h, fail-silent, never blocking). When the remote is newer it prints what's new and the update command (`git pull && ./install.sh` on Unix, `git pull; py -3 install.py` on Windows). It never downloads or installs anything on its own.
+A `SessionStart` hook and the installer's `--check` flag both classify install status through one shared parser (`claude/hooks/aki_version_check.py`), which reads a keep-a-changelog file's *latest released* version — its first `## [x.y.z]` heading, skipping the `[Unreleased]` buffer at the top (a version comparison that matched `[Unreleased]` against `[Unreleased]` on both sides never detected an update at all — fixed by porting aki-mcp-sv's `parseChangelogVersion`/`cmpSemver` algorithm). Five states, one classifier, two consumers:
+
+| State | Condition | Hook (SessionStart) | `install.py --check` |
+|---|---|---|---|
+| **missing** | no installed `CHANGELOG.md` (or `index.md`) | announces every session — no 24h throttle | prints "not installed" + the install command |
+| **current** | installed released semver == remote | silent | prints "up to date" (`run_install()` skips its y/n overwrite prompt only when `.version`'s `commit=` equals the checkout HEAD with a clean tree — the overwrite source is the checkout, not remote) |
+| **update** | remote newer than installed | announces `x.y.z → a.b.c` + the update command (24h throttle) | prints `x.y.z → a.b.c` |
+| **ahead** | installed newer than remote, or installed CHANGELOG is Unreleased-only | silent — never nag a dev machine | prints "ahead of remote" |
+| **unknown** | network/parse failure (3s timeout) | silent, retries within 1h — never claims "current" | prints "unknown (network/parse error)" |
+
+Notify-only either way: neither surface downloads or installs anything on its own — the printed command (`git pull && ./install.sh` on Unix, `git pull; py -3 install.py` on Windows) is always something the user runs themselves.
 
 ## Usage model
 
@@ -202,19 +212,20 @@ claude/                           → Claude Code-only runtime assets, installed
   agents/aki-challenger.md
   agents/aki-maker.md
   hooks/aki-update-check.py
+  hooks/aki_version_check.py       (shared version-status parser, imported by both the hook and install.py --check)
   fragments/settings.akidoc.fragment.json   (illustrative reference only — never apply manually)
 
-docs/                             → repo-internal records, never installed
+docs/                             → repo-internal records; one TCC lookup is installed
   index.md                        (master doc index)
   arch/                           (current-state design records: rule delivery, akiflow)
   plan/ · plan/done/              (execution plans; completed plans move to done/)
-  research/                       (immutable dated findings — superseded by successors, never rewritten)
-  ref/                            (stable lookup docs: SKILL.md standard, CLI permission schemas)
+  research/                       (event records: frozen body, dated amendments, a successor doc when the decision changes)
+  ref/                            (stable lookups; macos-codesign-tcc.md → ~/.aki/akidevrule/docs/ref/)
 
 CLAUDE.md                                   (operating rules for agents working IN this repo — not installed anywhere)
 GEMINI.md                                   (the per-project Antigravity bootstrap, serving this repo itself; copied into other projects by hand)
 CHANGELOG.md                                (release history — also copied to ~/.aki/akidevrule/ so the update hook can compare versions)
-install.py                                  (cross-platform SSOT installer)
+install.py                                  (cross-platform SSOT installer; --check prints version status only)
 install.sh                                  (thin Unix launcher → python3 install.py)
 install.ps1                                 (thin Windows launcher → py -3 install.py)
 ```
@@ -225,11 +236,12 @@ install.ps1                                 (thin Windows launcher → py -3 ins
 flowchart TD
     subgraph SRC["📦 Source: akidevrule Repo"]
         PAYLOAD["payload/ (18 raw rule files)"]
+        TCCREF["docs/ref/macos-codesign-tcc.md"]
         PGEMINI["payload/GEMINI.md (template)"]
         CSKILLS["skills/ (10 skills, shared open standard)"]
         CCLAUDE["claude/CLAUDE.md (template)"]
         CAGENTS["claude/agents/ (5 agent definitions)"]
-        CHOOKS["claude/hooks/aki-update-check.py"]
+        CHOOKS["claude/hooks/aki-update-check.py + aki_version_check.py (shared parser)"]
     end
 
     INSTALL["⚙️ install.py (via install.sh / install.ps1)"]
@@ -238,6 +250,7 @@ flowchart TD
     %% TARGET 1: ~/.aki/akidevrule/
     subgraph T1["📂 1. Shared SSOT Rule Corpus (~/.aki/akidevrule/)"]
         R_CORPUS["*.md (Raw payload rules)"]
+        R_TCC["docs/ref/macos-codesign-tcc.md"]
         R_AGSKILLS["agskills/ (Shared skill tree for AG)"]
         R_META[".source-repo & .version"]
     end
@@ -248,7 +261,7 @@ flowchart TD
         C_LOCAL["CLAUDE.local.md (Machine local)"]
         C_SKILLS["skills/<skill_name>/SKILL.md"]
         C_AGENTS["agents/aki-*.md (copied per file, your own agents kept)"]
-        C_HOOKS["hooks/aki-update-check.py"]
+        C_HOOKS["hooks/aki-update-check.py + aki_version_check.py"]
         C_SET["settings.json (Permissions + Skill Overrides)"]
     end
 
@@ -282,13 +295,13 @@ flowchart TD
 
 Targets 4-6 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`GEMINI.md`-style overrides — those CLIs have no equivalent hard-load hook this baseline plugs into yet). Each sync is scoped per skill folder name via a Python `shutil` copy plus a managed-names-only prune, same never-touch-the-rest guarantee as targets 2 and 3, and runs unconditionally — harmless if that CLI isn't installed on the machine, picked up the moment it is.
 
-1. Syncs `payload/*` into `~/.aki/akidevrule/` (Python `shutil` copy, excludes `ref-ECC/`), removing stale files left by renames, and syncs `agskills/` for Antigravity skill inheritance.
+1. Syncs `payload/*` into `~/.aki/akidevrule/` (Python `shutil` copy, excludes `ref-ECC/`), removes stale files left by renames, syncs `agskills/` for Antigravity skill inheritance, and deploys the full TCC lookup to `~/.aki/akidevrule/docs/ref/macos-codesign-tcc.md`.
 2. Syncs every skill folder under `skills/*/` (whole directory, including any `references/` or `scripts/`) into `~/.claude/skills/`, one named folder at a time (copy + managed-names-only prune), removing only Aki's own old/renamed skill directories (`akidoc-*`, `akiadvise`) — any other skill you already have is never touched. `skills/` is a top-level, agent-neutral folder (siblings with `payload/`, not nested under `claude/`) because SKILL.md is a shared open standard both Claude Code and Antigravity/AGY consume identically — see [docs/ref/agent-skills-standard.md](docs/ref/agent-skills-standard.md).
 3. Copies `claude/agents/*.md` into `~/.claude/agents/` **file by file, never a directory mirror with `--delete`** — that folder is a shared namespace where your own agent definitions sit beside Aki's, exactly like `~/.claude/skills/`, so nothing you did not install is ever removed.
 4. Replaces `~/.claude/CLAUDE.md` with the packaged guidance (timestamped backup first), appending this machine's source-repo path and an `@~/.claude/CLAUDE.local.md` import.
 5. Creates `~/.claude/CLAUDE.local.md` **only if missing** — never overwritten afterward. Put per-machine rules there (build constraints, IDE paths, remote flags); they survive every reinstall.
 6. Updates `~/.claude/settings.json` (timestamped backup first): read permission for `~/.aki/akidevrule/**`, skill script execution permissions (`Bash(python3 ~/.claude/skills/**)`), `skillOverrides.akirule = "on"`, idempotent registration of the `SessionStart` update-check hook.
-7. Installs `~/.claude/hooks/aki-update-check.py` and records the source-repo path in `~/.aki/akidevrule/.source-repo`.
+7. Installs `~/.claude/hooks/aki-update-check.py` plus its shared parser `~/.claude/hooks/aki_version_check.py`, and records the source-repo path in `~/.aki/akidevrule/.source-repo`. Writes `~/.aki/akidevrule/.version` with `installed=`/`version=`/`commit=`/`branch=` — `version=` is the just-installed CHANGELOG's latest released semver, the same value `install.py --check` and the hook compare against remote.
 8. Installs `payload/GEMINI.md` to `~/.gemini/GEMINI.md` — Antigravity global behavior overrides, stamped with a version marker (`[AKIRULE-AG-OVERRIDES-…]`) on line 1. Generates 18 native rule files under `~/.gemini/config/rules/` with YAML `trigger` frontmatter. Deploys 10 skills directly to `~/.gemini/config/skills/` for native auto-discovery (synced per skill folder, same never-touch-the-rest guarantee as step 2), configures `~/.gemini/config/skills.json` with absolute paths as secondary, and merges skill execution permissions into `~/.gemini/antigravity-cli/settings.json` and `~/.gemini/settings.json` — a `command()` prefix rule for each of akiflow's five scripts (the only skill whose scripts agy invokes directly) per skill root, in both the expanded and the tilde-literal rendering (agy's matcher compares command strings literally — no glob expansion, and no tilde expansion in either direction — so a directory wildcard never matches and a rule only matches a command written the same way; see [docs/ref/cli-permission-allowlist-standard.md](docs/ref/cli-permission-allowlist-standard.md) §1.2) plus scoped `write_file`/`read_file` rules for the council workspace and rule corpus.
 9. Syncs the same skill folders to `~/.agents/skills/` (Codex CLI), `~/.kiro/skills/` (Kiro CLI, plus pre-allowed shell permissions in `~/.kiro/settings/permissions.yaml`), and `~/.grok/skills/` (Grok CLI) — each a plain global skills root these CLIs read natively, synced per skill folder name exactly like step 2. Skills-only: no rule corpus is generated for these targets.
 
@@ -319,7 +332,7 @@ rm -rf ~/.agents/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitco
 rm -rf ~/.kiro/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiship,aki-article-writer,akidevsync-notes}     # Kiro CLI
 rm -rf ~/.grok/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiship,aki-article-writer,akidevsync-notes}     # Grok CLI (other, non-Aki skills already in this folder are untouched)
 rm -f  ~/.claude/agents/aki-{hands,judge,conduct,challenger,maker}.md   # your own agents in that folder are untouched
-rm -f  ~/.claude/hooks/aki-update-check.py
+rm -f  ~/.claude/hooks/aki-update-check.py ~/.claude/hooks/aki_version_check.py
 rm -f  ~/.gemini/GEMINI.md          # restore from a *.akidevrule-backup-* if needed; GEMINI.local.md is left untouched
 ```
 
