@@ -1,5 +1,7 @@
 # Agent Skills is a shared open standard — Claude Code ↔ Antigravity/AGY
 
+Not `AGENTS.md` (the repo instruction file). That standard: `docs/ref/agents-md-standard.md`.
+
 ## The fact
 
 `SKILL.md` (YAML frontmatter + instructions, plus optional `references/`, `scripts/`, `assets/` subfolders, with progressive disclosure — the agent sees only name+description until the skill is actually triggered) is not a Claude-specific format. Google adopted the same open standard for Antigravity. Both platforms agree on:
