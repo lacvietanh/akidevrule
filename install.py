@@ -30,6 +30,21 @@ for _stream in (sys.stdout, sys.stderr):
 REPO_ROOT = Path(__file__).resolve().parent
 HOME = Path.home()
 INSTALL_ROOT = HOME / ".aki" / "akidevrule"
+
+# Same parser the installed SessionStart hook uses, so installer and hook never classify a CHANGELOG differently (pattern.A1).
+sys.path.insert(0, str(REPO_ROOT / "claude" / "hooks"))
+from aki_version_check import (  # noqa: E402
+    STATE_AHEAD,
+    STATE_CURRENT,
+    STATE_MISSING,
+    STATE_UNKNOWN,
+    STATE_UPDATE,
+    classify_state,
+    fetch_remote_changelog,
+    local_install_present,
+    parse_changelog_version,
+)
+
 LEGACY_INSTALL_ROOT = HOME / ".aki" / "claudedoc"
 CLAUDE_DIR = HOME / ".claude"
 GEMINI_DIR = HOME / ".gemini"
@@ -203,6 +218,28 @@ def git_short_hash(repo: Path) -> str:
         return result.stdout.strip() if result.returncode == 0 else ""
     except Exception:
         return ""
+
+
+def git_tree_clean(repo: Path) -> bool:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo), "status", "--porcelain"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return result.returncode == 0 and result.stdout.strip() == ""
+    except Exception:
+        return False
+
+
+def installed_commit() -> str:
+    """`commit=` value from INSTALL_ROOT/.version, '' when absent."""
+    try:
+        for line in (INSTALL_ROOT / ".version").read_text(encoding="utf-8").splitlines():
+            if line.startswith("commit="):
+                return line[len("commit="):].strip()
+    except OSError:
+        pass
+    return ""
 
 
 def git_branch(repo: Path) -> str:
@@ -380,7 +417,7 @@ def merge_settings(settings_path: Path, install_root: Path, claude_dir: Path) ->
         "matcher": "startup|resume",
         "hooks": [{
             "type": "command",
-            "command": f'python3 "{claude_dir}/hooks/aki-update-check.py"',
+            "command": f'{"py -3" if os.name == "nt" else "python3"} "{claude_dir}/hooks/aki-update-check.py"',
             "timeout": 8,
         }],
     })
@@ -549,11 +586,77 @@ def update_skills_json() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Version status (shared with the SessionStart hook, see aki_version_check.py)
+# ---------------------------------------------------------------------------
+
+def get_version_status():
+    """One-shot local-vs-remote check against INSTALL_ROOT. Returns (state, local_version, remote_version)."""
+    present = local_install_present(str(INSTALL_ROOT))
+    local_version = None
+    if present:
+        try:
+            local_version = parse_changelog_version((INSTALL_ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))
+        except OSError:
+            local_version = None
+    remote_text = fetch_remote_changelog()
+    remote_version = parse_changelog_version(remote_text) if remote_text else None
+    state = classify_state(present, local_version, remote_version)
+    return state, local_version, remote_version
+
+
+def print_version_check() -> None:
+    """`install.py --check` — print installed vs latest and exit. No install, no overwrite."""
+    state, local_version, remote_version = get_version_status()
+    print(cyan_bold("=== akidevrule version check ==="))
+    if state == STATE_MISSING:
+        installed_str = "not installed"
+    elif local_version is None:
+        installed_str = "installed (no released version found -- Unreleased-only?)"
+    else:
+        installed_str = local_version
+    print(f"Installed: {installed_str}")
+    print(f"Latest:    {remote_version or 'unknown (network/parse error)'}")
+    labels = {
+        STATE_MISSING: red_bold("not installed"),
+        STATE_CURRENT: green_bold("up to date"),
+        STATE_UPDATE: yellow_bold("update available"),
+        STATE_AHEAD: cyan_bold("ahead of remote"),
+        STATE_UNKNOWN: yellow_bold("unknown (network/parse error)"),
+    }
+    print(f"Status:    {labels[state]}")
+    if state == STATE_UPDATE:
+        launcher = "py -3 install.py" if os.name == "nt" else "./install.sh"
+        print(f"Update:    git pull && {launcher}")
+    elif state == STATE_MISSING:
+        launcher = "py -3 install.py" if os.name == "nt" else "./install.sh"
+        print(f"Install:   {launcher}")
+    print(cyan_bold("================================="))
+
+
+# ---------------------------------------------------------------------------
 # inspect_status (pre-install preview)
 # ---------------------------------------------------------------------------
 
-def inspect_status() -> None:
+def inspect_status() -> bool:
+    """Prints the pre-install status report. Returns True when the install already comes from this exact checkout (skip the confirm prompt)."""
     print(cyan_bold("=== SYSTEM STATUS CHECK BEFORE INSTALL ==="))
+
+    head = git_short_hash(REPO_ROOT)
+    same_checkout = bool(head) and installed_commit() == head and git_tree_clean(REPO_ROOT)
+    if same_checkout:
+        print(f"✅ Already installed from this exact commit ({head}, clean tree) — reinstalling refreshes identical content.")
+
+    state, local_version, remote_version = get_version_status()
+    if state == STATE_CURRENT:
+        print(f"ℹ️  Installed release {local_version} matches remote; the overwrite below comes from this checkout, which may carry [Unreleased] work.")
+    elif state == STATE_UPDATE:
+        print(f"🔔 A newer akidevrule is available: {local_version} → {remote_version} (this install only refreshes local files at the current repo checkout's version).")
+    elif state == STATE_MISSING:
+        print("📦 Fresh install — akidevrule is not currently installed on this machine.")
+    elif state == STATE_UNKNOWN:
+        print("⚠️  Could not reach the remote CHANGELOG to compare versions (network/parse error) — proceeding with local install only.")
+    elif state == STATE_AHEAD:
+        print(f"ℹ️  Local install ({local_version or 'Unreleased-only'}) is ahead of or diverged from remote ({remote_version}).")
 
     if INSTALL_ROOT.is_dir():
         print(f"📦 Payload rules: will {yellow_bold('OVERWRITE')} {INSTALL_ROOT}")
@@ -637,6 +740,7 @@ def inspect_status() -> None:
             print("  ⚠️  Antigravity CLI: settings.json will be updated with skill permissions.")
 
     print(cyan_bold("===================================================="))
+    return same_checkout
 
 
 # ---------------------------------------------------------------------------
@@ -715,10 +819,10 @@ def run_install() -> None:
         shutil.move(str(LEGACY_INSTALL_ROOT), str(INSTALL_ROOT))
         print(f"📦 Migrated legacy install root: {LEGACY_INSTALL_ROOT} → {INSTALL_ROOT}")
 
-    inspect_status()
+    same_checkout = inspect_status()
 
-    # Prompt for confirmation only when stdin is a TTY.
-    if sys.stdin.isatty():
+    # Skip the prompt only for a byte-identical overwrite (same commit, clean tree); installed == remote is not that, the checkout may carry [Unreleased] work.
+    if sys.stdin.isatty() and not same_checkout:
         confirm = input("Proceed with install/update given the changes above? (y/n): ").strip()
         if confirm.lower() != "y":
             print("Install cancelled.")
@@ -759,8 +863,18 @@ def run_install() -> None:
     # Copy CHANGELOG so any machine knows what's installed without the repo.
     shutil.copy2(REPO_ROOT / "CHANGELOG.md", INSTALL_ROOT / "CHANGELOG.md")
 
+    # B7 stays the concise rule; this one lookup carries the measured TCC/codesign detail.
+    tcc_lookup_src = REPO_ROOT / "docs" / "ref" / "macos-codesign-tcc.md"
+    tcc_lookup_dest = INSTALL_ROOT / "docs" / "ref" / "macos-codesign-tcc.md"
+    shutil.rmtree(INSTALL_ROOT / "docs", ignore_errors=True)  # the payload prune never enters docs/, so a renamed lookup would linger
+    tcc_lookup_dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(tcc_lookup_src, tcc_lookup_dest)
+
     # Write version stamp.
     version_lines = [f"installed={datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"]
+    installed_version = parse_changelog_version((INSTALL_ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))
+    if installed_version:
+        version_lines.append(f"version={installed_version}")
     git_hash = git_short_hash(REPO_ROOT)
     if git_hash:
         version_lines.append(f"commit={git_hash}")
@@ -783,6 +897,8 @@ def run_install() -> None:
     hooks_dest.mkdir(parents=True, exist_ok=True)
     shutil.copy2(REPO_ROOT / "claude" / "hooks" / "aki-update-check.py",
                  hooks_dest / "aki-update-check.py")
+    shutil.copy2(REPO_ROOT / "claude" / "hooks" / "aki_version_check.py",
+                 hooks_dest / "aki_version_check.py")
     write_text_lf(INSTALL_ROOT / ".source-repo", str(REPO_ROOT) + "\n")
 
     # --- 5. CLAUDE.md ---
@@ -792,12 +908,13 @@ def run_install() -> None:
     prune_backups(CLAUDE_DIR / "CLAUDE.md")
 
     claude_md_src = (REPO_ROOT / "claude" / "CLAUDE.md").read_text(encoding="utf-8")
+    propagate_cmd = f"py -3 {REPO_ROOT}\\install.py" if os.name == "nt" else f"bash {REPO_ROOT}/install.sh"
     rule_source_block = (
         "\n## akidevrule — edit source, not deployed copy (ABSOLUTE)\n\n"
         f"The deployed rule files at `{INSTALL_ROOT}` are **overwritten on every install**.\n"
         "To change any shared rule:\n"
         f"1. Edit in the **source repo**: `{REPO_ROOT}/payload/`\n"
-        f"2. Run `bash {REPO_ROOT}/install.sh` to propagate.\n\n"
+        f"2. Run `{propagate_cmd}` to propagate.\n\n"
         f"**NEVER edit files under `{INSTALL_ROOT}` directly** — changes will be silently lost on the next install.\n\n"
         "@~/.claude/CLAUDE.local.md\n"
     )
@@ -848,7 +965,7 @@ def run_install() -> None:
             "To change any shared rule:\n"
             f"1. Edit in the **source repo**: `{REPO_ROOT}/payload/` (rules) or `{REPO_ROOT}/claude/` (runtime assets).\n"
             f"2. Read `{REPO_ROOT}/CLAUDE.md` first — it lists which files must be updated together.\n"
-            f"3. Run `bash {REPO_ROOT}/install.sh` to propagate.\n\n"
+            f"3. Run `{propagate_cmd}` to propagate.\n\n"
             f"**NEVER edit files under `{INSTALL_ROOT}` directly** — changes are silently lost on the next install.\n"
         )
 
@@ -896,8 +1013,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="akidevrule installer — deploys shared rule corpus and skills.",
     )
-    # Accepts any flags install.sh might have been called with; no-ops today but keeps the thin launchers forwards-compatible.
-    parser.parse_args()
+    parser.add_argument(
+        "--check", action="store_true",
+        help="Print installed vs latest akidevrule version and exit. No install, no overwrite.",
+    )
+    args = parser.parse_args()
+    if args.check:
+        print_version_check()
+        sys.exit(0)
     run_install()
 
 

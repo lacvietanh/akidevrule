@@ -1,29 +1,43 @@
 #!/usr/bin/env python3
 """akidevrule update-check hook (Claude Code SessionStart).
 
-Notify-only. Compares the installed CHANGELOG.md top entry against the public
-repo copy; if the remote has newer entries, prints a user-visible notice
-(systemMessage) plus the "what's new" delta as context for Claude
-(additionalContext).
+Notify-only. Classifies install status via aki_version_check's shared SSOT
+parser -- missing / current / update / ahead / unknown, see README.md
+"Update notifications" for the full table -- and prints a systemMessage on
+missing/update only.
 
 Design guarantees:
 - Fail-silent: any error, missing file, or network problem exits 0 with no
   output, so it can never disrupt a session.
-- Throttled: checks at most once per THROTTLE_HOURS, even on failure.
+- The "missing" check is a local file-stat, always run and never throttled,
+  so a not-installed machine hears about it every session, not once a day.
+- The network-dependent check (current/update/ahead/unknown) is throttled at
+  most once per THROTTLE_*_HOURS.
 - Never auto-updates: it only reports and points at the manual install command.
 - No third-party deps: stdlib only (urllib), so it runs anywhere python3 does.
 """
 import json
 import os
+import re
 import sys
 import time
-import urllib.request
 
-REMOTE_URL = "https://raw.githubusercontent.com/lacvietanh/akidevrule/master/CHANGELOG.md"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from aki_version_check import (
+    STATE_AHEAD,
+    STATE_CURRENT,
+    STATE_UNKNOWN,
+    classify_state,
+    cmp_semver,
+    fetch_remote_changelog,
+    local_install_present,
+    parse_changelog_version,
+)
+
 CHANGELOG_URL_HUMAN = "https://github.com/lacvietanh/akidevrule/blob/master/CHANGELOG.md"
+REPO_CLONE_URL = "https://github.com/lacvietanh/akidevrule"
 THROTTLE_OK_HOURS = 24    # after a definitive result, wait a full day
 THROTTLE_FAIL_HOURS = 1   # after offline/timeout, retry sooner so a notice is not lost
-NETWORK_TIMEOUT = 3       # seconds
 
 HOME = os.path.expanduser("~")
 INSTALL_ROOT = os.path.join(HOME, ".aki", "akidevrule")
@@ -68,81 +82,22 @@ def split_entries(text):
     return entries
 
 
-def main():
-    if not check_due():
-        silent_exit()
-
-    try:
-        with open(LOCAL_CHANGELOG, encoding="utf-8") as f:
-            local_entries = split_entries(f.read())
-    except OSError:
-        defer_check(THROTTLE_OK_HOURS)  # broken/missing install, nothing to retry soon
-        silent_exit()
-    if not local_entries:
-        defer_check(THROTTLE_OK_HOURS)
-        silent_exit()
-    local_head = local_entries[0][0]
-
-    try:
-        req = urllib.request.Request(REMOTE_URL, headers={"User-Agent": "aki-update-check"})
-        with urllib.request.urlopen(req, timeout=NETWORK_TIMEOUT) as resp:
-            remote_text = resp.read().decode("utf-8", "replace")
-    except Exception:
-        defer_check(THROTTLE_FAIL_HOURS)  # offline/timeout -> retry soon, do not lose the notice
-        silent_exit()
-
-    defer_check(THROTTLE_OK_HOURS)  # we have a definitive answer; next check in a day
-
-    entries = split_entries(remote_text)
-    if not entries:
-        silent_exit()
-    remote_head = entries[0][0]
-    if remote_head == local_head:
-        silent_exit()  # up to date
-
-    # Where does the installed version sit inside the remote changelog?
-    pos = next((i for i, (h, _) in enumerate(entries) if h == local_head), None)
-    if pos is None or pos == 0:
-        # local is ahead / diverged / unknown -> do not nag (e.g. a dev machine)
-        silent_exit()
-
-    new_entries = entries[:pos]  # everything strictly newer than what is installed
-
+def read_source_repo():
     try:
         with open(SOURCE_REPO_FILE, encoding="utf-8") as f:
-            repo = f.read().strip()
+            return f.read().strip()
     except OSError:
-        repo = ""
+        return ""
+
+
+def update_cmd_for(repo):
     launcher = "py -3 install.py" if os.name == "nt" else "./install.sh"
-    update_cmd = (
-        f"cd {repo} && git pull && {launcher}"
-        if repo
-        else f"pull the akidevrule repo and run: {launcher}"
-    )
+    if repo:
+        return f"cd {repo} && git pull && {launcher}"
+    return f"pull the akidevrule repo and run: {launcher}"
 
-    delta_lines = []
-    for _, lines in new_entries:
-        delta_lines.extend(lines)
-    delta = "\n".join(delta_lines).strip()
-    max_delta = 1400
-    if len(delta) > max_delta:
-        delta = delta[:max_delta].rstrip() + "\n… (see full changelog at the link below)"
 
-    banner = (
-        "📢 akidevrule has a new update available\n"
-        f"   Latest: {remote_head}   |   Installed: {local_head}   "
-        f"({len(new_entries)} new entries)\n"
-        f"   Update:    {update_cmd}\n"
-        f"   Changelog: {CHANGELOG_URL_HUMAN}\n\n"
-        f"{delta}"
-    )
-    context = (
-        "The akidevrule shared-rule corpus has a newer version available.\n"
-        f"Installed: {local_head}. Latest: {remote_head}.\n"
-        f"To update, run: {update_cmd}\n\n"
-        "What's new (from CHANGELOG.md):\n" + "\n".join(delta_lines)
-    )
-
+def emit(banner, context):
     print(json.dumps({
         "systemMessage": banner,
         "hookSpecificOutput": {
@@ -151,7 +106,98 @@ def main():
         },
         "suppressOutput": True,
     }, ensure_ascii=False))
-    sys.exit(0)
+
+
+def report_missing():
+    repo = read_source_repo()
+    launcher = "py -3 install.py" if os.name == "nt" else "./install.sh"
+    install_cmd = (
+        f"cd {repo} && {launcher}"
+        if repo
+        else f"git clone {REPO_CLONE_URL} && cd akidevrule && {launcher}"
+    )
+    banner = (
+        "📦 akidevrule is not installed on this machine\n"
+        f"   Install: {install_cmd}\n"
+        f"   Repo:    {REPO_CLONE_URL}"
+    )
+    context = (
+        "The akidevrule shared-rule corpus is not installed on this machine.\n"
+        f"To install it, run: {install_cmd}"
+    )
+    emit(banner, context)
+
+
+def build_delta(remote_text, local_version):
+    """Released entries strictly newer than local_version, newest-first, skipping [Unreleased]."""
+    delta_lines = []
+    for header, lines in split_entries(remote_text):
+        m = re.match(r"\[(\d+\.\d+\.\d+)\]", header)
+        if not m:
+            continue  # [Unreleased] or any other non-version heading -- not a shipped version yet
+        if cmp_semver(m.group(1), local_version) <= 0:
+            break  # newest-first order: reached local's own version or older
+        delta_lines.extend(lines)
+    return "\n".join(delta_lines).strip()
+
+
+def report_update(local_version, remote_version, remote_text):
+    update_cmd = update_cmd_for(read_source_repo())
+    delta = build_delta(remote_text, local_version)
+    max_delta = 1400
+    if len(delta) > max_delta:
+        delta = delta[:max_delta].rstrip() + "\n… (see full changelog at the link below)"
+
+    banner = (
+        "📢 akidevrule has a new update available\n"
+        f"   {local_version} → {remote_version}\n"
+        f"   Update:    {update_cmd}\n"
+        f"   Changelog: {CHANGELOG_URL_HUMAN}\n\n"
+        f"{delta}"
+    )
+    context = (
+        "The akidevrule shared-rule corpus has a newer version available.\n"
+        f"Installed: {local_version}. Latest: {remote_version}.\n"
+        f"To update, run: {update_cmd}\n\n"
+        "What's new (from CHANGELOG.md):\n" + delta
+    )
+    emit(banner, context)
+
+
+def main():
+    # Local file-stat, always run and never throttled -- a not-installed
+    # machine must hear about it every session, not once per THROTTLE_OK_HOURS.
+    if not local_install_present(INSTALL_ROOT):
+        report_missing()
+        silent_exit()
+
+    if not check_due():
+        silent_exit()
+
+    try:
+        with open(LOCAL_CHANGELOG, encoding="utf-8") as f:
+            local_text = f.read()
+    except OSError:
+        defer_check(THROTTLE_OK_HOURS)
+        silent_exit()
+    local_version = parse_changelog_version(local_text)
+
+    remote_text = fetch_remote_changelog()
+    remote_version = parse_changelog_version(remote_text) if remote_text else None
+
+    state = classify_state(True, local_version, remote_version)
+
+    if state == STATE_UNKNOWN:
+        defer_check(THROTTLE_FAIL_HOURS)  # offline/timeout -> retry soon, do not lose the notice
+        silent_exit()
+
+    defer_check(THROTTLE_OK_HOURS)  # definitive answer -> next check in a day
+
+    if state in (STATE_CURRENT, STATE_AHEAD):
+        silent_exit()  # up to date, or a dev machine ahead of remote -- never nag
+
+    report_update(local_version, remote_version, remote_text)
+    silent_exit()
 
 
 if __name__ == "__main__":
