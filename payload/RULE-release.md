@@ -141,7 +141,7 @@ Run in order; each step names the rule that owns it.
 2. **Hygiene sweep — scoped to the accumulation, never the whole repo.** On the files touched since the boundary commit (B1.5): scythe `[WRAP]`/`[YAP]` lint ([[RULE-agent-behavior]] §0), dead code / redundant guards / duplication the accumulation itself introduced (`pattern.A8`; subtract-class detectors at diff scope), and doc references in touched comments still resolving ([[RULE-docs]] B3). A repo-wide subtraction or zero-trust sweep is a separately scheduled audit, never a per-release cost — diff scope is what keeps this gate affordable at many releases per day. Unlike an audit, findings here are fixed in place: this is a gate, not a report.
 3. **External-action completeness** — every change whose "done" depends on something outside the repo actually happened: migrations ran against the real target and their postconditions were checked, remote config/env vars/cron registrations are live, and each script sits in its completion location (B5, [[RULE-coding]] B3). A green build proves nothing about the database.
 4. **Record truthfulness** — every closed problem has its `CHANGELOG.md` entry, and no entry claims something step 3 has not cleared (B2). Web stacks additionally need `releases.json` parity (C3).
-5. **Doc sync** — plans whose work shipped moved to `docs/plan/done/`, and `arch`/`feat` docs match what is about to ship ([[RULE-docs]] B1, B3). A doc left stale here becomes next release's drift finding.
+5. **Doc sync — every record surface the accumulation touched, not only `docs/`.** Enumerate, then check each against the diff: plans whose work shipped moved to `docs/plan/done/`; `arch`/`feat` docs match what is about to ship ([[RULE-docs]] B1, B3); `README.md` wherever the accumulation changed setup, commands, layout, or a documented behavior; the project's task-note file when one exists (`.akidevsync/notes.json`, edited only through the `akidevsync-notes` skill — a note whose fix is in this accumulation is marked done with the matching CHANGELOG line, an unmatched or unverified one stays open and is named in the report); and any external standards doc the project `CLAUDE.md` binds the project to, updated in place when the accumulation changed a convention that doc owns. A surface skipped because it was not in `docs/` is the same drift finding as a stale doc.
 6. **Verification honesty** — anything only checkable at runtime is reported as unverified rather than assumed ([[RULE-coding]] B3). "Untested but I expect it works" is a valid gate output; a silent "Done" is not.
 7. **Version decision** — mint or defer per A4/A5's materiality test. Do not mint a version to mark that a session ended.
 
@@ -173,15 +173,16 @@ The changelog explains *what changed and why* for maintainers. The release note 
 ### C2. releases.json schema
 - Single-language site: `{ version, date, title, changes: [{ type, text }] }`
 - Multilingual site: localize the human text — `title: { en, vi }`, `changes: [{ type, text: { en, vi } }]`. Keep `version`, `date`, `type` locale-neutral. Default/fallback language is English.
-- `type` is one of `new` | `improved` | `fixed` (stable badge keys).
+- `type` is one of `new` | `improved` | `fixed` | `internal` (stable badge keys).
 
-### C3. No version gaps in releases.json
-Every version that appears in `CHANGELOG.md` MUST also appear in `releases.json`. Skipping a version because it is "internal" or "technical" is not allowed — it creates visible number jumps that users notice and distrust.
+### C3. No version gaps, and no content gaps, in releases.json
+Every version that appears in `CHANGELOG.md` MUST also appear in `releases.json` (no missing version), and every `Added`/`Changed`/`Fixed`/`Removed` section in that version's CHANGELOG entry must be represented by at least one `changes[]` line in `releases.json` (no missing content) — skipping a version, or silently dropping a whole category of its work, because it reads as "internal" or "technical" is not allowed. This page is the one place both a human visitor and a crawling/LLM bot judge whether the product is actively maintained; a version that reads as empty is worse than one that reads as unglamorous.
 
-**If a version contains only internal/technical changes** (scripts, refactors, build tooling), write a brief user-friendly summary instead of omitting it entirely. Use one of these patterns:
-- `"type": "improved"` — "Under-the-hood improvements for stability and performance"
-- `"type": "fixed"` — "URL or display fixes" (describe the symptom a user would notice, not the cause)
-- `"type": "improved"` — "Build and SEO tooling updates (no visible change for users)"
+**A version whose work is entirely internal (scripts, refactors, build tooling, admin-only changes) still gets an entry — tagged `"type": "internal"`, never disguised as `improved`/`fixed`.** Correcting existing entries follows this same rule (`release.B3` "never renumber or delete" protects *versions*, not a wrong `type` field within one). Keep the wording honest and generic — describe the capability gained, never a file, table, or route name:
+- `"type": "internal"` — "Under-the-hood improvements for stability and performance, no visible change for users"
+- `"type": "internal"` — "Build and SEO tooling updates (no visible change for users)"
+- `"type": "fixed"` stays for a fix a user would actually notice (URL or display fixes); once the fix is invisible to the user (an internal build warning, an admin-only tool), it is `"type": "internal"` too, not `"fixed"`.
+- A CHANGELOG `Removed` section has no badge of its own: `"type": "improved"` when the user notices the removal (a retired page, a dropped option), `"type": "internal"` when they cannot.
 
 Never leave a gap like `1.0.5 → 1.0.7` or `0.1.0 → 0.1.3` in releases.json. A one-line entry is better than a missing version.
 

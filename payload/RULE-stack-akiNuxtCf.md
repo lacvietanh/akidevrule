@@ -28,6 +28,7 @@ Nuxt 4 · Vue 3 · Tailwind v4 · @nuxtjs/i18n · @nuxtjs/seo · SweetAlert2 · 
 - Do not enable `nodejs_compat` in `wrangler.toml` unless upstream issues are confirmed fixed
 - Trailing slash: `trailingSlash: true` everywhere (routing, canonical, og:url, sitemap, schema.org) — canonical config lives in the i18n section below
 - Never call h3's `readBody()` in a DELETE handler. On workerd, reading a body the runtime never actually attached to a DELETE request hangs the promise instead of rejecting it — the platform then kills the request as a bare 500 with no stack trace. This reproduces on real Cloudflare Pages/Workers but NOT under `nuxt dev` (Node), so it survives local testing and only surfaces in production. Pass the id (or any DELETE payload) via query string on both client and server instead — never body.
+- After the response, keep the isolate alive with `event.context.cloudflare.context.waitUntil` (the path live notify modules use on tachnhac / vstshop / tuvi / kinhdich). Nitro 2.13 also wraps the same CF context as `event.waitUntil`. Do not copy Nitro v3 docs onto this stack: v3 puts the platform on `event.req.runtime.cloudflare`, and `event.req.waitUntil` does not exist on 2.13, so the isolate dies. `nuxt dev` cannot prove isolate lifetime. A 200 that returns before the background work is not evidence the work ran.
 
 ### A3. Preset and output
 - Use `cloudflare_pages`, not `cloudflare_module`
@@ -153,6 +154,7 @@ Standard utility scripts — fixed names, per-project values (port, DB name):
 - Projects with a D1 database:
   - `db.init.local`: `rm -rf .wrangler/state/v3/d1 && wrangler d1 execute <db-name> --local --file=schema.sql` — wipe local D1 state, reload the schema
   - `db.push`: `wrangler d1 execute <db-name> --remote --file=schema.sql`
+  - `db.pull`: `bash scripts/db-pull.sh` — export the remote D1 database to a local backup file; the backup path C8's execution-ownership clause requires before an agent runs a migration itself
 
 ### C8. Deploy verification — push is not done
 A push only *requests* a Cloudflare build; the task is not closed until the newest build for this project reaches a terminal state. (This is deployment, not releasing — versioning and release artifacts are owned by `RULE-release.md`.)
@@ -168,6 +170,8 @@ After every push, watch the newest build/deployment (general `cloudflare` MCP if
 1. Run it against the real target: `wrangler d1 execute <db-name> --remote --file=scripts/migrate-*.sql` (never claim done from a `--local` run alone — local and remote are separate SQLite files).
 2. Check the postconditions the migration itself states (row counts, `PRAGMA table_info`) against remote, not assumed from the script having no errors.
 3. Move the file into `scripts/done/` — a migration file left in `scripts/` is itself a visible signal, to the next person or the next session, that step 1 may not have happened.
+
+**Execution ownership — the agent runs steps 1-3 itself; this is [[RULE-coding]] B5's ladder, not [[RULE-agent-behavior]] B3's ask-first gate.** An additive, idempotent migration (`CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` — no `ALTER`/`DROP`, no existing-row mutation) with a backup path available (`db.pull`, C7, or an equivalent remote export) is a two-way door: back up, run `--local` then `--remote`, verify postconditions, move the file — in the same task, without a separate confirmation turn. B5's rung 5 applies first: `wrangler` must be present **and authenticated** (`wrangler whoami`) on this machine; when it is not, the item is a rung-5 hand-off carrying that reason, never an "ask first". Treating "touches production DB" as always-ask by reflex collapses B5's ladder straight to rung 6 and reproduces the forbidden rationalization it names, "only the owner can decide." B3's ask-before gate stays live for the actual irreversible case: any migration that alters or drops existing structure, rewrites existing rows, or has no backup path.
 
 See [[RULE-release]] B5 — the CHANGELOG/release entry for this change is not truthful until all three steps above are done, not just written.
 

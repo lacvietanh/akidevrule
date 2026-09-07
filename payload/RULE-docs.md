@@ -35,7 +35,7 @@ Filenames across all `docs/*` never lead with a date — the content-identifying
 
 ### A4. Anchor stamp — `updated <time> <version>` on every `arch|biz|feat` doc
 
-`arch/`, `biz/` and `feat/` hold current state and are the SSoT other docs and code are written against, so a reader cannot tell a still-true doc from a silently rotted one without knowing when it was last confirmed. These three folders carry a stamp; `plan/`, `research/` and `ref/` do not — the first two are immutable event records whose own schema already dates them (B1, B2), and `ref/` is verified by running its commands, not by a date.
+`arch/`, `biz/` and `feat/` hold current state and are the SSoT other docs and code are written against, so a reader cannot tell a still-true doc from a silently rotted one without knowing when it was last confirmed. These three folders carry a stamp; `plan/`, `research/` and `ref/` do not — the first two are event records whose own schema already dates them (B1, B2), and `ref/` is verified by running its commands, not by a date.
 
 **Placement** — first line of the file's own header block: immediately under the H1 for a plain Markdown doc, or as a `updated:` key in the frontmatter/description field where the file already has one. One stamp per file, never per section.
 
@@ -62,7 +62,13 @@ The stamp is what makes drift mechanically visible: a `docs/arch/` file stamped 
 
 ### B2. Research doc structure (`docs/research/`)
 
-A research doc is an **immutable event record** — a snapshot of reasoning at the time it was written — never rewritten later (the current-state vs. history split is defined in A2). When its conclusion needs revisiting (recorded context no longer holds), create a **new** research doc and add a `Status: superseded by <path>` line at the top of the old one — never edit the old doc's body. Name the chain with a sequential numeric suffix, ADR-style: `db-engine-choice.md` → `db-engine-choice-2.md` → `db-engine-choice-3.md`, each `superseded by` pointing only at its immediate successor so the chain can be walked backward. Anything outside research that links to it (`arch/feat/biz`) points at the latest number and gets updated each time the chain grows — that edit is allowed because those docs hold current state, not history.
+A research doc is an **event record** — the reasoning as it stood when written (the current-state vs. history split is defined in A2). Its body is frozen: never rewrite a claim, a number, or a verification status in place, because the record of what was believed is the doc's whole value. What may change after writing, by class:
+- **Cosmetic** (typo, broken link, a path after a rename) — edit in place, no marker.
+- **Erratum on a claim** — a fact turned out wrong, a number was re-measured, an unverified claim was later verified or contradicted, but the **Decision** field still stands: append a dated entry to a closing `## Amendments` section (`- 2026-08-02 · § R9: verified on kiro-cli 2.16.0; the row above was written unverified`), naming the section it corrects and stating only the corrected fact (no story of finding it — `agent.C2`), and add `Status: amended <date>` under the H1 so a reader is warned before reaching the stale claim. The original text stays.
+- **Decision changes** — applying the correction would alter the Decision field: create a **new** research doc and add `Status: superseded by <path>` at the top of the old one. Name the chain with a sequential numeric suffix, ADR-style: `db-engine-choice.md` → `db-engine-choice-2.md` → `db-engine-choice-3.md`, each `superseded by` pointing only at its immediate successor so the chain can be walked backward.
+- **Decision-field links and cross-references** — an Action link to where the result landed, a new cross-ref: edit in place; those fields describe where the event's consequences live, not the event.
+
+The discriminator is mechanical: read the Decision field; if the correction would change it, successor doc, otherwise amendment. Anything outside research that links to a chain (`arch/feat/biz`) points at the latest number and gets updated each time the chain grows — that edit is allowed because those docs hold current state, not history.
 
 Required fields, in order:
 1. **Start time** — when the research began
@@ -121,7 +127,7 @@ Walk the topology, checking each doc against what is actually true now:
 - `docs/arch/` — module boundaries, data shapes, and diagrams still match the actual tree
 - `docs/feat/` — the described behavior still matches what the code does
 - `docs/biz/` — where code intent contradicts it, A3 decides: the `biz/` doc wins until it is explicitly changed
-- `docs/research/` — a conclusion whose recorded context no longer holds needs a successor doc plus a `Status: superseded by` line (B2), never an edit to the original
+- `docs/research/` — a conclusion whose recorded context no longer holds needs a successor doc plus a `Status: superseded by` line; a claim corrected while the Decision stands needs an `## Amendments` entry plus a `Status: amended` notice; a body rewritten in place with neither is a **Wrong** finding (B2)
 - `docs/ref/` — commands, paths, and setup steps still run
 - Doc references inside code comments (B3) still point at a heading that exists
 - **The inverse walk — code → docs:** a complex feature or subsystem shipped with no corresponding `feat/`/`arch/` doc is an **Incomplete** finding (C4). The audit checks both directions, never only whether existing docs still hold
