@@ -25,7 +25,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             exit 0
           fi
-          # release.B4: body must carry the tagged CHANGELOG section, not a bare --generate-notes (near-empty on this repo — commits go straight to trunk, no PR history for it to derive from) plus a compare-link footer.
+          # release.B4: CHANGELOG section + compare footer — --generate-notes is near-empty without PRs.
           awk -v tag="$TAG" '
             $0 ~ "^## \\[" tag "\\]" { flag=1; next }
             flag && /^## \[/ { flag=0 }

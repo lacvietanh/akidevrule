@@ -1,8 +1,6 @@
 name: install-smoke
 
-# Cross-platform verification of the pure-Node installer. No maintainer runs a
-# Windows box locally, so this matrix is the gate that lets the repo claim
-# Windows support truthfully.
+# No maintainer runs Windows locally — this matrix is what makes the Windows-support claim true.
 
 on:
   push:

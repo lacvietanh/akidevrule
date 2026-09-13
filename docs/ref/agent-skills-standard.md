@@ -18,7 +18,7 @@ The only real difference is **where each platform looks for skills**, not the fo
 | Project-level | `.claude/skills/` | `.agent/skills/` |
 | Global (this repo's target) | `~/.claude/skills/` | `~/.gemini/config/skills/` — the one root read by AG Desktop, AG IDE, and AGY CLI alike |
 
-This repo already deploys to the two global paths — `install.py`'s `sync_aki_skills()` was already syncing the same folder to `~/.gemini/config/skills/` unmodified (Python `shutil` copy, rsync `--delete` semantics, no rsync binary) before this finding was verified; only the *source-repo* layout (`claude/skills/` implying Claude ownership) was inaccurate to what was actually happening.
+This repo already deploys to the two global paths — the installer's skill sync (now `install.mjs`'s `syncAkiSkills()`) was already syncing the same folder to `~/.gemini/config/skills/` unmodified (plain file copy, rsync `--delete` semantics, no rsync binary) before this finding was verified; only the *source-repo* layout (`claude/skills/` implying Claude ownership) was inaccurate to what was actually happening.
 
 Ollama CLI auto-loads every skill under `~/.claude` with no deploy step of its own — observed 2026-08-07.
 
@@ -38,4 +38,4 @@ Nothing changes for an already-installed machine — the deployed target paths (
 
 ## Cross-reference
 
-This repo's own verification of the `~/.gemini/config/skills/` global path predates this finding — see `install.py`'s inline comment above `GEMINI_SKILLS_DIR` (canary-tested 2026-07-22) and `docs/arch/rule-delivery-architecture.md` § "Verified behavior (2026-07-23)".
+This repo's own verification of the `~/.gemini/config/skills/` global path predates this finding (canary-tested 2026-07-22) — see `docs/arch/rule-delivery-architecture.md` § "Verified behavior (2026-07-23)".

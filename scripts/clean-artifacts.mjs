@@ -1,9 +1,5 @@
 #!/usr/bin/env node
-// Strip regenerable junk (Python bytecode, macOS Finder metadata) from the tree
-// before packing. npm's `files` allowlist force-includes whole directories
-// (payload/, skills/, claude/) and the root .npmignore does not prune inside
-// them, so a stray __pycache__ left by running a shipped .py script would ship
-// silently. Wired to `prepack` — see package.json.
+// prepack: `files` force-includes whole dirs that .npmignore cannot prune inside, so a __pycache__ from running a skill script would ship.
 import { readdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";

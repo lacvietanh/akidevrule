@@ -929,6 +929,12 @@ async function runInstall() {
     const p = join(hooksDest, legacy);
     if (existsSync(p)) rmrf(p);
   }
+  // hooks/ is shared with the user's own hooks, so only our bytecode is removed, never the whole cache.
+  const pyCache = join(hooksDest, "__pycache__");
+  if (isDir(pyCache)) {
+    for (const n of readdirSync(pyCache)) if (n.startsWith("aki_version_check.")) rmrf(join(pyCache, n));
+    if (readdirSync(pyCache).length === 0) rmrf(pyCache);
+  }
   writeTextLf(join(INSTALL_ROOT, ".source-repo"), REPO_ROOT + "\n");
 
   // --- 5. CLAUDE.md ---
