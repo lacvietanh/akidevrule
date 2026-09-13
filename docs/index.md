@@ -17,7 +17,7 @@ Topic folders follow `RULE-docs.A2`. Only the folders that currently hold conten
 |-----|---------|
 | [agent-skills-standard.md](ref/agent-skills-standard.md) | Verified: `SKILL.md` is a shared open standard between Claude Code and Antigravity/AGY, zero per-agent transformation — the reason `skills/` moved out of `claude/` to a top-level, agent-neutral folder. Not `AGENTS.md`. |
 | [agents-md-standard.md](ref/agents-md-standard.md) | Which coding agents natively read repo `AGENTS.md` (Cursor, Kiro, `agy`, Codex, …). Claude Code reads `CLAUDE.md` only. Postman Agent Mode is a different product. Distinct from `SKILL.md`. |
-| [macos-codesign-tcc.md](ref/macos-codesign-tcc.md) | One TCC lookup: responsible-process + FDA / Files & Folders / Developer Tools (DT ≠ file access) + designated requirement vs CDHash + Gatekeeper vs TCC + overwrite the same named identity after every Tauri bundle (`codesign --force`, preserve entitlements; TCC judges the launched binary). `tauri.B7` stays concise; `install.py` deploys this lookup to `~/.aki/akidevrule/docs/ref/`. |
+| [macos-codesign-tcc.md](ref/macos-codesign-tcc.md) | One TCC lookup: responsible-process + FDA / Files & Folders / Developer Tools (DT ≠ file access) + designated requirement vs CDHash + Gatekeeper vs TCC + overwrite the same named identity after every Tauri bundle (`codesign --force`, preserve entitlements; TCC judges the launched binary). `tauri.B7` stays concise; `install.mjs` deploys this lookup to `~/.aki/akidevrule/docs/ref/`. |
 | [cli-permission-allowlist-standard.md](ref/cli-permission-allowlist-standard.md) | Permission & allowlist formats across Claude Code, Antigravity CLI/IDE, Kiro CLI, Grok CLI, and Codex CLI for unattended skill script execution. |
 
 ## `plan/` — active plans

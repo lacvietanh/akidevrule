@@ -1,6 +1,6 @@
 # Local macOS codesign and TCC
 
-The one AkiDevRule lookup for this chain. `tauri.B7` is the concise rule (do not delete it); `install.py` deploys this file to `~/.aki/akidevrule/docs/ref/macos-codesign-tcc.md`. Evidence trail: `docs/research/macos-tcc-tauri-boundary-aug21.md`.
+The one AkiDevRule lookup for this chain. `tauri.B7` is the concise rule (do not delete it); the installer (`install.mjs`) deploys this file to `~/.aki/akidevrule/docs/ref/macos-codesign-tcc.md`. Evidence trail: `docs/research/macos-tcc-tauri-boundary-aug21.md`.
 
 **Stable self-signed identity keeps TCC grants across rebuilds. Apple ad-hoc (`codesign --sign -`) does not.** Artifact names, install paths, and identity names live in that project’s own docs — not here.
 
