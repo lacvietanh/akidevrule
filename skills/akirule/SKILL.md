@@ -70,6 +70,7 @@ Load if message or file path contains any of:
 - **Keywords (pre-ship gate):** `chưa push`, `trước khi push`, `trước khi deploy`, `sắp release`, `chuẩn bị ship`, `pre-release`, `ready to ship`, `xong chưa`, `đã xong hết chưa`
 - **Keywords (release-ritual context — these load this rule file, they never start a run; execution needs a literal `/akiship` per that skill's activation gate):** `akiship`, `full release`, `release trọn gói`, `chạy full release`, `ship đợt này`, `ship trọn gói`
 - **Keywords (commit/push/deploy — load even without an explicit "release" word):** `commit`, `git commit`, `push`, `git push`, `deploy`, `deployment`, `git tag`, `ship it`, `commit và push`, `push lên`, `đẩy lên`, `triển khai`
+- **Keywords (registry publish — `release.B9`):** `npm publish`, `publish`, `npm`, `npx`, `registry`, `crates.io`, `cargo publish`, `PyPI`, `twine`, `2FA`, `OTP`, `lên npm`
 - **Actions:** committing or pushing code, deploying, shipping a change that should be recorded for users or maintainers; bumping a version; checking whether finished-but-unpushed work is actually shippable (`release.B7`); running the full release ritual unattended (`release.B8`, `/akiship`)
 
 ### RULE-stack-tauri.md

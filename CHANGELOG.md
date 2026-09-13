@@ -2,10 +2,13 @@
 
 ## [3.0.0] - 2026-09-13
 
+### Added
+- **`release.B9` — registry-published packages (npm, crates.io, PyPI).** Released now means tag + GitHub Release + the registry actually serving the version. The publish mechanism is derived from the existing convention and sibling packages on the same account, never designed (no CI publish token by default); account session, scope ownership and 2FA mode are probed (`npm whoami`, `npm org ls`, `npm profile get`) instead of inferred from a package-name 404; an OTP-gated `npm publish` is the run's single hand-off; the tarball is verified before the irreversible publish, including the shell-scoping trap where `HOME=… printf | bin` runs the bin against the real home. `/akiship` probes these facts in Phase 1 and publishes in Phase 3; `akirule` now routes `RULE-release.md` on registry-publish keywords (`npm publish`, `PyPI`, `cargo publish`, …). Evidence: the first npm release of this repo, where a CI token workflow was invented against the owner's manual-publish convention, scope ownership was misreported as a blocker, and a sandbox install test overwrote the real `~/.claude` config.
+
 ### Changed
 - **BREAKING: the installer is now pure Node.js — Python is no longer required to install or update.** `install.py` is replaced by `install.mjs`, a faithful port verified byte-for-byte against the old installer (a fresh install produces 121 identical files; the only differences are the intended Node changes below). `install.sh` / `install.ps1` are now thin launchers that locate `node`. Requires **Node.js 18+** (for the built-in `fetch` used by the update check).
 - **Primary install / update path is now npm:** `npx @akinet/akidevrule@latest` — zero-clone, and re-running it is how you update. Published as `@akinet/akidevrule`; `package.json` version is derived from this CHANGELOG at publish time.
-- **SessionStart update hook ported to Node.** `~/.claude/hooks/aki-update-check.py` + `aki_version_check.py` become `aki-update-check.mjs` + `aki_version_check.mjs`, and the registered hook command changes from `python3 …` to `node …`. Upgrading removes the old Python hook entry and files automatically. The notify message now points at `npx @akinet/akidevrule@latest`.
+- **SessionStart update hook ported to Node.** `~/.claude/hooks/aki-update-check.py` + `aki_version_check.py` become `aki-update-check.mjs` + `aki_version_check.mjs`, and the registered hook command changes from `python3 …` to `node …`. Upgrading removes the old Python hook entry and files automatically, including their `hooks/__pycache__/aki_version_check.*.pyc` bytecode (the user's own cached hooks are left untouched). The notify message now points at `npx @akinet/akidevrule@latest`.
 
 ### Notes
 - Skill helper scripts under `skills/*/scripts/` remain Python; running those skills still needs Python. Only install + update are now Python-free.

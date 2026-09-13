@@ -26,6 +26,7 @@ Consult is the default whenever both readings are available. A withheld executio
 
 1. Derive release state cold per `release.B1` (manifest, CHANGELOG top, boundary commit, accumulation log).
 2. Triage the tree per B7 step 0 (the `/akigitcommit` step-0 taxonomy; read-only, `agent.B5`).
+   - Registry-published package (`package.json` without `"private": true`, `Cargo.toml`, `pyproject.toml`): probe the account facts and 2FA mode per `release.B9` now, so the publish hand-off is known before the run starts, not discovered at its end.
 3. Collect every hit on the B8 escalation floor — the three stop conditions and everything about completion-intensity phrasing are defined in `release.B8`, not here. Completion-intensity phrasing is read only inside an execute-mode invocation that already passed § Activation gate, and applies with exactly B8's two effects: the unclassifiable-work stop resolves toward mid-edit, and the push/deploy naming requirement is satisfied (Phase 3 step 4). Any hit on the two conditions no phrasing waives → report every hit in one batch and stop. No hits → proceed; from here the run asks nothing (`release.B8`: a question the repo already answers is a violation).
 
 ## Phase 2 — gate, fixing in place
@@ -39,7 +40,7 @@ Run B7 steps 2–6 in order, fixing findings as they surface (this is a gate, no
 
 1. Commit in logical groups per `/akigitcommit` (domain-grouped mode; anti-stage-loss rules apply in full). B8 pre-answers its confirmation step — "commit luôn" semantics.
 2. Version decision per `release.A4`/`A5`: mint exactly once at the highest accumulated severity, or defer on the materiality test. Deferring is a normal outcome, not a failure.
-3. Artifacts per the repo's own convention: bare tag only if the repo already tags (`release.A3` B8 exception); GitHub Release per `release.B4`; `releases.json` sync check per `release.C4`.
+3. Artifacts per the repo's own convention: bare tag only if the repo already tags (`release.A3` B8 exception); GitHub Release per `release.B4`; `releases.json` sync check per `release.C4`; registry publish per `release.B9` — tarball verified first, and an OTP-gated publish is the report's single hand-off with its `npm view` check.
 4. **Push / deploy only if B8's push/deploy authorization holds for this invocation (named explicitly, or completion-intensity phrasing per `release.B8`).** Otherwise the run stays local-only. If pushed and the stack deploys, run live verification per `release.C5` afterward.
 
 ## Report

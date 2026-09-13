@@ -1,6 +1,6 @@
 # Release & Versioning Rule
 
-<!-- Address map: release.A1-5 · release.B1-8 · release.C1-4 (⟨Aki⟩) -->
+<!-- Address map: release.A1-5 · release.B1-9 · release.C1-4 (⟨Aki⟩) -->
 
 ## A. Versioning core
 
@@ -157,6 +157,14 @@ The B7 gate plus its surrounding ritual (fix findings → sync docs → CHANGELO
 - **Completion-intensity phrasing collapses condition (2) and unlocks push/deploy/GitHub-Release, never conditions (1) or (3).** The canonical phrase list — every other file (the `/akiship` skill, `README.md`) points here (`pattern.A1`): "trọn vẹn", "hoàn thành"/"hoàn thiện", "làm/xong hết", "tất cả"/"toàn bộ", or equivalent sentiment insisting the run finish everything, end to end — read **only inside a valid invocation**, where it modifies a run already authorized to start and never creates that authorization, does two things: resolves B7 step 0's mid-edit-vs-abandoned ambiguity toward **mid-edit by default** (finish and integrate the leftover instead of stopping to ask), and satisfies the previous bullet's push/deploy naming requirement, so the run pushes commits and tags, creates the GitHub Release, and runs post-push deploy verification (C5) without a separate mid-run confirmation. Conditions (1) and (3) gate on irreversibility (a published-version rewrite) and correctness (a documented-design contradiction), not on effort, so no phrasing intensity waives them — a "nghiêm trọng"/major-contradiction hit still stops the run.
 - **A question the repo already answers is a violation.** Anything determined by the repo, its docs, these rules, or the invocation itself — bump level (A4), tag or no tag (existing convention), changelog channel and tone (C1) — is self-answered, never asked — and every remaining candidate question runs through `agent.A3`'s kill-tests first. Over-asking inside an authorized run is the same failure as acting unasked (`agent.A3`, `think.B5`).
 - **This licence covers facts the repo determines, never what the owner meant.** A criterion stated in the owner's own words — what "trọn vẹn" must include, which leftovers count as debt and which are future plan — is his to define, and deciding it for him is not self-answering but overwriting the anchor. Report the open items and let him rule on them; when it is the owner's own wording that is ambiguous, that is the one question worth the interrupt.
+
+### B9. Registry-published package (npm, crates.io, PyPI, …) — the registry version is the release
+
+A package installed from a registry is a distributed artifact (A5): users get what the registry serves, so a tag plus GitHub Release with no registry version leaves `npx`/`pip install` on the old one. Released = tag + GitHub Release + `npm view <pkg>@<version> version` (or the registry's equivalent) returning the new version (`coding.B3`).
+- **The publish mechanism is derived, never designed.** Read the existing convention first: project `CLAUDE.md`, `.github/workflows/`, and sibling packages the same account already publishes (`npm access list packages`) — a working sibling is the template (`coding.B5` rung 2). A CI publish job with a registry token adds a secret and automation: `agent.B3` territory, never the default.
+- **Account facts are probed, not inferred** (`coding.B5` rung 5): `npm whoami` (session), `npm org ls <scope>` (scope ownership — a 404 on the package name means the name is unpublished, never that the scope is unowned), `npm profile get` (2FA mode).
+- **2FA `auth-and-writes` makes `npm publish` the run's single hand-off** (rung 6: the OTP is human-held). Everything else is agent work — push, tag, GitHub Release, tarball verification — so the owner receives one command and the `npm view` check that proves it landed, never a list of prerequisites.
+- **A published version number is burned forever** (`npm unpublish` is time-limited and a number is never reusable), so verify the tarball before publishing: `npm pack --dry-run` against the `files` allowlist, manifest version == CHANGELOG top == tag (A3), and the `bin` executed from the packed tarball installed in the scratchpad. A `bin` that writes to `$HOME` takes the override on its own command — `printf y | HOME="$SANDBOX" bin`, never `HOME="$SANDBOX" printf y | bin`, which scopes the variable to `printf` and runs against the real home.
 
 ## C. ⟨Aki⟩ Web release artifacts
 
