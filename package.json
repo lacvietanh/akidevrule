@@ -1,0 +1,52 @@
+{
+  "name": "@akinet/akidevrule",
+  "version": "3.0.0",
+  "description": "Aki's shared rule corpus + Agent Skills for Claude Code, Gemini/Antigravity, Codex, Kiro and Grok — install and update with one command.",
+  "keywords": [
+    "claude-code",
+    "agent-skills",
+    "gemini",
+    "antigravity",
+    "codex",
+    "kiro",
+    "grok",
+    "ai-rules",
+    "coding-standards",
+    "installer",
+    "akidevrule"
+  ],
+  "homepage": "https://github.com/lacvietanh/akidevrule#readme",
+  "bugs": {
+    "url": "https://github.com/lacvietanh/akidevrule/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lacvietanh/akidevrule.git"
+  },
+  "license": "MIT",
+  "author": "Lạc Việt Anh (https://fb.me/lacvietanh)",
+  "bin": {
+    "akidevrule": "install.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "sync-version": "node scripts/sync-version.mjs",
+    "check-version": "node scripts/sync-version.mjs --check",
+    "prepack": "node scripts/sync-version.mjs && node scripts/clean-artifacts.mjs"
+  },
+  "files": [
+    "install.mjs",
+    "install.sh",
+    "install.ps1",
+    "payload/",
+    "skills/",
+    "claude/",
+    "docs/ref/macos-codesign-tcc.md",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -2,17 +2,27 @@
 
 One install command turns a fresh environment into Aki's full working baseline — for **Claude Code, Antigravity/Gemini, Codex CLI, Kiro CLI, and Grok CLI**, generated from one agent-neutral source: a shared rule corpus that loads itself at the right moment (Claude Code + Antigravity), plus a small set of sharp, single-purpose skills synced to every CLI that natively consumes the shared `SKILL.md` open standard.
 
+**Quick install (npm):**
+
+```bash
+npx @akinet/akidevrule@latest
+```
+
+`npx` always fetches the latest published version — re-running the command is how you update. Requires **Node.js 18+** and nothing else. Add `--check` to print installed-vs-latest without changing anything: `npx @akinet/akidevrule@latest --check`.
+
+**Or install with the shell one-liner:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lacvietanh/akidevrule/master/install.sh | bash
 ```
 
 Also available: `bash install.sh` from a local checkout. The launcher is intentionally simple — inspect it before running.
 
-On **Windows**, clone the repo and run the Python installer directly (inspectable, matching this repo's philosophy):
+On **Windows** (without npm), clone the repo and run the installer directly (inspectable, matching this repo's philosophy):
 
 ```powershell
 git clone https://github.com/lacvietanh/akidevrule.git; cd akidevrule; .\install.ps1
-# or: py -3 install.py
+# or: node install.mjs
 ```
 
 This Git repository is the source of truth; `dev.akitao.com` is the presentation layer. Edit here, run the installer, done. It is **not** an auto-updater, daemon, package manager, or control plane.
@@ -31,20 +41,21 @@ This Git repository is the source of truth; `dev.akitao.com` is the presentation
 
 ## Requirements
 
-The installer is `install.py` — one cross-platform Python program (`pathlib` / `shutil` / `json`, no `rsync` / `find` / `awk`). `install.sh` and `install.ps1` are thin launchers that locate a Python interpreter and hand off to it. The skill helper scripts under `skills/akiflow/scripts/` are Python too (`*.py` is the source of truth; the matching `*.sh` files are transitional Unix wrappers).
+The installer is `install.mjs` — one cross-platform Node.js program (Node stdlib + global `fetch` only, no `rsync` / `find` / `awk`). `install.sh` and `install.ps1` are thin launchers that locate `node` and hand off to it. The skill helper scripts under `skills/akiflow/scripts/` are Python (`*.py` is the source of truth; the matching `*.sh` files are transitional Unix wrappers) — they run only when you invoke that skill, not to install or update.
 
 | Platform | Status | Notes |
 |---|---|---|
-| macOS | ✅ Supported | Primary target. Run `./install.sh` or `python3 install.py`. |
-| Linux | ✅ Supported | Any distribution with Python 3. Run `./install.sh` or `python3 install.py`. |
-| Windows | ✅ Supported | Run `install.ps1` in PowerShell, or `py -3 install.py`. No WSL, Git Bash, or POSIX shell required — installer, hooks, and every skill helper are Python. Verified on `windows-latest` in CI. |
+| macOS | ✅ Supported | Primary target. `npx @akinet/akidevrule@latest`, or `./install.sh` / `node install.mjs`. |
+| Linux | ✅ Supported | Any distribution with Node 18+. `npx @akinet/akidevrule@latest`, or `./install.sh` / `node install.mjs`. |
+| Windows | ✅ Supported | `npx @akinet/akidevrule@latest`, or `install.ps1` in PowerShell, or `node install.mjs`. No WSL, Git Bash, or POSIX shell required — the installer and hooks are pure Node. Verified on `windows-latest` in CI. |
 
 Tooling — have these installed first:
 
-- **Python 3.7+** — the one hard requirement (installer, hooks, and all skill helper scripts are Python). `install.sh` picks the newest interpreter on PATH that meets this floor, so a host whose `python3` points at an older build still installs cleanly as long as any ≥3.7 Python is present; below the floor it stops with one clear message instead of a cryptic error.
+- **Node.js 18+** — the one hard requirement to install or update. The installer and the SessionStart update-check hook are Node; the 18 floor is the built-in `fetch` the update check uses. `install.sh` / `install.ps1` locate `node` and stop with one clear message if it is missing.
+- **Python 3.7+** — only to *run* the akiflow skill helper scripts (`skills/akiflow/scripts/*.py`); never needed for install or update.
 - `git` — for the `git clone` remote install.
 
-Interpreter convention (documented once): **Unix** uses `python3` (via `./install.sh`); **Windows** uses `py -3` / `python` (via `install.ps1`). The bundled skill scripts follow the same rule.
+Interpreter convention (documented once): the installer and hooks run on `node` — the same command on every platform. The bundled skill helper scripts still use `python3` on Unix and `py -3` / `python` on Windows.
 
 ## What you get
 
@@ -121,9 +132,9 @@ Content-wise, active is a superset of passive; mechanically, only `/akithink` ru
 
 ### Update notifications — notify-only
 
-A `SessionStart` hook and the installer's `--check` flag both classify install status through one shared parser (`claude/hooks/aki_version_check.py`), which reads a keep-a-changelog file's *latest released* version — its first `## [x.y.z]` heading, skipping the `[Unreleased]` buffer at the top (a version comparison that matched `[Unreleased]` against `[Unreleased]` on both sides never detected an update at all — fixed by porting aki-mcp-sv's `parseChangelogVersion`/`cmpSemver` algorithm). Five states, one classifier, two consumers:
+A `SessionStart` hook and the installer's `--check` flag both classify install status through one shared parser (`claude/hooks/aki_version_check.mjs`), which reads a keep-a-changelog file's *latest released* version — its first `## [x.y.z]` heading, skipping the `[Unreleased]` buffer at the top (a version comparison that matched `[Unreleased]` against `[Unreleased]` on both sides never detected an update at all — fixed by porting aki-mcp-sv's `parseChangelogVersion`/`cmpSemver` algorithm). Five states, one classifier, two consumers:
 
-| State | Condition | Hook (SessionStart) | `install.py --check` |
+| State | Condition | Hook (SessionStart) | `install.mjs --check` |
 |---|---|---|---|
 | **missing** | no installed `CHANGELOG.md` (or `index.md`) | announces every session — no 24h throttle | prints "not installed" + the install command |
 | **current** | installed released semver == remote | silent | prints "up to date" (`run_install()` skips its y/n overwrite prompt only when `.version`'s `commit=` equals the checkout HEAD with a clean tree — the overwrite source is the checkout, not remote) |
@@ -131,7 +142,7 @@ A `SessionStart` hook and the installer's `--check` flag both classify install s
 | **ahead** | installed newer than remote, or installed CHANGELOG is Unreleased-only | silent — never nag a dev machine | prints "ahead of remote" |
 | **unknown** | network/parse failure (3s timeout) | silent, retries within 1h — never claims "current" | prints "unknown (network/parse error)" |
 
-Notify-only either way: neither surface downloads or installs anything on its own — the printed command (`git pull && ./install.sh` on Unix, `git pull; py -3 install.py` on Windows) is always something the user runs themselves.
+Notify-only either way: neither surface downloads or installs anything on its own — the printed command (`npx @akinet/akidevrule@latest`) is always something the user runs themselves.
 
 ## Usage model
 
@@ -154,7 +165,7 @@ Three habits that make the system pay off:
 
 - **Cite rules by address, not by pasting them.** Every rule item has a stable address — `coding.B4`, `pattern.A2`, `agent.A3` — mapped in `payload/index.md`. One address in a prompt, review comment, or commit message names an exact obligation without duplicating its text.
 - **Bind each project with a short root `CLAUDE.md`** — project facts and stricter constraints only, referencing the shared corpus instead of copying it (see [Project binding & change policy](#project-binding--change-policy)).
-- **Edit rules in this repo, never in the installed copies.** Everything under `~/.aki/akidevrule`, `~/.claude/skills`, and the managed parts of `~/.claude/settings.json` is overwritten on every install; the change flow is always source repo → `./install.sh`.
+- **Edit rules in this repo, never in the installed copies.** Everything under `~/.aki/akidevrule`, `~/.claude/skills`, and the managed parts of `~/.claude/settings.json` is overwritten on every install; the change flow is always source repo → `node install.mjs` (or `npx @akinet/akidevrule@latest`).
 
 ## Repository layout
 
@@ -211,8 +222,8 @@ claude/                           → Claude Code-only runtime assets, installed
   agents/aki-conduct.md
   agents/aki-challenger.md
   agents/aki-maker.md
-  hooks/aki-update-check.py
-  hooks/aki_version_check.py       (shared version-status parser, imported by both the hook and install.py --check)
+  hooks/aki-update-check.mjs
+  hooks/aki_version_check.mjs       (shared version-status parser, imported by both the hook and install.mjs --check)
   fragments/settings.akidoc.fragment.json   (illustrative reference only — never apply manually)
 
 docs/                             → repo-internal records; one TCC lookup is installed
@@ -225,9 +236,9 @@ docs/                             → repo-internal records; one TCC lookup is i
 CLAUDE.md                                   (operating rules for agents working IN this repo — not installed anywhere)
 GEMINI.md                                   (the per-project Antigravity bootstrap, serving this repo itself; copied into other projects by hand)
 CHANGELOG.md                                (release history — also copied to ~/.aki/akidevrule/ so the update hook can compare versions)
-install.py                                  (cross-platform SSOT installer; --check prints version status only)
-install.sh                                  (thin Unix launcher → python3 install.py)
-install.ps1                                 (thin Windows launcher → py -3 install.py)
+install.mjs                                 (cross-platform Node SSOT installer; --check prints version status only)
+install.sh                                  (thin launcher → node install.mjs)
+install.ps1                                 (thin launcher → node install.mjs)
 ```
 
 ## What the installer does
@@ -241,10 +252,10 @@ flowchart TD
         CSKILLS["skills/ (10 skills, shared open standard)"]
         CCLAUDE["claude/CLAUDE.md (template)"]
         CAGENTS["claude/agents/ (5 agent definitions)"]
-        CHOOKS["claude/hooks/aki-update-check.py + aki_version_check.py (shared parser)"]
+        CHOOKS["claude/hooks/aki-update-check.mjs + aki_version_check.mjs (shared parser)"]
     end
 
-    INSTALL["⚙️ install.py (via install.sh / install.ps1)"]
+    INSTALL["⚙️ install.mjs (via install.sh / install.ps1)"]
     SRC --> INSTALL
 
     %% TARGET 1: ~/.aki/akidevrule/
@@ -261,7 +272,7 @@ flowchart TD
         C_LOCAL["CLAUDE.local.md (Machine local)"]
         C_SKILLS["skills/<skill_name>/SKILL.md"]
         C_AGENTS["agents/aki-*.md (copied per file, your own agents kept)"]
-        C_HOOKS["hooks/aki-update-check.py + aki_version_check.py"]
+        C_HOOKS["hooks/aki-update-check.mjs + aki_version_check.mjs"]
         C_SET["settings.json (Permissions + Skill Overrides)"]
     end
 
@@ -293,15 +304,15 @@ flowchart TD
     INSTALL -->|"sync per skill folder"| T6
 ```
 
-Targets 4-6 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`GEMINI.md`-style overrides — those CLIs have no equivalent hard-load hook this baseline plugs into yet). Each sync is scoped per skill folder name via a Python `shutil` copy plus a managed-names-only prune, same never-touch-the-rest guarantee as targets 2 and 3, and runs unconditionally — harmless if that CLI isn't installed on the machine, picked up the moment it is.
+Targets 4-6 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`GEMINI.md`-style overrides — those CLIs have no equivalent hard-load hook this baseline plugs into yet). Each sync is scoped per skill folder name via a Node `fs` copy plus a managed-names-only prune, same never-touch-the-rest guarantee as targets 2 and 3, and runs unconditionally — harmless if that CLI isn't installed on the machine, picked up the moment it is.
 
-1. Syncs `payload/*` into `~/.aki/akidevrule/` (Python `shutil` copy, excludes `ref-ECC/`), removes stale files left by renames, syncs `agskills/` for Antigravity skill inheritance, and deploys the full TCC lookup to `~/.aki/akidevrule/docs/ref/macos-codesign-tcc.md`.
+1. Syncs `payload/*` into `~/.aki/akidevrule/` (Node `fs` copy, excludes `ref-ECC/`), removes stale files left by renames, syncs `agskills/` for Antigravity skill inheritance, and deploys the full TCC lookup to `~/.aki/akidevrule/docs/ref/macos-codesign-tcc.md`.
 2. Syncs every skill folder under `skills/*/` (whole directory, including any `references/` or `scripts/`) into `~/.claude/skills/`, one named folder at a time (copy + managed-names-only prune), removing only Aki's own old/renamed skill directories (`akidoc-*`, `akiadvise`) — any other skill you already have is never touched. `skills/` is a top-level, agent-neutral folder (siblings with `payload/`, not nested under `claude/`) because SKILL.md is a shared open standard both Claude Code and Antigravity/AGY consume identically — see [docs/ref/agent-skills-standard.md](docs/ref/agent-skills-standard.md).
 3. Copies `claude/agents/*.md` into `~/.claude/agents/` **file by file, never a directory mirror with `--delete`** — that folder is a shared namespace where your own agent definitions sit beside Aki's, exactly like `~/.claude/skills/`, so nothing you did not install is ever removed.
 4. Replaces `~/.claude/CLAUDE.md` with the packaged guidance (timestamped backup first), appending this machine's source-repo path and an `@~/.claude/CLAUDE.local.md` import.
 5. Creates `~/.claude/CLAUDE.local.md` **only if missing** — never overwritten afterward. Put per-machine rules there (build constraints, IDE paths, remote flags); they survive every reinstall.
 6. Updates `~/.claude/settings.json` (timestamped backup first): read permission for `~/.aki/akidevrule/**`, skill script execution permissions (`Bash(python3 ~/.claude/skills/**)`), `skillOverrides.akirule = "on"`, idempotent registration of the `SessionStart` update-check hook.
-7. Installs `~/.claude/hooks/aki-update-check.py` plus its shared parser `~/.claude/hooks/aki_version_check.py`, and records the source-repo path in `~/.aki/akidevrule/.source-repo`. Writes `~/.aki/akidevrule/.version` with `installed=`/`version=`/`commit=`/`branch=` — `version=` is the just-installed CHANGELOG's latest released semver, the same value `install.py --check` and the hook compare against remote.
+7. Installs `~/.claude/hooks/aki-update-check.mjs` plus its shared parser `~/.claude/hooks/aki_version_check.mjs`, and records the source-repo path in `~/.aki/akidevrule/.source-repo`. Writes `~/.aki/akidevrule/.version` with `installed=`/`version=`/`commit=`/`branch=` — `version=` is the just-installed CHANGELOG's latest released semver, the same value `install.mjs --check` and the hook compare against remote.
 8. Installs `payload/GEMINI.md` to `~/.gemini/GEMINI.md` — Antigravity global behavior overrides, stamped with a version marker (`[AKIRULE-AG-OVERRIDES-…]`) on line 1. Generates 18 native rule files under `~/.gemini/config/rules/` with YAML `trigger` frontmatter. Deploys 10 skills directly to `~/.gemini/config/skills/` for native auto-discovery (synced per skill folder, same never-touch-the-rest guarantee as step 2), configures `~/.gemini/config/skills.json` with absolute paths as secondary, and merges skill execution permissions into `~/.gemini/antigravity-cli/settings.json` and `~/.gemini/settings.json` — a `command()` prefix rule for each of akiflow's five scripts (the only skill whose scripts agy invokes directly) per skill root, in both the expanded and the tilde-literal rendering (agy's matcher compares command strings literally — no glob expansion, and no tilde expansion in either direction — so a directory wildcard never matches and a rule only matches a command written the same way; see [docs/ref/cli-permission-allowlist-standard.md](docs/ref/cli-permission-allowlist-standard.md) §1.2) plus scoped `write_file`/`read_file` rules for the council workspace and rule corpus.
 9. Syncs the same skill folders to `~/.agents/skills/` (Codex CLI), `~/.kiro/skills/` (Kiro CLI, plus pre-allowed shell permissions in `~/.kiro/settings/permissions.yaml`), and `~/.grok/skills/` (Grok CLI) — each a plain global skills root these CLIs read natively, synced per skill folder name exactly like step 2. Skills-only: no rule corpus is generated for these targets.
 
@@ -332,7 +343,7 @@ rm -rf ~/.agents/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitco
 rm -rf ~/.kiro/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiship,aki-article-writer,akidevsync-notes}     # Kiro CLI
 rm -rf ~/.grok/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiship,aki-article-writer,akidevsync-notes}     # Grok CLI (other, non-Aki skills already in this folder are untouched)
 rm -f  ~/.claude/agents/aki-{hands,judge,conduct,challenger,maker}.md   # your own agents in that folder are untouched
-rm -f  ~/.claude/hooks/aki-update-check.py ~/.claude/hooks/aki_version_check.py
+rm -f  ~/.claude/hooks/aki-update-check.mjs ~/.claude/hooks/aki_version_check.mjs ~/.claude/hooks/aki-update-check.py ~/.claude/hooks/aki_version_check.py
 rm -f  ~/.gemini/GEMINI.md          # restore from a *.akidevrule-backup-* if needed; GEMINI.local.md is left untouched
 ```
 

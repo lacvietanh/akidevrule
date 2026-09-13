@@ -1,28 +1,12 @@
-# akidevrule installer — thin PowerShell launcher for Windows.
-# Resolves a Python 3 interpreter, then delegates all logic to install.py.
-
 $ErrorActionPreference = "Stop"
-$ScriptDir = $PSScriptRoot
+$dir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-$py = $null
-foreach ($candidate in @("py", "python3", "python")) {
-    try {
-        $ver = & $candidate --version 2>&1
-        if ($ver -match "Python 3") {
-            $py = $candidate
-            break
-        }
-    } catch {
-        # candidate not found — try next
-    }
+# akidevrule is a pure-Node installer. This launcher just locates node and hands
+# off to install.mjs. Prefer `npx @akitao/akidevrule@latest` for a zero-clone install.
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+  Write-Error "akidevrule: Node.js 18+ is required but 'node' was not found on PATH. Install Node 18+ (https://nodejs.org) or run: npx @akitao/akidevrule@latest"
+  exit 1
 }
 
-if (-not $py) {
-    Write-Error (
-        "Python 3 not found. Install it from https://www.python.org/downloads/ " +
-        "and ensure it is on your PATH, then re-run this script."
-    )
-    exit 1
-}
-
-& $py "$ScriptDir\install.py" @args
+& node "$dir\install.mjs" @args
+exit $LASTEXITCODE

@@ -25,7 +25,7 @@ The `akirule` skill routes everything beyond the core above: contextual and anal
 1. Find the source repo: its absolute path on this machine is recorded in `~/.aki/akidevrule/.source-repo`, written by the installer on every install. Read that file — do not guess a location, and do not ask the user for something already recorded. Ask only if the recorded path no longer exists.
 2. Edit under `<source-repo>/payload/` (shared rule corpus), `<source-repo>/skills/` (Agent Skills, shared with Antigravity), or `<source-repo>/claude/` (Claude Code-only runtime assets: global guidance, hooks, settings fragment).
 3. **Read `<source-repo>/CLAUDE.md` before editing.** It carries that repo's own operating rules — which files must be updated together (`payload/index.md`, `skills/akirule/SKILL.md`, `README.md`, `CHANGELOG.md`), file-naming conventions, and non-goals. This step matters most when the request arrives from *another* project's working directory, where that file is not auto-loaded.
-4. Run the installer to propagate changes to the installed copy — `./install.sh` (Unix) or `py -3 install.py` / `.\install.ps1` (Windows).
+4. Run the installer to propagate changes to the installed copy — `node install.mjs` (any platform), or `./install.sh` / `.\install.ps1`.
 
 Never edit the installed `~/.aki/akidevrule` files directly — changes will be silently overwritten on the next install.
 

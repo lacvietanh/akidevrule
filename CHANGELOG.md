@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0] - 2026-09-13
+
+### Changed
+- **BREAKING: the installer is now pure Node.js — Python is no longer required to install or update.** `install.py` is replaced by `install.mjs`, a faithful port verified byte-for-byte against the old installer (a fresh install produces 121 identical files; the only differences are the intended Node changes below). `install.sh` / `install.ps1` are now thin launchers that locate `node`. Requires **Node.js 18+** (for the built-in `fetch` used by the update check).
+- **Primary install / update path is now npm:** `npx @akinet/akidevrule@latest` — zero-clone, and re-running it is how you update. Published as `@akinet/akidevrule`; `package.json` version is derived from this CHANGELOG at publish time.
+- **SessionStart update hook ported to Node.** `~/.claude/hooks/aki-update-check.py` + `aki_version_check.py` become `aki-update-check.mjs` + `aki_version_check.mjs`, and the registered hook command changes from `python3 …` to `node …`. Upgrading removes the old Python hook entry and files automatically. The notify message now points at `npx @akinet/akidevrule@latest`.
+
+### Notes
+- Skill helper scripts under `skills/*/scripts/` remain Python; running those skills still needs Python. Only install + update are now Python-free.
+- Everything the installer deploys — rule corpus, skills, agents, and the settings/permission merges for Claude Code, Antigravity/Gemini and Kiro — is unchanged and byte-identical to 2.8.0.
+
 ## [2.8.0] - 2026-09-07
 
 ### Added

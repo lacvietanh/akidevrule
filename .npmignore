@@ -1,0 +1,9 @@
+# The package ships via the "files" allowlist in package.json; this only prunes
+# artifacts that can appear *inside* those allowlisted directories.
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+ref-ECC/
+**/ref-ECC/

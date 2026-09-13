@@ -1,6 +1,8 @@
 name: install-smoke
 
-# The designed Windows verification: no maintainer runs a Windows box locally, so this matrix is the gate that lets the repo claim Windows support truthfully.
+# Cross-platform verification of the pure-Node installer. No maintainer runs a
+# Windows box locally, so this matrix is the gate that lets the repo claim
+# Windows support truthfully.
 
 on:
   push:
@@ -17,45 +19,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.x'
+          node-version: '20'
 
       - name: Run installer into sandbox HOME
         env:
           HOME: ${{ runner.temp }}/akihome
           USERPROFILE: ${{ runner.temp }}/akihome
-        run: python install.py
+        run: node install.mjs
 
       - name: Assert install manifest
-        shell: python
+        shell: node {0}
         env:
           HOME: ${{ runner.temp }}/akihome
           USERPROFILE: ${{ runner.temp }}/akihome
         run: |
-          import os, pathlib, sys
-          home = pathlib.Path(os.path.expanduser("~"))
-          must_exist = [
-              home / ".aki" / "akidevrule" / "index.md",
-              home / ".aki" / "akidevrule" / "RULE-agent-behavior.md",
-              home / ".aki" / "akidevrule" / "RULE-coding.md",
-              home / ".aki" / "akidevrule" / ".source-repo",
-              home / ".claude" / "CLAUDE.md",
-              home / ".claude" / "skills" / "akiflow" / "SKILL.md",
-              home / ".claude" / "agents" / "aki-conduct.md",
-          ]
-          # ~/.gemini artifacts (skills.json, AG rules) are generated only when the user already has Antigravity installed — a clean HOME correctly skips them.
-          missing = [str(p) for p in must_exist if not p.is_file()]
-          if missing:
-              print("MISSING after install on", sys.platform, ":", *missing, sep="\n  ")
-              sys.exit(1)
-          # LF discipline: no installed text file may carry CRLF.
-          crlf = []
-          for root in (home / ".aki" / "akidevrule", home / ".claude" / "skills"):
-              for p in root.rglob("*.md"):
-                  if b"\r\n" in p.read_bytes():
-                      crlf.append(str(p))
-          if crlf:
-              print("CRLF found in installed files on", sys.platform, ":", *crlf[:20], sep="\n  ")
-              sys.exit(1)
-          print("OK: manifest present and LF-clean on", sys.platform)
+          const { existsSync, readFileSync, readdirSync, statSync } = require("node:fs");
+          const { join } = require("node:path");
+          const { homedir } = require("node:os");
+          const home = homedir();
+          const mustExist = [
+            join(home, ".aki", "akidevrule", "index.md"),
+            join(home, ".aki", "akidevrule", "RULE-agent-behavior.md"),
+            join(home, ".aki", "akidevrule", "RULE-coding.md"),
+            join(home, ".aki", "akidevrule", ".source-repo"),
+            join(home, ".claude", "CLAUDE.md"),
+            join(home, ".claude", "skills", "akiflow", "SKILL.md"),
+            join(home, ".claude", "agents", "aki-conduct.md"),
+            join(home, ".claude", "hooks", "aki-update-check.mjs"),
+            join(home, ".claude", "hooks", "aki_version_check.mjs"),
+          ];
+          const missing = mustExist.filter((p) => !existsSync(p));
+          if (missing.length) {
+            console.log("MISSING after install on " + process.platform + ":\n  " + missing.join("\n  "));
+            process.exit(1);
+          }
+          // LF discipline: no installed text file may carry CRLF.
+          const crlf = [];
+          const walk = (dir) => {
+            for (const n of readdirSync(dir)) {
+              const p = join(dir, n);
+              if (statSync(p).isDirectory()) walk(p);
+              else if (n.endsWith(".md") && readFileSync(p).includes("\r\n")) crlf.push(p);
+            }
+          };
+          for (const root of [join(home, ".aki", "akidevrule"), join(home, ".claude", "skills")]) walk(root);
+          if (crlf.length) {
+            console.log("CRLF found in installed files on " + process.platform + ":\n  " + crlf.slice(0, 20).join("\n  "));
+            process.exit(1);
+          }
+          console.log("OK: manifest present and LF-clean on " + process.platform);
