@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.1.1] - 2026-09-15
+
+### Fixed
+- **`coding.B3` bans moving uncommitted work to attribute a failing check.** Evidence: during the 3.1.0 site sync a worker hit a typecheck failure and ran `git stash` on a site repo to re-check a clean HEAD, sweeping 17 of the owner's uncommitted files out of the tree; they were restored with `git stash pop`, nothing lost. Root cause: 3.1.0 made build/test self-authorized at ship time but said nothing about how a failure is attributed, and `agent.B5`'s git-mutation ban covers audits only. Mechanism: attribution reads the error against the changed files or rebuilds the committed tree in a separate `git worktree`; `stash`/`checkout -- <path>`/`restore`/`reset`/`clean` are never used for it. Rejected: widening `agent.B5` to all work, which would also forbid legitimate owner-ordered resets; the risk lives exactly where a check fails, so the ban sits in `coding.B3`.
+
 ## [3.1.0] - 2026-09-15
 
 ### Changed
