@@ -18,14 +18,15 @@ Not every decision deserves the same depth. Before applying any module, size the
 - **Two-way-door (reversible, cheap to undo):** a config flag, a copy change, a small refactor behind a feature branch. Decide fast; do not over-apply this METHOD.
 - **One-way-door (hard/expensive to reverse):** a schema choice, a public API shape, a pricing model, deleting data, an architecture that many things will depend on. Depth of analysis should scale with irreversibility — go through every module deliberately, and prefer `/akithink` over a shallow inline pass.
 
-### A2. One brain, two modes
+### A2. One brain, three modes
 
-This METHOD is consumed two ways:
+This METHOD is consumed three ways:
 
 - **Passive (this file, via akirule):** akirule auto-loads it when a normal task hits a matching signal. Apply the lenses inline, briefly, inside the current answer. Ask at most ONE clarifying question. Never turn a routine task into an interrogation session.
+- **Triggered self-run:** fired by `agent.A3`'s deep-think triggers, or by owner-authorized self-run (`skills/akithink/SKILL.md` § Self-run mode). Non-interactive — run Modules 1–3 and 5 (add 4 when there is business context), depth scaled to difficulty. Ends in decide-and-report or escalate per `agent.A3`'s outcomes, never in a question left hanging.
 - **Active (`/akithink` skill):** the user explicitly opens a full structured thinking session. That skill runs a 5-phase interactive protocol and uses this METHOD as its toolbox at maximum depth.
 
-Content-wise the active mode is a superset of the passive one; mechanically, only `/akithink` runs the interactive protocol.
+Content-wise the triggered and active modes are supersets of the passive one; mechanically, only `/akithink`'s default invocation runs the interactive protocol — its self-run mode collapses to the triggered mode above.
 
 ---
 
@@ -156,7 +157,7 @@ This module decides **when** something is promoted; it does not decide how much 
 
 In one line: **the MVP gets the focus, but severity — not ordering — decides when an SFX/EC is promoted, up to and including reopening the MVP.**
 
-**Decide vs ask (once promoted):** first try to resolve it yourself with first-principles and critical thinking — then decide and report. Escalate to the owner only when it is genuinely their call per RULE-agent-behavior Decision boundaries (irreversible, cross-boundary, or unverifiable); do not ask about what basic reasoning already settles.
+**Decide vs ask (once promoted):** first try to resolve it yourself with first-principles and critical thinking — then decide and report. Escalate to the owner only through `agent.A3`'s escalation outcomes; do not ask about what basic reasoning already settles.
 
 ---
 
@@ -165,6 +166,8 @@ In one line: **the MVP gets the focus, but severity — not ordering — decides
 ### C1. Radar rule (passive-mode duty)
 
 When applying this METHOD passively and the decision turns out to be one-way-door (hard to reverse), large in scope, or the goal itself is unclear, do NOT settle for a shallow inline analysis. Say explicitly: "this deserves a dedicated `/akithink` session" and offer to start one.
+
+In a triggered self-run or any autonomous run, do not stop to offer `/akithink` — run the depth yourself per A2 and decide. Offer an interactive `/akithink` session only when `agent.A3`'s escalation criteria hold and owner interaction is genuinely needed.
 
 ---
 

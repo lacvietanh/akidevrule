@@ -1,5 +1,7 @@
 # Research — `/akiship` activated on a word, and pushed to a public remote in answer to a question
 
+Status: superseded in part by autonomy-escalation-ship-verification-sep15.md (literal-token requirement)
+
 **Start time:** 2026-08-22, immediately after the owner reported the incident from another project's session (`aki-mcp-sv`).
 
 ## 1. Initial purpose

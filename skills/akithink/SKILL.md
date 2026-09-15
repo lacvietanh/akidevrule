@@ -1,6 +1,6 @@
 ---
 name: akithink
-description: Structured deep-thinking session between agent and human for important decisions — restate the problem, excavate the goal chain to the ultimate goal, first-principles decomposition (facts/constraints/assumptions), mandatory critique (steelman, inversion, pre-mortem), then converge into a decision record. For big / hard-to-reverse / goal-ambiguous problems — small inline questions are already covered passively by akirule + METHOD-deep-think. Recommends running on a top-tier model (Opus/Fable).
+description: Structured deep-thinking session between agent and human for important decisions — restate the problem, excavate the goal chain to the ultimate goal, first-principles decomposition (facts/constraints/assumptions), mandatory critique (steelman, inversion, pre-mortem), then converge into a decision record. For big / hard-to-reverse / goal-ambiguous problems — small inline questions are already covered passively by akirule + METHOD-deep-think. Also runnable self-run (non-interactive) when owner-authorized or fired by an `agent.A3` trigger. Recommends running on a top-tier model (Opus/Fable).
 ---
 
 # akithink — structured deep-thinking session
@@ -54,6 +54,14 @@ Then:
 - **Anti-sycophancy:** same rule as METHOD Module 3 — do not agree without critique, in any phase.
 - **Anti-overuse guard:** if the problem turns out to be small and reversible once restated in Phase 1, say so and offer to just decide it directly instead of running the full protocol.
 
+## Self-run mode
+
+Runs all phases without waiting, when the owner authorizes the agent to run it itself (e.g. "tự nạp /akithink", "tự chốt", "cho bạn tự quyết") or when fired by an `agent.A3` deep-think trigger:
+- Phase 1 restatement is written, not confirmed.
+- The Interaction rules pacing (1–2 questions per turn) does not apply — no questions are asked mid-session.
+- Questions reach the owner only via `agent.A3`'s escalation outcomes, never through this skill's own turn-by-turn interaction.
+- Phase 5 converges, acts, and reports the decision block (`agent.A3`'s converged outcome). A decision-record doc per `RULE-docs.md` still applies when the decision is durable.
+
 ## Invocation scope
 
-This skill is **explicit-invoke only** — akirule does not auto-trigger it. The signals that matter for auto-loading live on `METHOD-deep-think.md` (passive mode); this skill itself is reached only when the user asks for it by name or in equivalent words.
+Interactive mode is explicit-invoke only — akirule does not auto-trigger the interactive protocol; it is reached only when the user asks for it by name or in equivalent words. Self-run mode above is the exception: it fires from an `agent.A3` trigger or owner authorization, without an explicit `/akithink` invocation. The signals that matter for passive-mode auto-loading live on `METHOD-deep-think.md`.

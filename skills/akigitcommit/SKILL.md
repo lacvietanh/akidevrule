@@ -80,6 +80,6 @@ These exist because a later `git add` can swallow files meant for an earlier com
 
 ## Boundaries
 
-- **Never push.** Only commit. Push only when the user explicitly asks.
+- **Never push.** Only commit. Push only when the user explicitly asks — and once pushed, watch CI per `release.B10`.
 - Do not amend, rebase, reset, or rewrite existing commits unless explicitly told.
 - If the tree is clean (nothing to commit), say so and stop.

@@ -1,24 +1,26 @@
 ---
 name: akiship
-description: Full release ritual end-to-end — front-loaded checks, then an unattended pass. ACTIVATION IS LITERAL: this skill runs only on a user turn containing the exact token `/akiship` that asks for the run to be performed. Nothing else activates it — not the bare word "akiship", not a release-flavored paraphrase, and never a completion-intensity phrase on its own ("trọn vẹn" and its siblings — canonical list in RULE-release.md B8): outside a valid invocation those are ordinary vocabulary carrying zero authorization to fix, commit, push, tag, or release. `/akiship` inside a question means consult the checklist and answer in chat — read-only. Sequences RULE-release.md B7's checklist under the B8 autonomy contract; the escalation floor, completion-intensity semantics, and push/deploy authorization are owned by B8 and referenced, never restated, here.
+description: Full release ritual end-to-end — front-loaded checks, then an unattended pass. ACTIVATION = an imperative turn ordering the release for this repo — the literal token `/akiship`, or an explicit ship/release order ("release trọn vẹn đi", "chạy full release"). A question about it, or a completion word with no release object ("làm cho trọn vẹn"), activates nothing — consult the checklist and answer in chat, read-only. Sequences RULE-release.md B7's checklist under the B8 autonomy contract; the escalation floor, completion-intensity semantics, and push/deploy authorization are owned by B8 and referenced, never restated, here.
 ---
 
 # akiship — one-command full release
 
-Invoke with the literal `/akiship`, and only as described in § Activation gate below. Goal: replace the daily hand-typed ritual ("resolve leftovers, sync every doc, lint, fix drift, changelog, commit, release…") with one invocation that runs to completion or stops once, early, with every blocker in a single batch.
+Invoke with `/akiship` or an explicit release order, only as described in § Activation gate below. Goal: replace the daily hand-typed ritual ("resolve leftovers, sync every doc, lint, fix drift, changelog, commit, release…") with one invocation that runs to completion or stops once, early, with every blocker in a single batch.
 
 **This skill sequences; it does not own content.** The checklist is `RULE-release.md` B7 and the autonomy/escalation contract is B8 — read that file first (installed at `~/.aki/akidevrule/RULE-release.md`), plus `RULE-docs.md` for the doc-sync step. If a step here ever disagrees with the rule file, the rule file wins — except the activation gate below, which this skill owns outright (`pattern.A1`) and which no rule file, keyword list, or routing table may widen.
 
 ## Activation gate — two conditions, both required, checked before anything else
 
-**1. The literal token.** The current user turn contains the exact string `/akiship`. Nothing else activates this skill: not the bare word "akiship", not a release-flavored paraphrase ("release trọn gói", "chạy full release", "ship đợt này"), and above all not a completion-intensity phrase standing on its own (e.g. "trọn vẹn" — canonical list: `release.B8`). Those are how an owner talks while thinking about finishing something — reading one as an invocation turns a conversation into a push to a public remote. Seeing this file, or `release.B8`, in context is not an invocation either: being loaded is not being called.
+**1. Release order.** The current user turn carries either the exact token `/akiship`, or a turn explicitly ordering the release ritual for this repo — "release trọn vẹn đi", "ship đợt này luôn", "chạy full release". A completion-intensity phrase with no release object ("làm cho trọn vẹn") activates nothing: it names no ritual, so it is ordinary vocabulary about finishing something, not an order to run this skill. Seeing this file, or `release.B8`, in context is not an invocation either: being loaded is not being called.
 
-**2. Imperative, not interrogative** (`agent.A3`). The token alone authorizes nothing — the turn must ask for the run to be *performed*.
+**2. Imperative, not interrogative** (`agent.A3`). The order alone authorizes nothing — the turn must ask for the run to be *performed*. Where both readings are available, consult.
+
+**Why the token is not required.** The incident phrase ("tóm lại cần làm gì để trọn vẹn", `docs/research/akiship-literal-activation-aug22.md`) fails both conditions independently — no release object, and interrogative — and `agent.A3` alone was already resident when it misfired, which is why condition 1 stays a mechanical release-object check rather than judgment; the literal token on top adds only false negatives on a plainly-worded release order.
 
 | Turn | Mode |
 |---|---|
-| `/akiship` · "thực hiện /akiship trọn vẹn" · "chạy /akiship đi" | **execute** — run the phases below |
-| "nếu chạy /akiship thì cần gì để trọn vẹn?" · "/akiship sẽ làm những gì?" · "/akiship có push không?" | **consult** — read the checklist below and answer in chat what the run would do and what is still open on this tree; edit no file, no commit, no push, no tag, no release |
+| `/akiship` · "release trọn vẹn đi" · "chạy full release" · "ship đợt này luôn" | **execute** — run the phases below |
+| "nếu chạy /akiship thì cần gì để trọn vẹn?" · "/akiship sẽ làm những gì?" · "làm cho trọn vẹn" (no release object) | **consult / no activation** — read the checklist below and answer in chat what the run would do and what is still open on this tree; edit no file, no commit, no push, no tag, no release |
 
 Consult is the default whenever both readings are available. A withheld execution costs one extra turn; a wrongly performed one costs a published push that cannot be taken back (`agent.A3` — calibrate by reversibility).
 
@@ -31,21 +33,23 @@ Consult is the default whenever both readings are available. A withheld executio
 
 ## Phase 2 — gate, fixing in place
 
-Run B7 steps 2–6 in order, fixing findings as they surface (this is a gate, not an audit — no findings doc):
+Run B7 steps 2–7 in order, fixing findings as they surface (this is a gate, not an audit — no findings doc):
 
 - **Hygiene, diff scope only**: `python3 ~/.claude/skills/akiflow/scripts/scythe.py <files changed since boundary>` for `[WRAP]`/`[YAP]`; dead code / redundant guards / duplication the accumulation introduced (`pattern.A8`); doc refs in touched comments still resolve (`docs.B3`). Never widen to the whole repo.
-- External-action completeness — a pending migration qualifying under `stack.C8`'s execution-ownership clause (additive, idempotent, backup path available) is run here, not deferred; record truthfulness (CHANGELOG + `releases.json` parity where it exists), doc sync over every record surface B7 step 5 enumerates (plans → `done/`, `arch`/`feat` stamps per `docs.A4`, `README.md`, the task-note file via `akidevsync-notes`, any standards doc the project `CLAUDE.md` binds to), verification honesty — anything else runtime-only, or a migration that does not qualify, is carried to the final report as **unverified**, never silently assumed (`coding.B3`).
+- External-action completeness — a pending migration qualifying under `stack.C8`'s execution-ownership clause (additive, idempotent, backup path available) is run here, not deferred; record truthfulness (CHANGELOG + `releases.json` parity where it exists), doc sync over every record surface B7 step 5 enumerates (plans → `done/`, `arch`/`feat` stamps per `docs.A4`, `README.md`, the task-note file via `akidevsync-notes`, any standards doc the project `CLAUDE.md` binds to).
+- **Build & test — mirror CI (B7 step 6)**: derive commands from `.github/workflows/*` first, else the manifest's own scripts; run them all locally; a failure blocks and is fixed in place, same as the hygiene step above; a CI-only leg (other-OS matrix, secrets) is named and left to `release.B10`.
+- Verification honesty — anything else runtime-only, or a migration that does not qualify above, is carried to the final report as **unverified**, never silently assumed (`coding.B3`).
 
 ## Phase 3 — commit, mint, artifacts
 
 1. Commit in logical groups per `/akigitcommit` (domain-grouped mode; anti-stage-loss rules apply in full). B8 pre-answers its confirmation step — "commit luôn" semantics.
 2. Version decision per `release.A4`/`A5`: mint exactly once at the highest accumulated severity, or defer on the materiality test. Deferring is a normal outcome, not a failure.
 3. Artifacts per the repo's own convention: bare tag only if the repo already tags (`release.A3` B8 exception); GitHub Release per `release.B4`; `releases.json` sync check per `release.C4`; registry publish per `release.B9` — tarball verified first, and an OTP-gated publish is the report's single hand-off with its `npm view` check.
-4. **Push / deploy only if B8's push/deploy authorization holds for this invocation (named explicitly, or completion-intensity phrasing per `release.B8`).** Otherwise the run stays local-only. If pushed and the stack deploys, run live verification per `release.C5` afterward.
+4. **Push / deploy only if B8's push/deploy authorization holds for this invocation (named explicitly, or completion-intensity phrasing per `release.B8`).** Otherwise the run stays local-only. After any push, watch CI per `release.B10` — always, regardless of stack. If the stack additionally deploys on push, run live deploy verification per `release.C5` once CI is green.
 
 ## Report
 
-One dense summary (`agent.A4`): state derived → findings fixed (counts per gate step) → commits made → version minted or deferred with the reason → artifacts created → anything left **unverified**, each with the exact command that would settle it.
+One dense summary (`agent.A4`): state derived → findings fixed (counts per gate step) → commits made → version minted or deferred with the reason → artifacts created → CI results (`release.B10`) → any owner-worded criteria self-decided this run, as an `agent.A3` decision block (`Decided: X · because Y · rejected Z (why) · reopen if W`) → anything left **unverified**, each with the exact command that would settle it.
 
 ## Boundaries
 

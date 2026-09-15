@@ -29,6 +29,7 @@ Do not rename existing files or introduce new top-level prefixes without updatin
 - **Standard over legacy.** This repo IS the standard. When a better name, shape, or convention is identified, adopt it fully and migrate every live reference in the same change — never keep a worse form for backward compatibility. Only immutable event records (past CHANGELOG entries, `docs/research/`, `docs/plan/done/`) keep their historical wording.
 - **Dense technical wording, keyword-first.** A rule is written in condensed scientific-technical language whose exact terms are the trigger keywords an AI pattern-matches on (`group-hover`, `spawn_blocking`, `NFC`) — never narrative prose. Line budget follows violation frequency, not felt importance; every line passes the deletion test (`agent.A4`).
 - **Self-compliance (dogfood).** The corpus obeys its own rules: a new rule, section, or skill needs a unique evidence-backed reason to exist (`pattern.A2` bar), overlaps an existing rule only as a pointer (never restated text), and passes the `pattern.B3` critique gate before shipping. A corpus that violates itself teaches violation.
+- **Release records carry their reasoning.** Every CHANGELOG entry and release note for this repo states why, not only what — the observed failure or evidence, the root cause, the mechanism chosen, and the tradeoff or rejected alternative. A bare list of changes is an incomplete entry. The reasoning is the durable value: downstream users and future sessions judge whether a rule still applies by the argument behind it, not by the diff alone.
 
 ## Content language
 
@@ -51,7 +52,7 @@ A ready-to-paste prompt template (e.g. in `payload/GEMINI.md`) must not hardcode
 
 ## Release process
 
-Governed directly by `RULE-release.md` (`A3`, `B4`, `B7`). Repo-specific deltas:
+Governed directly by `RULE-release.md` (`A3`, `B4`, `B7`, `B10`). Repo-specific deltas:
 - **Bare semver tags** (`3.0.0`, never `v3.0.0`) — pushing one triggers `.github/workflows/release.yml`, which creates the GitHub Release from the tagged CHANGELOG section. No npm publish in CI.
 - **`npm publish` is a manual local step**, same as `@akinet/akimcp` (`aki-mcp-sv`) — run `npm run sync-version && npm publish` from an already-authenticated `npm login` session. This account has 2FA on writes, so publish cannot be scripted in CI without an automation token; none exists for this repo, and none should be added (see Non-goals below).
 
