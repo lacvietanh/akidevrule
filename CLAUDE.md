@@ -53,7 +53,7 @@ A ready-to-paste prompt template (e.g. in `payload/GEMINI.md`) must not hardcode
 ## Release process
 
 Governed directly by `RULE-release.md` (`A3`, `B4`, `B7`, `B10`). Repo-specific deltas:
-- **Bare semver tags** (`3.0.0`, never `v3.0.0`) — pushing one triggers `.github/workflows/release.yml`, which creates the GitHub Release from the tagged CHANGELOG section. No npm publish in CI.
+- **Bare semver tags** (`3.0.0`, never `v3.0.0`), annotated with the `release.B4` title as subject (`git tag -a 3.1.0 -m "v3.1.0: <impact>"`) — pushing one triggers `.github/workflows/release.yml`, which creates the GitHub Release from the tagged CHANGELOG section and takes the title from that subject (a lightweight tag falls back to the bare tag as title). No npm publish in CI.
 - **`npm publish` is a manual local step**, same as `@akinet/akimcp` (`aki-mcp-sv`) — run `npm run sync-version && npm publish` from an already-authenticated `npm login` session. This account has 2FA on writes, so publish cannot be scripted in CI without an automation token; none exists for this repo, and none should be added (see Non-goals below).
 
 ## Non-goals

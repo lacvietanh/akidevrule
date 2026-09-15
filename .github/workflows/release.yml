@@ -19,11 +19,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      # checkout can rewrite an annotated tag as lightweight, which would drop the release title.
+      - run: git fetch --force --tags
+
       - name: Create GitHub Release from CHANGELOG
         run: |
           TAG="${GITHUB_REF_NAME}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             exit 0
+          fi
+          # release.B4 title `v{version}: {impact}` comes from the annotated tag subject.
+          TITLE="$TAG"
+          if [ "$(git cat-file -t "$TAG")" = "tag" ]; then
+            TITLE=$(git tag -l --format='%(contents:subject)' "$TAG")
           fi
           # release.B4: CHANGELOG section + compare footer — --generate-notes is near-empty without PRs.
           awk -v tag="$TAG" '
@@ -40,4 +48,4 @@ jobs:
               echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/commits/${TAG}"
             fi
           } > /tmp/release-notes.md
-          gh release create "$TAG" --title "$TAG" --notes-file /tmp/release-notes.md
+          gh release create "$TAG" --title "$TITLE" --notes-file /tmp/release-notes.md --latest
