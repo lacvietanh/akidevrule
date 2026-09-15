@@ -1,6 +1,6 @@
 # Plan: parked proposals from the 2026-08-22 verification-redundancy review
 
-**Status: parked, deliberately.** Nothing here is scheduled, with one exception noted below (§6b, added 2026-08-22, is *open* — awaiting an owner ruling, not beaten by an argument). The owner's ruling on 2026-08-22 was *tạm thời không can thiệp* — record the reasoning so a later session neither loses it nor re-derives it. Each item below carries the argument **for** it, the argument that beat it, and the trigger that would reopen it.
+**Status: parked, deliberately.** Nothing here is scheduled; §6b, added 2026-08-22 as open, was parked on 2026-09-15 with its decision block. The owner's ruling on 2026-08-22 was *tạm thời không can thiệp* — record the reasoning so a later session neither loses it nor re-derives it. Each item below carries the argument **for** it, the argument that beat it, and the trigger that would reopen it.
 
 ## 1. The painpoint that produced this plan
 
@@ -70,7 +70,7 @@ Three occurrences, one repository, one shared root: that project's `CLAUDE.md` n
 
 ## 6b. Proposal E — make peer linking the default in `seo.B2`, `parentOrganization` the conditional exception
 
-**Status: open, awaiting owner ruling** (`agent.B3` gates edits to shared rules). Raised 2026-08-22 from a UNIDOC entity-drift sweep, not from the review above.
+**Status: parked 2026-09-15 by self-decision under `agent.A3`** — `Decided: no change to seo.B2 · because pattern.A2 is unmet (one ecosystem) and the drift lived in the delegated project doc, so a B2 reorder would not have prevented it · rejected the reorder: demoting parentOrganization invites a true subsidiary to omit it silently · reopen if the trigger below fires`. Raised 2026-08-22 from a UNIDOC entity-drift sweep, not from the review above.
 
 **Shape considered.** `sameAs`/`isRelatedTo` becomes B2's stated default; `parentOrganization` moves to a conditional bullet requiring the parent to declare its own `Organization` `@id`.
 
@@ -87,7 +87,7 @@ Three occurrences, one repository, one shared root: that project's `CLAUDE.md` n
 
 ## 8. Decision
 
-**No change to `payload/`.** Every proposal above is parked with its argument intact and a stated reopen condition — except §6b, which is open pending an owner ruling. The narrative of how the review reached these verdicts — the cross-repo sweep, the goal chain, the critique passes — is this document; there is no separate research doc, because the finding *is* the decision not to act.
+**No change to `payload/`.** Every proposal above is parked with its argument intact and a stated reopen condition, §6b included (parked 2026-09-15). The narrative of how the review reached these verdicts — the cross-repo sweep, the goal chain, the critique passes — is this document; there is no separate research doc, because the finding *is* the decision not to act.
 
 ## 9. Incident — `/akiship` 0.27.0 on tachnhac.com shipped a build-breaking doc-index gap
 

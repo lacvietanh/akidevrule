@@ -1,6 +1,6 @@
 {
   "name": "@akinet/akidevrule",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Aki's shared rule corpus + Agent Skills for Claude Code, Gemini/Antigravity, Codex, Kiro and Grok — install and update with one command.",
   "keywords": [
     "claude-code",
