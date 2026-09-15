@@ -10,6 +10,7 @@ import {
   copyFileSync,
   rmSync,
   renameSync,
+  realpathSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname, basename, extname, relative, isAbsolute, sep } from "node:path";
@@ -37,7 +38,7 @@ const HOME = homedir();
 const INSTALL_ROOT = join(HOME, ".aki", "akidevrule");
 
 const LEGACY_INSTALL_ROOT = join(HOME, ".aki", "claudedoc");
-const CLAUDE_DIR = join(HOME, ".claude");
+const PRIMARY_CLAUDE_DIR = join(HOME, ".claude");
 const GEMINI_DIR = join(HOME, ".gemini");
 const GEMINI_RULES_DIR = join(GEMINI_DIR, "config", "rules");
 const GEMINI_SKILLS_DIR = join(GEMINI_DIR, "config", "skills");
@@ -49,6 +50,83 @@ const GROK_SKILLS_DIR = join(HOME, ".grok", "skills");
 const OLD_SKILLS = ["akidoc-rules", "akidoc-flow-audit", "akidoc-techbiz-optimizer", "akiadvise"];
 
 const IS_WIN = process.platform === "win32";
+
+if (Number(process.versions.node.split(".")[0]) < 18) {
+  console.error("akidevrule requires Node.js 18 or later.");
+  process.exit(1);
+}
+
+function expandTilde(p) {
+  if (!p) return "";
+  if (p === "~") return HOME;
+  if (p.startsWith("~" + sep) || p.startsWith("~/")) {
+    return join(HOME, p.slice(2));
+  }
+  return p;
+}
+
+function toTildePath(p) {
+  if (!p) return "";
+  if (p === HOME) return "~";
+  if (p.startsWith(HOME + sep) || p.startsWith(HOME + "/")) {
+    return "~" + p.slice(HOME.length).replace(/\\/g, "/");
+  }
+  return p.replace(/\\/g, "/");
+}
+
+function getClaudeDirs(argv = []) {
+  const dirs = new Set();
+  dirs.add(PRIMARY_CLAUDE_DIR);
+
+  // 1. Explicit CLI arguments: --claude-dir <path> or --claude-dir=<path>
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--claude-dir" && argv[i + 1]) {
+      const p = expandTilde(argv[i + 1].trim());
+      dirs.add(isAbsolute(p) ? p : join(HOME, p));
+    } else if (arg.startsWith("--claude-dir=")) {
+      const p = expandTilde(arg.slice("--claude-dir=".length).trim());
+      dirs.add(isAbsolute(p) ? p : join(HOME, p));
+    }
+  }
+
+  // 2. Environment variable: CLAUDE_CONFIG_DIR
+  if (process.env.CLAUDE_CONFIG_DIR) {
+    const p = expandTilde(process.env.CLAUDE_CONFIG_DIR.trim());
+    if (p) dirs.add(isAbsolute(p) ? p : join(HOME, p));
+  }
+
+  // 3. Auto-discover all ~/.claude* directories in HOME
+  try {
+    for (const name of listDir(HOME)) {
+      if (!name.startsWith(".claude")) continue;
+      const full = join(HOME, name);
+      if (!isDir(full)) continue;
+      if (name.includes("backup") || name.endsWith(".bak")) continue;
+      dirs.add(full);
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // 4. Deduplicate symlinks resolving to the same real directory
+  const canonicalMap = new Map();
+  for (const d of dirs) {
+    let canonical = d;
+    try {
+      canonical = realpathSync(d);
+    } catch {
+      /* directory might not exist yet */
+    }
+    if (!canonicalMap.has(canonical)) {
+      canonicalMap.set(canonical, d);
+    } else if (d === canonical) {
+      canonicalMap.set(canonical, d);
+    }
+  }
+
+  return Array.from(canonicalMap.values()).sort();
+}
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -185,10 +263,10 @@ function syncAkiSkills(destRoot) {
   }
 }
 
-function syncAkiAgents() {
+function syncAkiAgents(destClaudeDir) {
   const agentsSrc = join(REPO_ROOT, "claude", "agents");
   if (!isDir(agentsSrc)) return;
-  const dest = join(CLAUDE_DIR, "agents");
+  const dest = join(destClaudeDir, "agents");
   mkdirSync(dest, { recursive: true });
   for (const name of listDir(agentsSrc).sort()) {
     if (name.endsWith(".md")) copyFileSync(join(agentsSrc, name), join(dest, name));
@@ -396,6 +474,22 @@ function installAgRules() {
 // settings.json merge (Claude Code)
 // ---------------------------------------------------------------------------
 
+function validateJsonObject(path, label) {
+  if (!isFile(path)) return;
+  const data = JSON.parse(readFileSync(path, "utf-8"));
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    throw new Error(`${label} must be a JSON object: ${path}`);
+  }
+}
+
+function preflightInstallSettings(claudeDirs) {
+  for (const claudeDir of claudeDirs) validateJsonObject(join(claudeDir, "settings.json"), "Claude settings");
+  if (!isDir(GEMINI_DIR)) return;
+  validateJsonObject(join(GEMINI_DIR, "config", "skills.json"), "Gemini skills config");
+  validateJsonObject(join(GEMINI_DIR, "antigravity-cli", "settings.json"), "Antigravity settings");
+  validateJsonObject(join(GEMINI_DIR, "settings.json"), "Antigravity settings");
+}
+
 function mergeSettings(settingsPath, installRoot, claudeDir) {
   const data = JSON.parse(readFileSync(settingsPath, "utf-8"));
 
@@ -419,6 +513,11 @@ function mergeSettings(settingsPath, installRoot, claudeDir) {
     "Bash(python3 ~/.claude/skills/*)",
     "Bash(python3 ~/.aki/akidevrule/agskills/*)",
   ];
+  const variantBashRule = `Bash(python3 ${toTildePath(join(claudeDir, "skills"))}/*)`;
+  if (!managedBashRules.includes(variantBashRule)) {
+    managedBashRules.push(variantBashRule);
+  }
+
   perms.allow = perms.allow.filter((x) => !legacyBashRules.includes(x));
   for (const rule of managedBashRules) if (!perms.allow.includes(rule)) perms.allow.push(rule);
 
@@ -462,7 +561,7 @@ function mergeSettings(settingsPath, installRoot, claudeDir) {
 // Antigravity permissions merge
 // ---------------------------------------------------------------------------
 
-function mergeAntigravityPermissions() {
+function mergeAntigravityPermissions(claudeDirs = []) {
   if (!isDir(GEMINI_DIR)) return;
 
   const scriptsDir = join(REPO_ROOT, "skills", "akiflow", "scripts");
@@ -470,7 +569,8 @@ function mergeAntigravityPermissions() {
     .filter((n) => n.endsWith(".py"))
     .map((n) => `akiflow/scripts/${n}`)
     .sort();
-  const skillRoots = [GEMINI_SKILLS_DIR, join(CLAUDE_DIR, "skills")];
+  const claudeRoots = claudeDirs.map((d) => join(d, "skills"));
+  const skillRoots = [GEMINI_SKILLS_DIR, ...claudeRoots];
   const launchers = IS_WIN ? ["py -3", "python", "python3"] : ["python3"];
 
   const managedCommands = [];
@@ -506,18 +606,7 @@ function mergeAntigravityPermissions() {
 
   for (const target of targetFiles) {
     let data = {};
-    if (isFile(target)) {
-      try {
-        data = JSON.parse(readFileSync(target, "utf-8"));
-      } catch (e) {
-        console.log(`  \u26a0\ufe0f  Antigravity: ${target} is not parseable JSON (${e}) \u2014 skipped, re-run the installer to retry.`);
-        continue;
-      }
-      if (typeof data !== "object" || data === null || Array.isArray(data)) {
-        console.log(`  \u26a0\ufe0f  Antigravity: ${target} top-level is not an object \u2014 skipped, fix it manually.`);
-        continue;
-      }
-    }
+    if (isFile(target)) data = JSON.parse(readFileSync(target, "utf-8"));
 
     if (typeof data.permissions !== "object" || data.permissions === null || Array.isArray(data.permissions))
       data.permissions = {};
@@ -539,6 +628,23 @@ function mergeAntigravityPermissions() {
       }
     }
 
+    if (perms.allowNonWorkspaceAccess !== true) {
+      perms.allowNonWorkspaceAccess = true;
+      changed = true;
+    }
+    if (perms.agentMode !== true) {
+      perms.agentMode = true;
+      changed = true;
+    }
+    if (!Array.isArray(perms.trustedWorkspaces)) {
+      perms.trustedWorkspaces = [];
+      changed = true;
+    }
+    if (!perms.trustedWorkspaces.includes(HOME)) {
+      perms.trustedWorkspaces.push(HOME);
+      changed = true;
+    }
+
     if (changed || !isFile(target)) {
       mkdirSync(dirname(target), { recursive: true });
       if (isFile(target)) {
@@ -554,7 +660,7 @@ function mergeAntigravityPermissions() {
 // Kiro permissions merge
 // ---------------------------------------------------------------------------
 
-function mergeKiroPermissions() {
+function mergeKiroPermissions(claudeDirs = []) {
   const kiroDir = join(HOME, ".kiro");
   if (!isDir(kiroDir)) return;
 
@@ -564,10 +670,13 @@ function mergeKiroPermissions() {
 
   const managedMatches = [
     "python3 ~/.kiro/skills/*",
-    "python3 ~/.claude/skills/*",
     "python3 ~/.gemini/config/skills/*",
     "python3 ~/.aki/akidevrule/agskills/*",
   ];
+  for (const cDir of claudeDirs) {
+    const m = `python3 ${toTildePath(join(cDir, "skills"))}/*`;
+    if (!managedMatches.includes(m)) managedMatches.push(m);
+  }
 
   if (!isFile(yamlPath)) {
     const lines = [
@@ -594,20 +703,83 @@ function mergeKiroPermissions() {
 }
 
 // ---------------------------------------------------------------------------
+// Deploy single Claude target
+// ---------------------------------------------------------------------------
+
+function installClaudeDir(claudeDir) {
+  mkdirSync(claudeDir, { recursive: true });
+
+  // 1. Skills
+  syncAkiSkills(join(claudeDir, "skills"));
+
+  // 2. Agents
+  syncAkiAgents(claudeDir);
+
+  // 3. Hooks
+  const hooksDest = join(claudeDir, "hooks");
+  mkdirSync(hooksDest, { recursive: true });
+  copyFileSync(join(REPO_ROOT, "claude", "hooks", "aki-update-check.mjs"), join(hooksDest, "aki-update-check.mjs"));
+  copyFileSync(join(REPO_ROOT, "claude", "hooks", "aki_version_check.mjs"), join(hooksDest, "aki_version_check.mjs"));
+  for (const legacy of ["aki-update-check.py", "aki_version_check.py"]) {
+    const p = join(hooksDest, legacy);
+    if (existsSync(p)) rmrf(p);
+  }
+  const pyCache = join(hooksDest, "__pycache__");
+  if (isDir(pyCache)) {
+    for (const n of readdirSync(pyCache)) if (n.startsWith("aki_version_check.")) rmrf(join(pyCache, n));
+    if (readdirSync(pyCache).length === 0) rmrf(pyCache);
+  }
+
+  // 4. CLAUDE.md
+  const claudeMd = join(claudeDir, "CLAUDE.md");
+  backup(claudeMd);
+  pruneBackups(claudeMd);
+
+  const claudeMdSrc = readFileSync(join(REPO_ROOT, "claude", "CLAUDE.md"), "utf-8");
+  const propagateCmd = `node "${join(REPO_ROOT, "install.mjs")}"`;
+  const localMd = join(claudeDir, "CLAUDE.local.md");
+  const localMdTilde = toTildePath(localMd);
+  const ruleSourceBlock =
+    "\n## akidevrule — edit source, not deployed copy (ABSOLUTE)\n\n" +
+    `The deployed rule files at \`${INSTALL_ROOT}\` are **overwritten on every install**.\n` +
+    "To change any shared rule:\n" +
+    `1. Edit in the **source repo**: \`${join(REPO_ROOT, "payload")}/\`\n` +
+    `2. Run \`${propagateCmd}\` to propagate.\n\n` +
+    `**NEVER edit files under \`${INSTALL_ROOT}\` directly** — changes will be silently lost on the next install.\n\n` +
+    `@${localMdTilde}\n`;
+  writeTextLf(claudeMd, claudeMdSrc + ruleSourceBlock);
+
+  // 5. CLAUDE.local.md (create-only if missing)
+  if (!isFile(localMd)) {
+    const isPrimary = claudeDir === PRIMARY_CLAUDE_DIR;
+    const templateContent = isPrimary
+      ? "# Machine-local Claude instructions\n\n" +
+        "This file is machine-specific and never touched by akidevrule installs.\n" +
+        "Add any per-machine rules here (e.g. build constraints, IDE paths, remote flags).\n"
+      : "# Machine-local Claude instructions (profile variant)\n\n" +
+        "This file is machine-specific and never touched by akidevrule installs.\n" +
+        "@~/.claude/CLAUDE.local.md\n\n" +
+        "# Add any profile-specific instructions below:\n";
+    writeTextLf(localMd, templateContent);
+    console.log(`📝 Created ${localMd} (machine-local template)`);
+  }
+
+  // 6. settings.json
+  const settingsPath = join(claudeDir, "settings.json");
+  if (!isFile(settingsPath)) writeTextLf(settingsPath, "{}\n");
+  backup(settingsPath);
+  pruneBackups(settingsPath);
+  mergeSettings(settingsPath, INSTALL_ROOT, claudeDir);
+}
+
+// ---------------------------------------------------------------------------
 // skills.json for Antigravity
 // ---------------------------------------------------------------------------
 
 function updateSkillsJson() {
   const skillsJson = join(GEMINI_DIR, "config", "skills.json");
   mkdirSync(dirname(skillsJson), { recursive: true });
-  let data = {};
-  if (existsSync(skillsJson)) {
-    try {
-      data = JSON.parse(readFileSync(skillsJson, "utf-8"));
-    } catch {
-      data = {};
-    }
-  }
+  const data = isFile(skillsJson) ? JSON.parse(readFileSync(skillsJson, "utf-8")) : {};
   if (!Array.isArray(data.entries)) data.entries = [];
   const absPath = join(INSTALL_ROOT, "agskills");
   const tildePath = "~/.aki/akidevrule/agskills";
@@ -663,78 +835,71 @@ async function printVersionCheck() {
 // inspect_status (pre-install preview)
 // ---------------------------------------------------------------------------
 
-async function inspectStatus() {
+async function inspectStatus(claudeDirs) {
   console.log(cyanBold("=== SYSTEM STATUS CHECK BEFORE INSTALL ==="));
 
   const head = gitShortHash(REPO_ROOT);
   const sameCheckout = !!head && installedCommit() === head && gitTreeClean(REPO_ROOT);
   if (sameCheckout)
-    console.log(`\u2705 Already installed from this exact commit (${head}, clean tree) \u2014 reinstalling refreshes identical content.`);
+    console.log(`✅ Already installed from this exact commit (${head}, clean tree) — reinstalling refreshes identical content.`);
 
   const { state, localVersion, remoteVersion } = await getVersionStatus();
   if (state === STATE_CURRENT)
-    console.log(`\u2139\ufe0f  Installed release ${localVersion} matches remote; the overwrite below comes from this checkout, which may carry [Unreleased] work.`);
+    console.log(`ℹ️  Installed release ${localVersion} matches remote; the overwrite below comes from this checkout, which may carry [Unreleased] work.`);
   else if (state === STATE_UPDATE)
-    console.log(`\ud83d\udd14 A newer akidevrule is available: ${localVersion} \u2192 ${remoteVersion} (this install only refreshes local files at the current repo checkout's version).`);
+    console.log(`🔔 A newer akidevrule is available: ${localVersion} → ${remoteVersion} (this install only refreshes local files at the current repo checkout's version).`);
   else if (state === STATE_MISSING)
-    console.log("\ud83d\udce6 Fresh install \u2014 akidevrule is not currently installed on this machine.");
+    console.log("📦 Fresh install — akidevrule is not currently installed on this machine.");
   else if (state === STATE_UNKNOWN)
-    console.log("\u26a0\ufe0f  Could not reach the remote CHANGELOG to compare versions (network/parse error) \u2014 proceeding with local install only.");
+    console.log("⚠️  Could not reach the remote CHANGELOG to compare versions (network/parse error) — proceeding with local install only.");
   else if (state === STATE_AHEAD)
-    console.log(`\u2139\ufe0f  Local install (${localVersion || "Unreleased-only"}) is ahead of or diverged from remote (${remoteVersion}).`);
+    console.log(`ℹ️  Local install (${localVersion || "Unreleased-only"}) is ahead of or diverged from remote (${remoteVersion}).`);
 
-  if (isDir(INSTALL_ROOT)) console.log(`\ud83d\udce6 Payload rules: will ${yellowBold("OVERWRITE")} ${INSTALL_ROOT}`);
-  else console.log(`\ud83d\udce6 Payload rules: will ${greenBold("CREATE")} at ${INSTALL_ROOT}`);
+  if (isDir(INSTALL_ROOT)) console.log(`📦 Payload rules: will ${yellowBold("OVERWRITE")} ${INSTALL_ROOT}`);
+  else console.log(`📦 Payload rules: will ${greenBold("CREATE")} at ${INSTALL_ROOT}`);
 
-  const claudeMd = join(CLAUDE_DIR, "CLAUDE.md");
-  if (isFile(claudeMd)) console.log(`\ud83d\udcdd Global CLAUDE.md: will ${yellowBold("OVERWRITE")} ${claudeMd} (backed up)`);
-  else console.log(`\ud83d\udcdd Global CLAUDE.md: will ${greenBold("CREATE")} ${claudeMd}`);
+  console.log(`🤖 Claude config targets (${claudeDirs.length}): ${claudeDirs.map(toTildePath).join(", ")}`);
+  for (const claudeDir of claudeDirs) {
+    const claudeMd = join(claudeDir, "CLAUDE.md");
+    if (isFile(claudeMd)) console.log(`  📝 Global CLAUDE.md (${toTildePath(claudeDir)}): will ${yellowBold("OVERWRITE")} (backed up)`);
+    else console.log(`  📝 Global CLAUDE.md (${toTildePath(claudeDir)}): will ${greenBold("CREATE")}`);
+
+    const oldPresent = OLD_SKILLS.filter((s) => isDir(join(claudeDir, "skills", s)));
+    if (oldPresent.length) console.log(`  🗑️  Old skills in ${toTildePath(claudeDir)} will be REMOVED: ${redBold(oldPresent.join(" "))}`);
+  }
 
   const skillsSrc = join(REPO_ROOT, "skills");
   if (isDir(skillsSrc)) {
-    for (const name of listDir(skillsSrc).sort()) {
-      const skillDir = join(skillsSrc, name);
-      if (!isDir(skillDir)) continue;
-      const destSkill = join(CLAUDE_DIR, "skills", name, "SKILL.md");
-      if (isFile(destSkill)) console.log(`\ud83d\udd27 Skill ${name}: will ${yellowBold("OVERWRITE")} ${destSkill}`);
-      else console.log(`\ud83d\udd27 Skill ${name}: will ${greenBold("CREATE")} ${destSkill}`);
-    }
+    const skillList = listDir(skillsSrc).filter((n) => isDir(join(skillsSrc, n))).sort();
+    console.log(`🔧 Skills (${skillList.length}): will sync to all Claude targets (${skillList.join(", ")})`);
   }
 
   const agentsSrc = join(REPO_ROOT, "claude", "agents");
   if (isDir(agentsSrc)) {
-    for (const name of listDir(agentsSrc).sort()) {
-      if (!name.endsWith(".md")) continue;
-      const destAgent = join(CLAUDE_DIR, "agents", name);
-      if (isFile(destAgent)) console.log(`\ud83e\udde0 Agent ${name}: will ${yellowBold("OVERWRITE")} ${destAgent}`);
-      else console.log(`\ud83e\udde0 Agent ${name}: will ${greenBold("CREATE")} ${destAgent}`);
-    }
+    const agentList = listDir(agentsSrc).filter((n) => n.endsWith(".md")).sort();
+    console.log(`🧠 Agents (${agentList.length}): will sync to all Claude targets (${agentList.map((n) => basename(n, ".md")).join(", ")})`);
   }
 
-  const oldPresent = OLD_SKILLS.filter((s) => isDir(join(CLAUDE_DIR, "skills", s)));
-  if (oldPresent.length) console.log(`\ud83d\uddd1\ufe0f  Old skills will be REMOVED: ${redBold(oldPresent.join(" "))}`);
-
-  console.log("\u2699\ufe0f  settings: checking permissions and skill overrides across platforms...");
-  const settingsPath = join(CLAUDE_DIR, "settings.json");
-  if (isFile(settingsPath)) {
-    try {
-      const data = JSON.parse(readFileSync(settingsPath, "utf-8"));
-      const readRule = `Read(//${INSTALL_ROOT.replace(/^\/+/, "")}/**)`;
-      const allow = (data.permissions && data.permissions.allow) || [];
-      if (allow.includes(readRule)) console.log("  \u2705 Claude Code: Read permission for payload already granted.");
-      else console.log("  \u26a0\ufe0f  Claude Code: Read permission MISSING. Will be added automatically.");
-      if (allow.includes("Bash(python3 ~/.claude/skills/*)")) console.log("  \u2705 Claude Code: Skill scripts Bash execution permission already granted.");
-      else console.log("  \u26a0\ufe0f  Claude Code: Skill scripts Bash execution permission will be added.");
-      const overrides = data.skillOverrides || {};
-      if (overrides.akirule === "on") console.log("  \u2705 Claude Code: akirule skill is already enabled (on).");
-      else console.log("  \u26a0\ufe0f  Claude Code: Will auto-enable skill: akirule");
-      const stale = ["akidoc-rules", "akidoc-flow-audit", "akidoc-techbiz-optimizer"].filter((s) => s in overrides);
-      if (stale.length) console.log(`  \ud83d\uddd1\ufe0f  Claude Code: Stale skillOverrides will be REMOVED: ${stale.join(", ")}`);
-    } catch (e) {
-      console.log(`  \u274c Error reading Claude settings.json: ${e}`);
+  console.log("⚙️  settings: checking permissions and skill overrides across platforms...");
+  for (const claudeDir of claudeDirs) {
+    const settingsPath = join(claudeDir, "settings.json");
+    if (isFile(settingsPath)) {
+      try {
+        const data = JSON.parse(readFileSync(settingsPath, "utf-8"));
+        const readRule = `Read(//${INSTALL_ROOT.replace(/^\/+/, "")}/**)`;
+        const allow = (data.permissions && data.permissions.allow) || [];
+        const bashRule = `Bash(python3 ${toTildePath(join(claudeDir, "skills"))}/*)`;
+        const bashOk = allow.includes(bashRule) || allow.includes("Bash(python3 ~/.claude/skills/*)");
+        const readOk = allow.includes(readRule);
+        const overrides = data.skillOverrides || {};
+        const akiOk = overrides.akirule === "on";
+        console.log(`  Claude (${toTildePath(claudeDir)}): Read=${readOk ? "✅" : "⚠️ missing"}, Bash=${bashOk ? "✅" : "⚠️ missing"}, akirule=${akiOk ? "✅" : "⚠️ will enable"}`);
+      } catch (e) {
+        console.log(`  ❌ Error reading ${settingsPath}: ${e}`);
+      }
+    } else {
+      console.log(`  ⚠️  Claude (${toTildePath(claudeDir)}): No settings.json yet. Will be CREATED.`);
     }
-  } else {
-    console.log("  \u26a0\ufe0f  Claude Code: No settings.json yet. Will be CREATED.");
   }
 
   if (isDir(GEMINI_DIR)) {
@@ -744,13 +909,13 @@ async function inspectStatus() {
         const data = JSON.parse(readFileSync(agSettings, "utf-8"));
         const allow = (data.permissions && data.permissions.allow) || [];
         const probeRule = `command(python3 ${join(GEMINI_SKILLS_DIR, "akiflow", "scripts", "council_open.py")})`;
-        if (allow.includes(probeRule)) console.log("  \u2705 Antigravity CLI: per-script skill permissions already granted.");
-        else console.log("  \u26a0\ufe0f  Antigravity CLI: per-script skill permissions will be added.");
+        if (allow.includes(probeRule)) console.log("  ✅ Antigravity CLI: per-script skill permissions already granted.");
+        else console.log("  ⚠️  Antigravity CLI: per-script skill permissions will be added.");
       } catch (e) {
-        console.log(`  \u274c Error reading Antigravity settings: ${e}`);
+        console.log(`  ❌ Error reading Antigravity settings: ${e}`);
       }
     } else {
-      console.log("  \u26a0\ufe0f  Antigravity CLI: settings.json will be updated with skill permissions.");
+      console.log("  ⚠️  Antigravity CLI: settings.json will be updated with skill permissions.");
     }
   }
 
@@ -762,14 +927,17 @@ async function inspectStatus() {
 // print_summary (post-install)
 // ---------------------------------------------------------------------------
 
-function printSummary() {
+function printSummary(claudeDirs) {
   console.log(`\n${greenBold("=== INSTALL SUCCEEDED ===")}`);
 
   const gitHash = gitShortHash(REPO_ROOT);
   const hashSuffix = gitHash ? ` (${gitHash})` : "";
-  console.log(`\ud83d\udcc5 Time    : ${dateTimeNow()}${hashSuffix}`);
-  console.log(`\ud83d\udcc2 Payload : ${INSTALL_ROOT}`);
-  console.log(`\ud83d\udd27 Skills  : ${join(CLAUDE_DIR, "skills")}${sep}`);
+  console.log(`📅 Time    : ${dateTimeNow()}${hashSuffix}`);
+  console.log(`📁 Payload : ${INSTALL_ROOT}`);
+  console.log(`🤖 Claude targets (${claudeDirs.length}):`);
+  for (const dir of claudeDirs) {
+    console.log(`   - ${toTildePath(dir)} (skills, agents, hooks, CLAUDE.md, settings.json)`);
+  }
   console.log();
 
   console.log(cyanBold("Rules deployed:"));
@@ -791,39 +959,39 @@ function printSummary() {
 
   console.log();
   console.log(cyanBold("Skills deployed:"));
-  const claudeSkills = join(CLAUDE_DIR, "skills");
-  if (isDir(claudeSkills)) {
-    for (const name of listDir(claudeSkills).sort()) {
-      if (isDir(join(claudeSkills, name))) console.log(`  \ud83d\udd27 ${name}`);
+  const primarySkills = join(PRIMARY_CLAUDE_DIR, "skills");
+  if (isDir(primarySkills)) {
+    for (const name of listDir(primarySkills).sort()) {
+      if (isDir(join(primarySkills, name))) console.log(`  🔧 ${name}`);
     }
   }
 
   const agentsSrc = join(REPO_ROOT, "claude", "agents");
   if (isDir(agentsSrc)) {
     console.log();
-    console.log(cyanBold(`Agents deployed (${join(CLAUDE_DIR, "agents")} \u2014 your own agents there are untouched):`));
+    console.log(cyanBold(`Agents deployed (${claudeDirs.map(toTildePath).join(", ")} — your own agents there are untouched):`));
     for (const name of listDir(agentsSrc).sort()) {
-      if (name.endsWith(".md")) console.log(`  \ud83e\udde0 ${basename(name, ".md")}`);
+      if (name.endsWith(".md")) console.log(`  🧠 ${basename(name, ".md")}`);
     }
   }
 
   console.log();
   console.log(cyanBold("Other CLI skill roots synced (harmless if that CLI isn't installed):"));
-  console.log(`  \ud83e\udd16 Codex CLI : ${CODEX_SKILLS_DIR}`);
-  console.log(`  \ud83e\udd16 Kiro CLI  : ${KIRO_SKILLS_DIR}`);
-  console.log(`  \ud83e\udd16 Grok CLI  : ${GROK_SKILLS_DIR}`);
+  console.log(`  🤖 Codex CLI : ${CODEX_SKILLS_DIR}`);
+  console.log(`  🤖 Kiro CLI  : ${KIRO_SKILLS_DIR}`);
+  console.log(`  🤖 Grok CLI  : ${GROK_SKILLS_DIR}`);
 
   console.log();
   console.log(cyanBold("Permissions configured:"));
-  console.log("  \u2699\ufe0f  Claude Code     : Read(~/.aki/akidevrule/**), Bash(python3 ~/.claude/skills/*)");
+  console.log("  ⚙️  Claude Code     : Read(~/.aki/akidevrule/**), Bash(python3 <target>/skills/*)");
   if (isDir(GEMINI_DIR))
-    console.log("  \u2699\ufe0f  Antigravity     : per-script command() rules (akiflow scripts \u00d72 roots \u00d72 path renderings \u00d7the platform's python launchers), write_file(~/.aki/agent-council/), read_file(~/.aki/akidevrule/)");
+    console.log("  ⚙️  Antigravity     : per-script command() rules (akiflow scripts ×all roots ×2 path renderings ×the platform's python launchers), write_file(~/.aki/agent-council/), read_file(~/.aki/akidevrule/)");
   if (isDir(join(HOME, ".kiro")))
-    console.log("  \u2699\ufe0f  Kiro CLI        : capability:shell (python3 ~/.kiro/skills/*, ~/.claude/skills/*)");
+    console.log("  ⚙️  Kiro CLI        : capability:shell (python3 ~/.kiro/skills/*, ~/.claude*/skills/*)");
 
   console.log();
   console.log(cyanBold("Hooks deployed:"));
-  console.log("  \ud83d\udce2 aki-update-check (SessionStart, notify-only) \u2014 notifies when a new rule version is available");
+  console.log("  📢 aki-update-check (SessionStart, notify-only) — notifies when a new rule version is available");
 
   console.log(`\n${greenBold("==============================")}`);
 }
@@ -846,15 +1014,8 @@ function ask(question) {
 // Main install logic
 // ---------------------------------------------------------------------------
 
-async function runInstall() {
-  // Legacy migration: ~/.aki/claudedoc -> ~/.aki/akidevrule
-  if (isDir(LEGACY_INSTALL_ROOT) && !existsSync(INSTALL_ROOT)) {
-    mkdirSync(dirname(INSTALL_ROOT), { recursive: true });
-    renameSync(LEGACY_INSTALL_ROOT, INSTALL_ROOT);
-    console.log(`\ud83d\udce6 Migrated legacy install root: ${LEGACY_INSTALL_ROOT} \u2192 ${INSTALL_ROOT}`);
-  }
-
-  const sameCheckout = await inspectStatus();
+async function runInstall(claudeDirs) {
+  const sameCheckout = await inspectStatus(claudeDirs);
 
   // Skip the prompt only for a byte-identical overwrite (same commit, clean tree).
   if (process.stdin.isTTY && !sameCheckout) {
@@ -864,11 +1025,17 @@ async function runInstall() {
       process.exit(1);
     }
   }
+
+  // Legacy migration: ~/.aki/claudedoc -> ~/.aki/akidevrule
+  if (isDir(LEGACY_INSTALL_ROOT) && !existsSync(INSTALL_ROOT)) {
+    mkdirSync(dirname(INSTALL_ROOT), { recursive: true });
+    renameSync(LEGACY_INSTALL_ROOT, INSTALL_ROOT);
+    console.log(`📦 Migrated legacy install root: ${LEGACY_INSTALL_ROOT} → ${INSTALL_ROOT}`);
+  }
   console.log("Installing...");
 
   // --- 1. Payload -> INSTALL_ROOT ---
   mkdirSync(INSTALL_ROOT, { recursive: true });
-  mkdirSync(join(CLAUDE_DIR, "skills"), { recursive: true });
 
   const payloadSrc = join(REPO_ROOT, "payload");
   const EXCLUDED = new Set(["ref-ECC", ".DS_Store", "GEMINI.md"]);
@@ -909,65 +1076,19 @@ async function runInstall() {
     if (branch) versionLines.push(`branch=${branch}`);
   }
   writeTextLf(join(INSTALL_ROOT, ".version"), versionLines.join("\n") + "\n");
+  writeTextLf(join(INSTALL_ROOT, ".source-repo"), REPO_ROOT + "\n");
 
-  // --- 2. Skills ---
-  syncAkiSkills(join(CLAUDE_DIR, "skills"));
+  // --- 2. Claude targets (skills, agents, hooks, CLAUDE.md, settings.json) ---
+  for (const cDir of claudeDirs) {
+    installClaudeDir(cDir);
+  }
+
+  // --- 3. Other CLI skill roots ---
   syncAkiSkills(CODEX_SKILLS_DIR);
   syncAkiSkills(KIRO_SKILLS_DIR);
   syncAkiSkills(GROK_SKILLS_DIR);
 
-  // --- 3. Agents ---
-  syncAkiAgents();
-
-  // --- 4. Hooks + source-repo ---
-  const hooksDest = join(CLAUDE_DIR, "hooks");
-  mkdirSync(hooksDest, { recursive: true });
-  copyFileSync(join(REPO_ROOT, "claude", "hooks", "aki-update-check.mjs"), join(hooksDest, "aki-update-check.mjs"));
-  copyFileSync(join(REPO_ROOT, "claude", "hooks", "aki_version_check.mjs"), join(hooksDest, "aki_version_check.mjs"));
-  // Remove orphaned Python hooks left by a pre-3.0 install.
-  for (const legacy of ["aki-update-check.py", "aki_version_check.py"]) {
-    const p = join(hooksDest, legacy);
-    if (existsSync(p)) rmrf(p);
-  }
-  // hooks/ is shared with the user's own hooks, so only our bytecode is removed, never the whole cache.
-  const pyCache = join(hooksDest, "__pycache__");
-  if (isDir(pyCache)) {
-    for (const n of readdirSync(pyCache)) if (n.startsWith("aki_version_check.")) rmrf(join(pyCache, n));
-    if (readdirSync(pyCache).length === 0) rmrf(pyCache);
-  }
-  writeTextLf(join(INSTALL_ROOT, ".source-repo"), REPO_ROOT + "\n");
-
-  // --- 5. CLAUDE.md ---
-  mkdirSync(CLAUDE_DIR, { recursive: true });
-  backup(join(CLAUDE_DIR, "CLAUDE.md"));
-  console.log("\ud83e\uddf9 Pruning CLAUDE.md backups (keeping the 2 most recent):");
-  pruneBackups(join(CLAUDE_DIR, "CLAUDE.md"));
-
-  const claudeMdSrc = readFileSync(join(REPO_ROOT, "claude", "CLAUDE.md"), "utf-8");
-  const propagateCmd = `node "${join(REPO_ROOT, "install.mjs")}"`;
-  const ruleSourceBlock =
-    "\n## akidevrule \u2014 edit source, not deployed copy (ABSOLUTE)\n\n" +
-    `The deployed rule files at \`${INSTALL_ROOT}\` are **overwritten on every install**.\n` +
-    "To change any shared rule:\n" +
-    `1. Edit in the **source repo**: \`${join(REPO_ROOT, "payload")}/\`\n` +
-    `2. Run \`${propagateCmd}\` to propagate.\n\n` +
-    `**NEVER edit files under \`${INSTALL_ROOT}\` directly** \u2014 changes will be silently lost on the next install.\n\n` +
-    "@~/.claude/CLAUDE.local.md\n";
-  writeTextLf(join(CLAUDE_DIR, "CLAUDE.md"), claudeMdSrc + ruleSourceBlock);
-
-  // --- 6. CLAUDE.local.md (create-only) ---
-  const localMd = join(CLAUDE_DIR, "CLAUDE.local.md");
-  if (!isFile(localMd)) {
-    writeTextLf(
-      localMd,
-      "# Machine-local Claude instructions\n\n" +
-        "This file is machine-specific and never touched by akidevrule installs.\n" +
-        "Add any per-machine rules here (e.g. build constraints, IDE paths, remote flags).\n"
-    );
-    console.log(`\ud83d\udcdd Created ${localMd} (machine-local template)`);
-  }
-
-  // --- 7. GEMINI.md (only when ~/.gemini exists) ---
+  // --- 4. GEMINI.md (only when ~/.gemini exists) ---
   if (isDir(GEMINI_DIR)) {
     const geminiFile = join(GEMINI_DIR, "GEMINI.md");
     const geminiLocal = join(GEMINI_DIR, "GEMINI.local.md");
@@ -983,11 +1104,11 @@ async function runInstall() {
           "This file is machine-specific and never touched by akidevrule installs.\n" +
           "Add machine-specific paths, CLIs, and emulator commands here.\n"
       );
-      console.log(`\ud83d\udcdd Created ${geminiLocal} (machine-local template)`);
+      console.log(`📝 Created ${geminiLocal} (machine-local template)`);
     }
 
     backup(geminiFile);
-    console.log("\ud83e\uddf9 Pruning GEMINI.md backups (keeping the 2 most recent):");
+    console.log("🧹 Pruning GEMINI.md backups (keeping the 2 most recent):");
     pruneBackups(geminiFile);
 
     const d = new Date();
@@ -995,50 +1116,43 @@ async function runInstall() {
     const geminiTemplate = readFileSync(join(REPO_ROOT, "payload", "GEMINI.md"), "utf-8");
     const geminiContent = geminiTemplate.split("__VERSION__").join(geminiVersion);
 
+    const propagateCmd = `node "${join(REPO_ROOT, "install.mjs")}"`;
     const geminiSourceBlock =
-      "\n## 15. Shared rule source \u2014 edit source, not deployed copy (ABSOLUTE)\n\n" +
-      `The deployed rule corpus at \`${INSTALL_ROOT}\` is **overwritten on every install**.\n` +
+      "\n## 15. Shared rule source — edit source, not deployed copy (ABSOLUTE)\n\n" +
+      `The deployed rule corpus at \`${INSTALL_ROOT}\` are **overwritten on every install**.\n` +
       "To change any shared rule:\n" +
       `1. Edit in the **source repo**: \`${join(REPO_ROOT, "payload")}/\` (rules) or \`${join(REPO_ROOT, "claude")}/\` (runtime assets).\n` +
-      `2. Read \`${join(REPO_ROOT, "CLAUDE.md")}\` first \u2014 it lists which files must be updated together.\n` +
+      `2. Read \`${join(REPO_ROOT, "CLAUDE.md")}\` first — it lists which files must be updated together.\n` +
       `3. Run \`${propagateCmd}\` to propagate.\n\n` +
-      `**NEVER edit files under \`${INSTALL_ROOT}\` directly** \u2014 changes are silently lost on the next install.\n`;
+      `**NEVER edit files under \`${INSTALL_ROOT}\` directly** — changes will be silently lost on the next install.\n`;
 
     const localContent = readFileSync(geminiLocal, "utf-8");
     const fullGemini = geminiContent + geminiSourceBlock + "\n---\n\n" + localContent;
     writeTextLf(geminiFile, fullGemini);
 
-    console.log(`\ud83e\udd16 Installed ${geminiFile} (marker ${geminiMarker}${geminiVersion}])`);
+    console.log(`🤖 Installed ${geminiFile} (marker ${geminiMarker}${geminiVersion}])`);
     if (hadUnmanaged) {
-      console.log("  \u26a0\ufe0f  Your previous ~/.gemini/GEMINI.md was replaced (saved as *.akidevrule-backup-*).");
+      console.log("  ⚠️  Your previous ~/.gemini/GEMINI.md was replaced (saved as *.akidevrule-backup-*).");
       console.log(`      Move any machine-local lines from that backup into ${geminiLocal}.`);
     }
 
-    // --- 8. Antigravity rules ---
+    // --- Antigravity rules ---
     const agCount = installAgRules();
-    console.log(`\ud83e\udded Installed ${agCount} rule(s) to ${GEMINI_RULES_DIR} (read by AG, AG IDE and AGY)`);
+    console.log(`🧭 Installed ${agCount} rule(s) to ${GEMINI_RULES_DIR} (read by AG, AG IDE and AGY)`);
 
-    // --- 9. Antigravity skills ---
+    // --- Antigravity skills ---
     syncAkiSkills(GEMINI_SKILLS_DIR);
     syncAkiSkills(join(INSTALL_ROOT, "agskills"));
     updateSkillsJson();
-    console.log(`\ud83d\udca1 Deployed skills to ${GEMINI_SKILLS_DIR} & updated ~/.gemini/config/skills.json`);
-    console.log("  \u2139\ufe0f  Antigravity discovers rules and skills at startup \u2014 restart the app or start a new agy session.");
+    console.log(`💡 Deployed skills to ${GEMINI_SKILLS_DIR} & updated ~/.gemini/config/skills.json`);
+    console.log("  ℹ️  Antigravity discovers rules and skills at startup — restart the app or start a new agy session.");
   }
 
-  // --- 10. settings.json ---
-  const settingsPath = join(CLAUDE_DIR, "settings.json");
-  if (!isFile(settingsPath)) writeTextLf(settingsPath, "{}\n");
-  backup(settingsPath);
-  console.log("\ud83e\uddf9 Pruning settings.json backups (keeping the 2 most recent):");
-  pruneBackups(settingsPath);
-  mergeSettings(settingsPath, INSTALL_ROOT, CLAUDE_DIR);
+  // --- 5. Antigravity & Kiro permissions ---
+  mergeAntigravityPermissions(claudeDirs);
+  mergeKiroPermissions(claudeDirs);
 
-  // --- 11. Antigravity & Kiro permissions ---
-  mergeAntigravityPermissions();
-  mergeKiroPermissions();
-
-  printSummary();
+  printSummary(claudeDirs);
 }
 
 // ---------------------------------------------------------------------------
@@ -1048,17 +1162,20 @@ async function runInstall() {
 async function main() {
   const argv = process.argv.slice(2);
   if (argv.includes("-h") || argv.includes("--help")) {
-    console.log("akidevrule installer \u2014 deploys shared rule corpus and skills.");
+    console.log("akidevrule installer — deploys shared rule corpus and skills.");
     console.log("");
-    console.log("Usage: node install.mjs [--check]");
-    console.log("  --check   Print installed vs latest akidevrule version and exit. No install, no overwrite.");
+    console.log("Usage: node install.mjs [--check] [--claude-dir <path>]");
+    console.log("  --check              Print installed vs latest akidevrule version and exit. No install, no overwrite.");
+    console.log("  --claude-dir <path>  Explicit Claude config directory to include (also auto-detects ~/.claude* and $CLAUDE_CONFIG_DIR).");
     process.exit(0);
   }
   if (argv.includes("--check")) {
     await printVersionCheck();
     process.exit(0);
   }
-  await runInstall();
+  const claudeDirs = getClaudeDirs(argv);
+  preflightInstallSettings(claudeDirs);
+  await runInstall(claudeDirs);
 }
 
 main().catch((err) => {

@@ -1,5 +1,7 @@
 # Research — the Windows CI matrix does not gate the agy permission rules, and what does
 
+**Status:** amended 2026-09-15
+
 **Start time:** 2026-08-22, while pre-clearing the accumulation so a later `/akiship` run on the Mac finds nothing open.
 
 ## 1. Initial purpose
@@ -42,3 +44,7 @@ Read what the CI job actually executes and asserts, rather than trusting the sen
 **Action** — the CHANGELOG entry for the agy permission fix is corrected in place, before the round is released: the rule counts move from derived to measured, and the CI-as-gate claim is scoped to what the workflow actually executes. No installer or workflow change: the generation side is verified, and extending CI to fabricate a `~/.gemini` would be an infrastructure change beyond what this round was asked for — recorded here as the obvious next step if the matching side ever needs a gate.
 
 **Cross-references** — [handoff-vs-self-verification-aug21.md](handoff-vs-self-verification-aug21.md) (V5, which first raised the Windows launcher question and closed it by construction); [../plan/done/antigravity-non-workspace-permissions.md](../plan/done/antigravity-non-workspace-permissions.md) (the plan whose S7 produced the dual-rendering rule set measured here).
+
+## Amendments
+
+**2026-09-15 — Status: amended.** Section 4's `install.py` and clean-home description is superseded by the Node installer and current smoke workflow. The workflow now seeds `~/.gemini`, exercises Antigravity permission merging on all three OS runners and Node 18/20, and checks field-only changes without modifying a complete allowlist. This amendment changes the CI scope stated in the historical result, not its Decision: the generation-side probe remains the evidence for exact Windows launcher strings, while the current matrix also regression-tests the merge path.

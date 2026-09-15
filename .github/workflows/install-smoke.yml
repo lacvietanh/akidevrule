@@ -1,7 +1,5 @@
 name: install-smoke
 
-# No maintainer runs Windows locally — this matrix is what makes the Windows-support claim true.
-
 on:
   push:
     branches: [master]
@@ -13,58 +11,73 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [18, 20]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Run installer into sandbox HOME
-        env:
-          HOME: ${{ runner.temp }}/akihome
-          USERPROFILE: ${{ runner.temp }}/akihome
-        run: node install.mjs
-
-      - name: Assert install manifest
+          node-version: ${{ matrix.node }}
+      - name: Exercise installer profiles
         shell: node {0}
         env:
           HOME: ${{ runner.temp }}/akihome
           USERPROFILE: ${{ runner.temp }}/akihome
+          CLAUDE_CONFIG_DIR: ''
         run: |
-          const { existsSync, readFileSync, readdirSync, statSync } = require("node:fs");
-          const { join } = require("node:path");
-          const { homedir } = require("node:os");
-          const home = homedir();
-          const mustExist = [
-            join(home, ".aki", "akidevrule", "index.md"),
-            join(home, ".aki", "akidevrule", "RULE-agent-behavior.md"),
-            join(home, ".aki", "akidevrule", "RULE-coding.md"),
-            join(home, ".aki", "akidevrule", ".source-repo"),
-            join(home, ".claude", "CLAUDE.md"),
-            join(home, ".claude", "skills", "akiflow", "SKILL.md"),
-            join(home, ".claude", "agents", "aki-conduct.md"),
-            join(home, ".claude", "hooks", "aki-update-check.mjs"),
-            join(home, ".claude", "hooks", "aki_version_check.mjs"),
-          ];
-          const missing = mustExist.filter((p) => !existsSync(p));
-          if (missing.length) {
-            console.log("MISSING after install on " + process.platform + ":\n  " + missing.join("\n  "));
-            process.exit(1);
-          }
-          // LF discipline: no installed text file may carry CRLF.
-          const crlf = [];
-          const walk = (dir) => {
-            for (const n of readdirSync(dir)) {
-              const p = join(dir, n);
-              if (statSync(p).isDirectory()) walk(p);
-              else if (n.endsWith(".md") && readFileSync(p).includes("\r\n")) crlf.push(p);
-            }
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const { spawnSync } = require("node:child_process");
+          const home = process.env.HOME;
+          const primary = path.join(home, ".claude");
+          const envProfile = path.join(home, "claude-env");
+          const flagProfile = path.join(home, "claude-flag");
+          const brokenProfile = path.join(home, "claude-broken");
+          const gemini = path.join(home, ".gemini");
+          const agCliSettings = path.join(gemini, "antigravity-cli", "settings.json");
+          const skillsJson = path.join(gemini, "config", "skills.json");
+          const write = (file, text) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text); };
+          const run = (args, env = {}) => {
+            const result = spawnSync(process.execPath, ["install.mjs", ...args], { cwd: process.cwd(), env: { ...process.env, CLAUDE_CONFIG_DIR: "", ...env }, encoding: "utf8" });
+            if (result.error || result.status !== 0) throw new Error(result.error || result.stdout + result.stderr);
           };
-          for (const root of [join(home, ".aki", "akidevrule"), join(home, ".claude", "skills")]) walk(root);
-          if (crlf.length) {
-            console.log("CRLF found in installed files on " + process.platform + ":\n  " + crlf.slice(0, 20).join("\n  "));
-            process.exit(1);
-          }
-          console.log("OK: manifest present and LF-clean on " + process.platform);
+          fs.rmSync(home, { recursive: true, force: true });
+          write(path.join(primary, "settings.json"), JSON.stringify({ unrelated: true }));
+          write(path.join(primary, "skills", "other", "SKILL.md"), "other\n");
+          write(path.join(primary, "agents", "other.md"), "other\n");
+          write(path.join(envProfile, "settings.json"), JSON.stringify({ environmentProfile: true }));
+          write(path.join(flagProfile, "settings.json"), JSON.stringify({ flagProfile: true }));
+          write(path.join(gemini, "settings.json"), JSON.stringify({ unrelated: true }));
+          run([]);
+          run([]);
+          run([], { CLAUDE_CONFIG_DIR: envProfile });
+          run(["--claude-dir", flagProfile]);
+          for (const file of [path.join(primary, "CLAUDE.md"), path.join(envProfile, "CLAUDE.md"), path.join(flagProfile, "CLAUDE.md"), path.join(home, ".aki", "akidevrule", "index.md")]) if (!fs.existsSync(file)) throw new Error(`missing ${file}`);
+          if (!JSON.parse(fs.readFileSync(path.join(primary, "settings.json"))).unrelated || !fs.existsSync(path.join(primary, "skills", "other", "SKILL.md")) || !fs.existsSync(path.join(primary, "agents", "other.md"))) throw new Error("unrelated Claude content changed");
+          const ag = JSON.parse(fs.readFileSync(path.join(gemini, "settings.json")));
+          if (!ag.unrelated || ag.permissions.allowNonWorkspaceAccess !== true || ag.permissions.agentMode !== true || !ag.permissions.trustedWorkspaces.includes(home)) throw new Error("Antigravity permission fields did not persist");
+          const agCli = JSON.parse(fs.readFileSync(agCliSettings));
+          const allowBeforeFieldOnlyUpdate = JSON.stringify(agCli.permissions.allow);
+          agCli.permissions.agentMode = false;
+          write(agCliSettings, JSON.stringify(agCli));
+          run([]);
+          const agCliAfterFieldOnlyUpdate = JSON.parse(fs.readFileSync(agCliSettings));
+          if (agCliAfterFieldOnlyUpdate.permissions.agentMode !== true || JSON.stringify(agCliAfterFieldOnlyUpdate.permissions.allow) !== allowBeforeFieldOnlyUpdate) throw new Error("Antigravity field-only update changed an allowlist or did not persist");
+          const snapshot = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+            const file = path.join(dir, entry.name);
+            return entry.isDirectory() ? snapshot(file) : [[path.relative(home, file), fs.readFileSync(file).toString("base64")]];
+          }).sort((a, b) => a[0].localeCompare(b[0]));
+          const assertPreflightFailure = (file, label) => {
+            write(file, "not JSON");
+            const beforeFailure = JSON.stringify(snapshot(home));
+            const failed = spawnSync(process.execPath, ["install.mjs", "--claude-dir", brokenProfile], { cwd: process.cwd(), env: { ...process.env, CLAUDE_CONFIG_DIR: "" }, encoding: "utf8" });
+            if (failed.error || failed.status === 0) throw new Error(`${label} did not fail`);
+            if (JSON.stringify(snapshot(home)) !== beforeFailure) throw new Error(`${label} preflight mutated a target`);
+            write(file, "{}\n");
+            run([]);
+          };
+          write(path.join(primary, "preflight-sentinel"), "unchanged\n");
+          assertPreflightFailure(skillsJson, "malformed Gemini skills.json");
+          assertPreflightFailure(agCliSettings, "malformed Antigravity settings");
+          assertPreflightFailure(path.join(brokenProfile, "settings.json"), "malformed Claude settings");
+          console.log(`OK: installer smoke passed on ${process.platform}`);

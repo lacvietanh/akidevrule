@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.2.0] - 2026-09-15
+
+### Added
+- **Installer auto-discovers and deploys to all Claude config directory profiles (`~/.claude*`, `$CLAUDE_CONFIG_DIR`, `--claude-dir`).**
+  - **Evidence:** Users running alternate Claude Code profiles (such as `CLAUDE_CONFIG_DIR=~/.claude-9rt` or `~/.claude-prx` for proxy routing or multi-account quotas) noticed that running `./install.sh` / `node install.mjs` only installed skills, agents, hooks, and CLAUDE.md into the default `~/.claude/`. Alternate profiles were missing new agents, updated skills, and update hooks unless manually symlinked or copied per folder.
+  - **Root cause:** `install.mjs` hardcoded `CLAUDE_DIR = join(HOME, ".claude")` with no auto-detection, no `$CLAUDE_CONFIG_DIR` awareness, and no CLI parameter for alternate profile roots.
+  - **Mechanism:** `getClaudeDirs()` auto-discovers all `~/.claude*` directories under `$HOME`, respects `$CLAUDE_CONFIG_DIR` and `--claude-dir <path>`, deduplicates canonical paths across symlinks, and synchronizes skills, agents, hooks, `CLAUDE.md`, and `settings.json` across all detected profiles in a single install pass. New variant profiles automatically seed `CLAUDE.local.md` importing `@~/.claude/CLAUDE.local.md` to inherit machine-local facts. Antigravity and Kiro permission allowlists now expand to cover skill scripts across all detected Claude roots.
+  - **Tradeoff / rejected alternative:** Requiring the user to run `CLAUDE_CONFIG_DIR=... ./install.sh` separately for each profile was rejected — it is tedious, easy to forget, and leaves profiles silently drifting out of sync. Auto-discovering all sibling `~/.claude*` profiles by default makes a single install update the entire machine's Claude environments simultaneously.
+
+### Fixed
+- **Installer preflight now prevents partial installs, legacy migration follows confirmation, and Antigravity permission-only updates persist.** Evidence: malformed Claude, Gemini skills, or Antigravity settings could be handled during mutation; legacy root migration could run before an interactive cancellation; and Antigravity's `allowNonWorkspaceAccess`, `agentMode`, and `trustedWorkspaces` did not save when they were the only differences. Root cause: not every later-mutated JSON file was validated up front, malformed Gemini files were silently replaced or skipped, migration preceded confirmation, and those Antigravity fields did not update change tracking. Mechanism: before the prompt or any mutation, the installer requires every existing Claude `settings.json`, Gemini `config/skills.json`, Antigravity CLI settings, and Gemini settings to parse as an object; cancellation precedes migration; later merges parse directly and Antigravity fields mark their settings file changed. Tradeoff / rejected alternative: continuing with valid profiles or silently replacing malformed JSON was rejected because partial machine configuration and lost user configuration are harder to repair than one explicit failed install.
+
 ## [3.1.1] - 2026-09-15
 
 ### Fixed

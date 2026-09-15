@@ -1,6 +1,6 @@
 # Architecture — how rules reach the two agents
 
-> updated 2026-09-13 · v2.8.0
+> updated 2026-09-15 · v3.1.1
 
 akidevrule is the single source of truth for a reusable rule baseline. That baseline has to reach two different agents that load context in fundamentally different ways: **Claude Code** and **Gemini / Antigravity**. This document describes how one source is installed onto a machine and consumed by each.
 
@@ -74,7 +74,7 @@ flowchart TD
     subgraph AGC["Gemini / Antigravity — concatenated context"]
         GGEML -->|"cat, appended verbatim at install time"| GGEM
         GRULES["~/.gemini/config/rules/akirule-*.md<br/>18 rules with YAML trigger frontmatter"]
-        GSKILLS["~/.gemini/config/skills/<br/>9 skills (native auto-discovery)"]
+        GSKILLS["~/.gemini/config/skills/<br/>10 skills (native auto-discovery)"]
     end
 
     INSTALL -->|"generate frontmatter + deploy"| GRULES
@@ -83,6 +83,10 @@ flowchart TD
     BOOT -.->|"copied by hand into a project"| PROJ["&lt;project&gt;/GEMINI.md<br/>points AG at &lt;project&gt;/CLAUDE.md"]
     PROJ -.->|"checks marker present"| GGEM
 ```
+
+## Install settings preflight
+
+Before the confirmation prompt or any mutation, the installer validates every existing JSON file it may later update: each detected Claude `settings.json`, `~/.gemini/config/skills.json`, `~/.gemini/antigravity-cli/settings.json`, and `~/.gemini/settings.json`. Each must parse with an object root; a malformed file aborts the whole install with all originals untouched. Missing files are created only after preflight. Antigravity field-only differences (`allowNonWorkspaceAccess`, `agentMode`, or `trustedWorkspaces`) still write their settings file.
 
 ## The managed / local split (both agents, same pattern)
 
