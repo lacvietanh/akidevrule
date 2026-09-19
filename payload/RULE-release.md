@@ -1,6 +1,6 @@
 # Release & Versioning Rule
 
-<!-- Address map: release.A1-5 · release.B1-10 · release.C1-4 (⟨Aki⟩) -->
+<!-- Address map: release.A1-5 · release.B1-11 · release.C1-4 (⟨Aki⟩) -->
 
 ## A. Versioning core
 
@@ -116,7 +116,7 @@ After updating CHANGELOG and the version bump, produce the GitHub Release withou
 
 **`--generate-notes` alone is not a substitute for Title/Body above.** It derives content from merged PRs only; a repo that commits straight to trunk (no PR history) gets a near-empty body — footer line only. Pair it with `--notes-file` for real content, or, when release creation is CI-automated rather than run interactively, have the workflow itself extract the tagged version's CHANGELOG section into the notes file — the content requirement above still applies even though no one is typing the `gh release create` command by hand.
 
-### B5. Migration/infra completeness gate — a schema or infra change is not "released" until it ran
+### B5. Migration doctrine & completeness gate — a schema or infra change is not "released" until it ran
 
 A CHANGELOG or `releases.json` entry that describes a database schema change or any other infra-dependent change (migration, remote config, env var, cron/schedule registration — see [[RULE-coding]] B3) is a claim that the change is live. That claim is only true once two things both hold, not one:
 
@@ -124,6 +124,14 @@ A CHANGELOG or `releases.json` entry that describes a database schema change or 
 2. **The script is marked complete in the repo's own convention** — e.g. moved out of a pending location (`scripts/`) into its done location (`scripts/done/`), or whatever equivalent completion marker the project uses. A migration file still sitting in the pending location is itself the signal that step 1 has not been confirmed, regardless of what the CHANGELOG says.
 
 Do not report a plan, task, or release/deploy as complete when a migration/infra step it depends on has not cleared **both** conditions. A written migration script plus a "Added" changelog line with the actual execution still outstanding is exactly the failure this gate exists to catch — the code shipped, the database did not, and nothing else in the release checklist would have noticed.
+
+#### Migration doctrine — MANDATORY. No project is exempt without a written declaration in its own `CLAUDE.md`.
+
+1. **DETECT by effect, never by location.** A migration is ANY change to the shape of persisted data: a `migrations/` script, an ORM auto-sync, a `CREATE`/`ALTER`/`DROP` of a table, column, index or constraint, a schema-version bump, a JSON state-file shape change, a re-keyed cache — **wherever it lives, including code that runs at application startup or inside a constructor.** Run the detector over the accumulation diff (boundary commit, B1.5) on EVERY release and paste its output or the word `empty` into the report: `git diff <boundary>..HEAD | grep -nEi 'ALTER +TABLE|CREATE +(UNIQUE +)?(TABLE|INDEX)|DROP +(TABLE|INDEX|COLUMN)|ADD +COLUMN|user_version|migrat|schema'`. A hit IS a migration until a written line proves otherwise. "It only auto-applies at startup" and "it is just an index" are NOT exemptions: the failure this doctrine exists for was an index on a new column created before that column existed, inside a constructor, invisible to a gate that only looked for migration scripts.
+2. **SEPARATE migration from application.** A migration is its own artifact — versioned, ordered, idempotent, recorded — executed as its own named deploy step. Application startup VERIFIES the schema version and reports `degraded` (B11); it NEVER mutates schema. A project that embeds migration in startup code (single-process embedded database) is a declared exception in its project `CLAUDE.md`, and this gate still treats that code as a migration in full: points 1 and 3–5 apply unchanged.
+3. **ORDER: expand → migrate → deploy code → contract.** Additive (expand) migrations run BEFORE the code that needs them restarts, so old code keeps running on the new schema; destructive (contract) steps ship in a LATER release, after nothing reads the old shape. Restarting new code onto an un-migrated schema is a VIOLATION.
+4. **REHEARSE from the PREVIOUS state, never from empty.** A test or dry-run that starts from a fresh database exercises `CREATE`, not the migration, and proves NOTHING about an upgrade. REQUIRED evidence: the migration executed against (a) a schema generated or snapshotted from the previous release, AND (b) for any data-dependent change (unique index, `NOT NULL` backfill, type change, dedupe) a COPY of real target data. State which was run and quote its output. "The tests pass" is not evidence.
+5. **POSTCONDITIONS asserted, ROLLBACK named.** After the real run, assert expected columns, indexes and row counts by query (condition 1 above), and record the backup or fix-forward path BEFORE any destructive step ([[RULE-agent-behavior]] B3). A migration with no stated rollback or fix-forward path does NOT ship.
 
 ### B6. Content discipline
 - Release note copy: no em/en dash (`—` `–`); short user-facing sentences, benefit first. See [[RULE-content-write]].
@@ -136,17 +144,23 @@ The last moment a mistake is still cheap: the work is done, the tree is clean, a
 
 Run in order; each step names the rule that owns it.
 
+**FAIL-CLOSED CONTRACT — this gate is NOT advisory, and a skipped step is a failed step.**
+- Every step 0–8 MUST leave a receipt line in the run's report: `S<n> PASS | FIXED | FAIL | N/A — <evidence>`. Evidence is quoted command output, a `file:line` actually read, or an observed fact — never an adjective. `N/A` REQUIRES the cited fact that makes the step inapplicable; an `N/A` with no cited fact is scored FAIL.
+- A step with NO receipt line was NOT RUN. NOT RUN means the gate FAILED. A failed gate FORBIDS commit, mint, tag, push and deploy — no exception for urgency, "hotfix", "tiny diff", or "same as the last release".
+- FORBIDDEN as evidence: "should", "presumably", "probably", "looks fine", "seems", "expected to". Each is an unverified claim and is scored `unverified` under step 7, never PASS.
+- **Self-interrogation is MANDATORY and REPORTED, not silent.** Before closing, answer in writing: (1) which step was cheapest to skip, and what did I actually do for it; (2) if this release broke production within the hour, which unchecked step caused it; (3) does the diff touch anything persisted, and did step 3 run against the PREVIOUS state; (4) what did verification exercise that exists only on production — a data path, not a version string. An unanswered question is a FAIL.
+
 0. **Leftover triage** — a tree that is not uniformly finished is classified first: finished / mid-edit / abandoned / accidental (the `/akigitcommit` step-0 taxonomy, under [[RULE-agent-behavior]] B5's read-only floor). Mid-edit vs abandoned is undecidable from the tree alone — that is an escalation (B8), never a guess.
 1. **Release state** — derive it cold from the repo per B1, never from session memory. `Drifted` blocks everything until A5's recovery has run.
 2. **Hygiene sweep — scoped to the accumulation, never the whole repo.** On the files touched since the boundary commit (B1.5): scythe `[WRAP]`/`[YAP]` lint ([[RULE-agent-behavior]] §0), dead code / redundant guards / duplication the accumulation itself introduced (`pattern.A8`; subtract-class detectors at diff scope), and doc references in touched comments still resolving ([[RULE-docs]] B3). A repo-wide subtraction or zero-trust sweep is a separately scheduled audit, never a per-release cost — diff scope is what keeps this gate affordable at many releases per day. Unlike an audit, findings here are fixed in place: this is a gate, not a report.
-3. **External-action completeness** — every change whose "done" depends on something outside the repo actually happened: migrations ran against the real target and their postconditions were checked, remote config/env vars/cron registrations are live, and each script sits in its completion location (B5, [[RULE-coding]] B3). A green build proves nothing about the database.
+3. **Migration & external-action completeness — the B5 detector runs FIRST, on EVERY release, without exception.** Paste its output (or `empty`) into the receipt. A hit obliges a written answer to each of B5 points 2–5: is it separate, is the order expand → migrate → deploy → contract, was it rehearsed from the PREVIOUS state (which one, quoted output), are postconditions and rollback stated. Startup-embedded migration code counts. Then every other change whose "done" lives outside the repo (remote config, env vars, cron registrations, cache purges) is confirmed live, and each script sits in its completion location ([[RULE-coding]] B3). A green build proves nothing about the database; a green test on an empty database proves nothing about an upgrade.
 4. **Record truthfulness** — every closed problem has its `CHANGELOG.md` entry, and no entry claims something step 3 has not cleared (B2). Web stacks additionally need `releases.json` parity (C3).
 5. **Doc sync — every record surface the accumulation touched, not only `docs/`.** Enumerate, then check each against the diff: plans whose work shipped moved to `docs/plan/done/`; `arch`/`feat` docs match what is about to ship ([[RULE-docs]] B1, B3); `README.md` wherever the accumulation changed setup, commands, layout, or a documented behavior; the project's task-note file when one exists (`.akidevsync/notes.json`, edited only through the `akidevsync-notes` skill — a note whose fix is in this accumulation is marked done with the matching CHANGELOG line, an unmatched or unverified one stays open and is named in the report); and any external standards doc the project `CLAUDE.md` binds the project to, updated in place when the accumulation changed a convention that doc owns. A surface skipped because it was not in `docs/` is the same drift finding as a stale doc.
 6. **Build & test — mirror CI.** Commands are derived, never invented: the jobs `.github/workflows/*` run on push/tag take priority; a repo with no such workflow falls back to the manifest's own scripts (`npm run typecheck`/`build`/`test`, `cargo build`/`cargo test`, equivalent). Run every one of them locally, self-authorized ([[RULE-coding]] B3 — ship/release is the moment full build+test is mandatory, not optional). A failure blocks the gate and is fixed in place, same as step 2. A CI step that cannot be reproduced locally (an other-OS matrix leg, a job needing secrets) is named explicitly and left to B10 to catch post-push. A repo with no build/test command at all says so plainly — that is a finding, not a silent pass. This step sits after 2–5 because those fix code and docs first, and the build must cover what is actually about to ship.
 7. **Verification honesty** — anything only checkable at runtime is reported as unverified rather than assumed ([[RULE-coding]] B3). "Untested but I expect it works" is a valid gate output; a silent "Done" is not.
 8. **Version decision** — mint or defer per A4/A5's materiality test. Do not mint a version to mark that a session ended.
 
-Post-push CI is B10; stack deploy verification (C5, `stack.C8`) follows a green CI.
+Post-push CI is B10; post-deploy functional verification is B11 (mandatory after every deploy or restart); stack deploy verification (C5, `stack.C8`) follows a green CI.
 
 ### B8. Autonomous full-release run — an explicit release order is the authorization
 
@@ -175,6 +189,15 @@ After any push or tag push, in any flow (not only `/akiship`): `gh run list --co
 - No workflows exist in the repo → say so; there is nothing to watch.
 
 **Evidence.** CI failures went unnoticed because the ritual only verified stack deploys (C5): a non-deploying repo (CLI, library, npm package) had no post-push check at all, so a red workflow could sit unnoticed indefinitely.
+
+### B11. Post-deploy verification — a version string proves the code, never the function
+
+After ANY deploy or restart, in any flow (not only `/akiship`), verify FUNCTION, not identity.
+- The check MUST exercise at least one real data path the release touched — an authenticated read that hits the changed table or route — and assert a success status AND a non-trivial payload. A `/version` or `/health` response, or a 200 from a static page, is an IDENTITY check: necessary, never sufficient.
+- A health endpoint returning a constant `ok` regardless of subsystem state is a FALSE INSTRUMENT. It MUST derive its status from the real state of every required subsystem (`degraded` plus the subsystem names when one failed to open), and until it does, a gate that trusts it scores the verification `unverified`, never PASS. Degraded runtime state MUST be visible — health, a log line carrying the underlying error text, or the UI — and never swallowed by a bare `catch`. A component whose failure must not take the service down degrades VISIBLY; it is never silent and never fatal to unrelated work.
+- Failure → execute the rollback or fix-forward path stated under B5 point 5, THEN report. "The process is up" is not Done.
+
+**Evidence.** A release passed every gate and its post-deploy check because the check read only the version endpoint and the health endpoint returned a hardcoded `ok`; the usage store had failed to open on the upgraded database and the dashboard was dead for the whole window until a person opened it.
 
 ## C. ⟨Aki⟩ Web release artifacts
 

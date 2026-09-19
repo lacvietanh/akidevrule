@@ -71,6 +71,7 @@ Load if message or file path contains any of:
 - **Keywords (release-ritual context — these load this rule file, they never start a run; activation is owned entirely by akiship's own gate, an imperative release order):** `akiship`, `full release`, `release trọn gói`, `chạy full release`, `ship đợt này`, `ship trọn gói`
 - **Keywords (commit/push/deploy — load even without an explicit "release" word):** `commit`, `git commit`, `push`, `git push`, `deploy`, `deployment`, `git tag`, `ship it`, `commit và push`, `push lên`, `đẩy lên`, `triển khai`
 - **Keywords (registry publish — `release.B9`):** `npm publish`, `publish`, `npm`, `npx`, `registry`, `crates.io`, `cargo publish`, `PyPI`, `twine`, `2FA`, `OTP`, `lên npm`
+- **Keywords (migration & post-deploy — `release.B5`, `release.B11`):** `migration`, `migrate`, `schema change`, `ALTER TABLE`, `add column`, `db migration`, `health endpoint`, `/health`, `post-deploy`, `smoke test`, `chạy migration`, `đổi schema`
 - **Keywords (post-push CI — `release.B10`):** `CI`, `GitHub Actions`, `workflow run`, `gh run`, `CI fail`, `CI đỏ`, `build fail`, `test fail`
 - **Actions:** committing or pushing code, deploying, shipping a change that should be recorded for users or maintainers; bumping a version; checking whether finished-but-unpushed work is actually shippable (`release.B7`); running the full release ritual unattended (`release.B8`, `/akiship`); verifying CI after a push (`release.B10`)
 

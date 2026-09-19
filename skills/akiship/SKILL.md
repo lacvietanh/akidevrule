@@ -7,7 +7,16 @@ description: Full release ritual end-to-end — front-loaded checks, then an una
 
 Invoke with `/akiship` or an explicit release order, only as described in § Activation gate below. Goal: replace the daily hand-typed ritual ("resolve leftovers, sync every doc, lint, fix drift, changelog, commit, release…") with one invocation that runs to completion or stops once, early, with every blocker in a single batch.
 
-**This skill sequences; it does not own content.** The checklist is `RULE-release.md` B7 and the autonomy/escalation contract is B8 — read that file first (installed at `~/.aki/akidevrule/RULE-release.md`), plus `RULE-docs.md` for the doc-sync step. If a step here ever disagrees with the rule file, the rule file wins — except the activation gate below, which this skill owns outright (`pattern.A1`) and which no rule file, keyword list, or routing table may widen.
+## CRITICAL — MANDATORY LOAD, BEFORE ANY OTHER TOOL CALL OF THE RUN (execute AND consult mode)
+
+**This skill sequences; it owns no content.** The checklist is `RULE-release.md` (B5 migration doctrine, B7 fail-closed gate, B8 autonomy contract, B10 CI, B11 post-deploy verification) and doc sync is `RULE-docs.md`. Both are installed at `~/.aki/akidevrule/`.
+
+1. `Read` `~/.aki/akidevrule/RULE-release.md` IN FULL and `~/.aki/akidevrule/RULE-docs.md` as the FIRST tool calls after this skill loads. Keyword routing, memory of an earlier session, this file's summary, and a rule that happens to be in context do NOT count as loading — only a `Read` performed in THIS run does.
+2. Emit as the first line of the run: `[RULES] agent,coding,pattern (core) + release,docs (akiship) | missing: none`. Any file that could not be read goes under `missing:` and the run STOPS there.
+3. A run that starts Phase 1 without those two `Read` calls is INVALID: every finding, commit, tag and deploy it produces is unauthorized and MUST be reported as such. Compliance is checked against the tool-call log, never against the receipt line (`agent.B2`).
+
+If a step in this file disagrees with the rule file, the rule file wins — except the activation gate below, which this skill owns outright (`pattern.A1`) and which no rule file, keyword list, or routing table may widen.
+
 
 ## Activation gate — two conditions, both required, checked before anything else
 
@@ -36,7 +45,7 @@ Consult is the default whenever both readings are available. A withheld executio
 Run B7 steps 2–7 in order, fixing findings as they surface (this is a gate, not an audit — no findings doc):
 
 - **Hygiene, diff scope only**: `python3 ~/.claude/skills/akiflow/scripts/scythe.py <files changed since boundary>` for `[WRAP]`/`[YAP]`; dead code / redundant guards / duplication the accumulation introduced (`pattern.A8`); doc refs in touched comments still resolve (`docs.B3`). Never widen to the whole repo.
-- External-action completeness — a pending migration qualifying under `stack.C8`'s execution-ownership clause (additive, idempotent, backup path available) is run here, not deferred; record truthfulness (CHANGELOG + `releases.json` parity where it exists), doc sync over every record surface B7 step 5 enumerates (plans → `done/`, `arch`/`feat` stamps per `docs.A4`, `README.md`, the task-note file via `akidevsync-notes`, any standards doc the project `CLAUDE.md` binds to).
+- **Migration & external-action completeness — FIRST gate step, every release.** Run the `release.B5` detector over the accumulation diff and paste its output. A hit (startup-embedded migration code included) obliges written answers to B5 points 2–5, including a rehearsal from the PREVIOUS state; a pending migration qualifying under `stack.C8`'s execution-ownership clause is run here, not deferred. Then record truthfulness (CHANGELOG + `releases.json` parity where it exists) and doc sync over every record surface B7 step 5 enumerates (plans → `done/`, `arch`/`feat` stamps per `docs.A4`, `README.md`, the task-note file via `akidevsync-notes`, any standards doc the project `CLAUDE.md` binds).
 - **Build & test — mirror CI (B7 step 6)**: derive commands from `.github/workflows/*` first, else the manifest's own scripts; run them all locally; a failure blocks and is fixed in place, same as the hygiene step above; a CI-only leg (other-OS matrix, secrets) is named and left to `release.B10`.
 - Verification honesty — anything else runtime-only, or a migration that does not qualify above, is carried to the final report as **unverified**, never silently assumed (`coding.B3`).
 
@@ -45,14 +54,17 @@ Run B7 steps 2–7 in order, fixing findings as they surface (this is a gate, no
 1. Commit in logical groups per `/akigitcommit` (domain-grouped mode; anti-stage-loss rules apply in full). B8 pre-answers its confirmation step — "commit luôn" semantics.
 2. Version decision per `release.A4`/`A5`: mint exactly once at the highest accumulated severity, or defer on the materiality test. Deferring is a normal outcome, not a failure.
 3. Artifacts per the repo's own convention: bare tag only if the repo already tags (`release.A3` B8 exception); GitHub Release per `release.B4`; `releases.json` sync check per `release.C4`; registry publish per `release.B9` — tarball verified first, and an OTP-gated publish is the report's single hand-off with its `npm view` check.
-4. **Push / deploy only if B8's push/deploy authorization holds for this invocation (named explicitly, or completion-intensity phrasing per `release.B8`).** Otherwise the run stays local-only. After any push, watch CI per `release.B10` — always, regardless of stack. If the stack additionally deploys on push, run live deploy verification per `release.C5` once CI is green.
+4. **Push / deploy only if B8's push/deploy authorization holds for this invocation (named explicitly, or completion-intensity phrasing per `release.B8`).** Otherwise the run stays local-only. After any push, watch CI per `release.B10` — always, regardless of stack. If the stack additionally deploys on push, run live deploy verification per `release.C5` once CI is green. After ANY deploy or restart, `release.B11` is mandatory: verify a data path the release touched, not only the version.
 
 ## Report
 
-One dense summary (`agent.A4`): state derived → findings fixed (counts per gate step) → commits made → version minted or deferred with the reason → artifacts created → CI results (`release.B10`) → any owner-worded criteria self-decided this run, as an `agent.A3` decision block (`Decided: X · because Y · rejected Z (why) · reopen if W`) → anything left **unverified**, each with the exact command that would settle it.
+**The FIRST block is the checklist receipt, and it is mandatory:** the `release.B7` lines `S0`–`S8` (`PASS | FIXED | FAIL | N/A — evidence`), the B5 detector output, and the four written self-interrogation answers. A report without them declares the run INCOMPLETE and says which steps were NOT RUN; an unreported step is a failed step (`release.B7` fail-closed contract), never an implicit pass.
+
+Then one dense summary (`agent.A4`): state derived → findings fixed (counts per gate step) → commits made → version minted or deferred with the reason → artifacts created → CI results (`release.B10`) → any owner-worded criteria self-decided this run, as an `agent.A3` decision block (`Decided: X · because Y · rejected Z (why) · reopen if W`) → anything left **unverified**, each with the exact command that would settle it.
 
 ## Boundaries
 
+- Never write `PASS` on a gate step without quoted evidence (`release.B7` fail-closed contract). "Should", "presumably", "looks fine" score `unverified`.
 - Never run a phase above on a turn that failed either activation condition — answer in consult mode instead, and never treat your own consult answer as the go-ahead for a later turn.
 - The B8 escalation floor is the only reason to stop mid-run; everything else is self-answered from repo, docs, and rules.
 - Never push, deploy, or push tags without B8's push/deploy authorization (`release.B8`).
