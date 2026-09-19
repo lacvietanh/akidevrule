@@ -102,7 +102,17 @@
       "title": "/akiship: cần đảm bảo rà soát đủ để update mọi nội dung: FROM UNIDOC, akidevsync notes, docs plan, README,v..",
       "updated_at": 1788815452293,
       "wish": false
+    },
+    {
+      "created_at": 1789654932560,
+      "detail": "Refine RULE-agent-behavior delegation guidance: delegate bulk or non-trivial exploration, not trivial known reversible execution. When the target and command are already known and the work fits one or two cheap tool calls, execute it directly. Worker startup, briefing, rule loading, and result retrieval must be justified by saved exploration or main-thread context.",
+      "done": true,
+      "id": "task-1789654932560",
+      "pin": true,
+      "title": "Clarify worker delegation threshold",
+      "updated_at": 1789846254895,
+      "wish": false
     }
   ],
-  "updated_at": 1788815452293
+  "updated_at": 1789846254895
 }
