@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [3.3.1] - 2026-09-22
 
 ### Changed
 - **`docs.B2` leads with the in-place-edit path instead of the freeze command.** Evidence: models repeatedly read the opening line — *"Its body is frozen: never rewrite a claim, a number, or a verification status in place"* — and stopped there, then either refused to correct a research doc at all or spawned a whole new doc for a fix the Decision field survived, inflating the tree with near-duplicate files. Root cause: the rule stated the prohibition first and the flexibility (Cosmetic / Erratum-via-Amendments) only after, so a model that pattern-matches the first strong sentence never reaches the branch that authorizes an in-place amendment. The mechanism the rule already contained was correct; its presentation order taught the opposite of its intent. Mechanism: the opening now states that frozen is the default not a wall, that most corrections land in place, and that one mechanical read of the **Decision** field is the discriminator (Decision would change → successor doc; otherwise edit in place) — and it names the refuse-to-touch / needless-new-doc behavior as the exact failure being prevented, before narrowing "frozen" to only a claim/number/status the Decision still rests on. The four correction classes and the successor-chain naming are unchanged. Rejected: rewriting B2 wholesale (wasteful and self-violating — the fix is a reorder plus one clause, not a new rule). Tradeoff: the opening sentence is longer; that is the load-bearing detail that was previously buried.
