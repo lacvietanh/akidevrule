@@ -49,7 +49,7 @@ A principle with the procedure that guarantees it — apply to any edit of code 
 ### B4. Self-documenting code — comments are a last resort
 Domain application of the density root (`agent.A4` — every line must carry information the reader does not already have); the naming root is `pattern.A7`. Penalty card: `[YAP]` (`agent` §0).
 - Naming and shape come first: a comment that explains *what* a block does is a failed name or a failed extraction — fix the name/structure (`pattern.A7`, `pattern.A3`), then delete the comment. Clean flow plus role-named functions and variables need no narration.
-- A comment may state only what the code cannot say: a non-obvious constraint, an external contract, a genuine why. Never narrate the next line, restate the signature, or record change history.
+- A comment may state only what the code cannot say: a non-obvious constraint, an external contract, a genuine why. Never narrate the next line, restate the signature, or record change history. What a pinned project doc already states, the code need not say either (`C1`).
 - Deletion test, per comment: if removing it loses nothing a reader needs beyond what the code already says, remove it. Default is silence — comment density is a smell, not a virtue.
 - Comments rot: no compiler checks a comment, so it drifts silently as the code under it changes, and a stale comment misleads worse than none — one more reason deletion is the default, and why a rationale that must stay current lives in a doc the code references ([[RULE-docs]] B3), never duplicated inline.
 - One line when a comment is genuinely needed; a rationale bigger than that lives in docs, with the comment holding only the reference (see [[RULE-docs]] B3).
@@ -79,6 +79,7 @@ None of this weakens `B3`'s honesty floor: what genuinely stays unverified is st
 ### C1. Error handling
 - Validate at system boundaries: user input, external APIs, filesystem, network, persistence
 - Do not add defensive guards for impossible internal states — and size the ones that do guard a reachable state against who can actually reach it (`METHOD-proportionality.md`), instead of adding protection by reflex
+- **Impossible and obvious are judged against the project's pinned facts** — `CLAUDE.md`, `docs/biz`, `docs/feat|arch`, recorded research decisions — never against imagination: a state those documents rule out gets no guard, a dependency they declare present gets no fallback, a fact they state gets no comment (`B4`), and a path they define gets one natural flow, not a patch beside it (`pattern.A8`)
 - Fail loudly in development when it helps reveal broken assumptions
 - Keep production failures safe and user-appropriate
 - **Never fabricate mock/fixture data as a runtime fallback for a missing dependency** (DB, API, service binding). Throw/return a real error instead. If a local dev environment genuinely lacks that dependency, fix the environment itself (real local instance, proper binding/proxy) — don't paper over it with fake data. Verify the dependency is actually unavailable by reading how the runtime/framework wires it in dev before assuming a fallback is needed at all.

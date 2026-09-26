@@ -37,7 +37,7 @@ These are constraints on **structure and reuse**, not style. Reach for this file
 **A7 — Name by role, never by concrete value.** Name things for what they *mean*, not what they *currently are*: `retryLimit` not `three`, `PrimaryAction` not `BlueButton`, `AuthBoundary` not `FirebaseWrapper`. Value-names rot the instant the value changes and force codebase-wide find-and-replace.
 - *Root rule for naming.* Every other naming item in this corpus (`agent.C1` file names, `ui.A` tokens, `stack.C1` component names, `release.A3` version/tag format, `content` semantic stability) is a **domain application** of A7, not a competing rule — do not restate A7 in them, and do not move them out of their domain. Address map: `index.md` § Cross-cutting lens.
 
-**A8 — One flow, made natural — not guarded.** When the same guard / check / fallback keeps reappearing around a path, the path's shape is wrong. Reshape the flow so the correct behavior is automatic; do not stack more enforcement on a weak path. Full method: `METHOD-audit-flow.md`.
+**A8 — One flow, made natural — not guarded.** When the same guard / check / fallback keeps reappearing around a path, the path's shape is wrong. Reshape the flow so the correct behavior is automatic; do not stack more enforcement on a weak path. "Correct" is measured against the project's pinned facts (`coding.C1`), so a guard for a state those facts rule out is a patch, not a flow. Full method: `METHOD-audit-flow.md`.
 
 ---
 

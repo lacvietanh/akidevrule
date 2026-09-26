@@ -1,6 +1,6 @@
 # Core Docs Rules
 
-<!-- Address map: docs.A1-4 · docs.B1-3 · docs.C1-4 -->
+<!-- Address map: docs.A1-5 · docs.B1-3 · docs.C1-4 -->
 
 ## Goals
 Docs should be readable for both humans and LLMs.
@@ -50,6 +50,17 @@ Filenames across all `docs/*` never lead with a date — the content-identifying
 **Every content update rewrites the stamp, in the same edit.** A stamp older than the change under it is worse than no stamp: it certifies as verified something nobody checked. Pure-cosmetic edits (typo, link fix, reflow) leave it alone — the stamp records when the *content* was last true, not when bytes last moved.
 
 The stamp is what makes drift mechanically visible: a `docs/arch/` file stamped three releases back is a drift-audit lead (C3) before anyone reads a line of it.
+
+### A5. The auto-loaded instruction file — `CLAUDE.md` / `AGENTS.md` / `GEMINI.md`
+
+The harness prepends this file to every request, so every line in it is paid on every turn and read under every task, related or not. It is the most expensive doc in the project and carries the highest bar: `agent.A4`'s deletion test with a reach condition on top. A line stays only if it passes all five, and the whole file is re-run through them on every edit:
+1. **Harm** — absent from every request, name the concrete mistake the agent makes. No nameable mistake, no line.
+2. **Reach** — it governs the majority of requests in this project. A line that matters to one domain belongs in the doc that domain's route loads (`feat/`, `arch/`, `biz/`, a project rule file), not here.
+3. **Not derivable** — it cannot be read from the code, the manifest (`package.json`, `Cargo.toml`), or a doc the router already loads for that task.
+4. **Not a restatement** — a shared-corpus rule is pointed at by address (`coding.B3`), never copied; a copy drifts and doubles the cost.
+5. **Facts and limits, not behavior** — the file binds the project's facts (stack, reference implementation, test and compile command, ship platform, hard limits) and stricter constraints; behavior rules live in the corpus (`index.md` § Precedence). Those bindings are the router's standing signal for every task in the project.
+
+One file is the source: a per-project `GEMINI.md` or `AGENTS.md` is a bootstrap that points at `CLAUDE.md`, never a second copy.
 
 ## B. Lifecycle & Sync
 
