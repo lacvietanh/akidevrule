@@ -5,12 +5,12 @@
   "tasks": [
     {
       "created_at": 1783161634342,
-      "detail": "bám theo các quy tắc khắt khe:\n- coding PRO PATTERN  [cái này đặc biệt phải làm thật kỹ]\n- content rule\n- Dò theo các logic flow tìm deadcode, redudant guard,\n- Docs rule:  drift code với docs, tính năng phức tạp mà chưa có feat|arch tương ứng",
-      "done": false,
+      "detail": "Đã xử lý: route 'Sequential full audit' trong akirule — zero-trust → pattern/flow → subtract → docs.C → content.C2, một báo cáo, read-only.",
+      "done": true,
       "id": "task-1783161634342",
       "pin": true,
       "title": "bổ sung hoặc tìm một skill nếu đã có - quy trình để kiểm tra chặt chẽ mọi thứ lần lượt tuần tự ",
-      "updated_at": 1786478684416,
+      "updated_at": 1790304041392,
       "wish": false
     },
     {
@@ -66,11 +66,11 @@
     {
       "created_at": 1787719224421,
       "detail": "",
-      "done": false,
+      "done": true,
       "id": "task-1787719224421",
       "pin": true,
       "title": "Nghiên cứu bổ sung vào preallowlist cho cursor: mọi script trong bộ /akirule",
-      "updated_at": 1787719227104,
+      "updated_at": 1790304041348,
       "wish": false
     },
     {
@@ -112,7 +112,17 @@
       "title": "Clarify worker delegation threshold",
       "updated_at": 1789846254895,
       "wish": false
+    },
+    {
+      "created_at": 1790203800424,
+      "detail": "bằng chứng là nhắc akirule mới thấy agent đi nạp skill",
+      "done": true,
+      "id": "task-1790203800424",
+      "pin": false,
+      "title": "hình như dạo gần đây không nạp akirule tự động",
+      "updated_at": 1790304041309,
+      "wish": false
     }
   ],
-  "updated_at": 1789846254895
+  "updated_at": 1790304041392
 }

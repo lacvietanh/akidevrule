@@ -1,7 +1,7 @@
 {
   "name": "@akinet/akidevrule",
-  "version": "3.3.1",
-  "description": "Aki's shared rule corpus + Agent Skills for Claude Code, Gemini/Antigravity, Codex, Kiro and Grok — install and update with one command.",
+  "version": "3.4.0",
+  "description": "Aki's shared rule corpus + Agent Skills for Claude Code, Gemini/Antigravity, Codex, Kiro, Grok, Cursor and OpenCode — install and update with one command.",
   "keywords": [
     "claude-code",
     "agent-skills",
@@ -10,6 +10,8 @@
     "codex",
     "kiro",
     "grok",
+    "cursor",
+    "opencode",
     "ai-rules",
     "coding-standards",
     "installer",
@@ -40,6 +42,7 @@
     "install.mjs",
     "install.sh",
     "install.ps1",
+    "lib/",
     "payload/",
     "skills/",
     "claude/",
