@@ -28,6 +28,7 @@ import {
   localInstallPresent,
   parseChangelogVersion,
 } from "./claude/hooks/aki_version_check.mjs";
+import { applyHarnessPreAllow, claudeAllowRules, listSkillScripts, ownershipTest, recoverSkillRoots, replaceOwned, scriptInvocations } from "./lib/permissions.mjs";
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -46,6 +47,7 @@ const GEMINI_SKILLS_DIR = join(GEMINI_DIR, "config", "skills");
 const CODEX_SKILLS_DIR = join(HOME, ".agents", "skills");
 const KIRO_SKILLS_DIR = join(HOME, ".kiro", "skills");
 const GROK_SKILLS_DIR = join(HOME, ".grok", "skills");
+const SKILLS_SRC = join(REPO_ROOT, "skills");
 
 const OLD_SKILLS = ["akidoc-rules", "akidoc-flow-audit", "akidoc-techbiz-optimizer", "akiadvise"];
 
@@ -327,111 +329,35 @@ function gitBranch(repo) {
 // Antigravity rule map
 // ---------------------------------------------------------------------------
 
-// Each entry: [ruleFile, trigger, description, globs] — globs is a raw JSON array string or "".
+const ROUTER_SRC = join(SKILLS_SRC, "akirule", "SKILL.md");
+
+// The router's routes table is the single routing source; AG's native rule descriptions are derived from it.
+function routerClauses() {
+  const table = readFileSync(ROUTER_SRC, "utf-8").matchAll(/^\| `((?:RULE|METHOD)-[^`]+\.md)` \| ([^|]+) \|/gm);
+  return new Map([...table].map(([, file, clause]) => [file, clause.trim()]));
+}
+
+// Each entry: [ruleFile, trigger, globs, description] — globs is a raw JSON array string or ""; description only for core rules, which the router does not route.
 const AG_RULE_MAP = [
-  ["RULE-agent-behavior.md", "always_on", "", ""],
-  [
-    "RULE-coding.md",
-    "model_decision",
-    "Coding philosophy, source-of-truth discipline, error handling and security. Load when writing, reviewing or refactoring code.",
-    "",
-  ],
-  [
-    "RULE-pattern-core.md",
-    "model_decision",
-    'Universal design laws: single source of truth, Rule of Three, single-responsibility "and"-test, composition over inheritance, naming by role. Load on any structural or decomposition decision.',
-    "",
-  ],
-  [
-    "RULE-docs.md",
-    "model_decision",
-    "Documentation structure, plan lifecycle, doc-sync behavior and the docs-versus-code drift audit. Load when writing or reorganizing docs and plans, or when checking whether existing docs still match the code.",
-    "",
-  ],
-  [
-    "RULE-content-write.md",
-    "model_decision",
-    "UI copy, semantic stability, writing style and i18n. Load when writing user-facing text.",
-    "",
-  ],
-  [
-    "RULE-stack-akiNuxtCf.md",
-    "glob",
-    "Nuxt, Vue, Cloudflare Pages and Workers, Tailwind, i18n, state and build conventions. Load when working in a Nuxt or Cloudflare project.",
-    '["**/*.vue", "**/*.ts", "nuxt.config.*", "server/**/*.ts"]',
-  ],
-  [
-    "RULE-stack-tauri.md",
-    "glob",
-    "Tauri v2 and Rust conventions, including the never-block-the-UI rule for subprocess and network commands. Load when working in a Tauri project.",
-    '["src-tauri/**", "**/*.rs", "tauri.conf.json"]',
-  ],
-  [
-    "RULE-ui-pattern.md",
-    "model_decision",
-    "Frontend design-system layer: the subtraction pass that runs before the class-tier ladder, class taxonomy, design tokens in whichever mechanism the installed framework version uses, the aggregate style-block budget, arbitrary-value policy, variant APIs and the audit playbook. Load when building, minimizing or auditing UI components and styles.",
-    "",
-  ],
-  [
-    "RULE-seo.md",
-    "model_decision",
-    "Meta limits, schema.org, robots, sitemap, Open Graph and AI visibility. Load when working on SEO or page metadata.",
-    "",
-  ],
-  [
-    "RULE-release.md",
-    "model_decision",
-    "CHANGELOG discipline, release versus deploy boundary, severity-driven version bumps and the pre-ship gate for finished-but-unpushed work. Load when preparing a release, writing a changelog, or checking whether finished work is actually shippable.",
-    "",
-  ],
-  [
-    "RULE-db-design.md",
-    "model_decision",
-    "Immutability and event sourcing, normalization, bounded contexts, flat-query discipline. Load when designing a schema, migration or database refactor.",
-    "",
-  ],
-  [
-    "RULE-biz.md",
-    "model_decision",
-    "Positioning, audience, USP, pricing, monetization and customer-psychology messaging rules. Load on any market-facing decision or when working on docs/biz content.",
-    "",
-  ],
-  [
-    "METHOD-audit-flow.md",
-    "model_decision",
-    "Method for auditing end-to-end flow integrity. Load when guards and checks keep accumulating around a flow.",
-    "",
-  ],
-  [
-    "METHOD-audit-zero-trust.md",
-    "model_decision",
-    "Strict mechanical-first audit: scope locked by command, detectors run before any opinion, findings split into exact machine matches versus pattern-level candidates, short findings-only report. Load when the user asks for an uncompromising sweep of a project or of a change and everything it touches.",
-    "",
-  ],
-  [
-    "METHOD-deep-think.md",
-    "model_decision",
-    "Deep-think method: goal excavation, first principles, mandatory critique. Load for big, hard-to-reverse or goal-ambiguous decisions.",
-    "",
-  ],
-  [
-    "METHOD-ux-psych.md",
-    "model_decision",
-    "UX psychology audit: cognitive load, recognition, feedback, defaults, motor cost and mental-model lenses with a persona walkthrough protocol. Load when evaluating an interface or user flow through user behavior.",
-    "",
-  ],
-  [
-    "METHOD-proportionality.md",
-    "model_decision",
-    "Sizing a defense against its real threat: reach, capability, motive and blast radius measured before any guard, limit, quota or accepted risk is added, kept or removed; irreversibility outranks frequency; client-side limits are UX, never enforcement. Load whenever protection is being proposed, sized or dropped.",
-    "",
-  ],
-  [
-    "METHOD-audit-subtraction.md",
-    "model_decision",
-    "Repo-wide subtraction sweep asking what no longer needs to exist, terminating on two consecutive rounds with no new findings, with Chesterton's Fence as the brake before any removal is called certain. Load when the request is to minimize or strip an existing codebase rather than to check it is correct.",
-    "",
-  ],
+  ["RULE-agent-behavior.md", "always_on", ""],
+  ["RULE-coding.md", "model_decision", "", "Coding philosophy, source-of-truth discipline, error handling and security. Load when writing, reviewing or refactoring code."],
+  ["RULE-pattern-core.md", "model_decision", "", 'Universal design laws: single source of truth, Rule of Three, single-responsibility "and"-test, composition over inheritance, naming by role. Load on any structural or decomposition decision.'],
+  ["RULE-docs.md", "model_decision", ""],
+  ["RULE-content-write.md", "model_decision", ""],
+  ["RULE-stack-akiNuxtCf.md", "glob", '["**/*.vue", "nuxt.config.*", "wrangler.toml", "app/**", "server/**", "composables/**", "middleware/**", "plugins/**", "layouts/**"]'],
+  ["RULE-stack-tauri.md", "glob", '["src-tauri/**", "**/*.rs", "tauri.conf.json"]'],
+  ["RULE-ui-pattern.md", "model_decision", ""],
+  ["RULE-seo.md", "model_decision", ""],
+  ["RULE-release.md", "model_decision", ""],
+  ["RULE-db-design.md", "model_decision", ""],
+  ["RULE-biz.md", "model_decision", ""],
+  ["METHOD-audit-flow.md", "model_decision", ""],
+  ["METHOD-audit-zero-trust.md", "model_decision", ""],
+  ["METHOD-deep-think.md", "model_decision", ""],
+  ["METHOD-ux-psych.md", "model_decision", ""],
+  ["METHOD-proportionality.md", "model_decision", ""],
+  ["METHOD-audit-subtraction.md", "model_decision", ""],
+  ["METHOD-audit-frozen-reference.md", "model_decision", ""],
 ];
 
 function agDestName(ruleFile) {
@@ -440,34 +366,35 @@ function agDestName(ruleFile) {
   return `akirule-${stem.toLowerCase()}.md`;
 }
 
+function agRuleDescription(ruleFile, core, clauses) {
+  if (core) return core;
+  if (!clauses.has(ruleFile)) throw new Error(`akirule has no route for ${ruleFile}`);
+  // agy denies view_file on ~/.gemini/config/rules/ (hardcoded protection boundary, measured 2026-09-26), so the description names the readable copy.
+  return `Load when the task ${clauses.get(ruleFile)}: view_file ~/.aki/akidevrule/${ruleFile} (this rules directory itself is not readable).`;
+}
+
+// Every rule file is rendered before any installed one is removed, so a bad map or router aborts with AG untouched.
 function installAgRules() {
+  const clauses = routerClauses();
+  const mapped = new Set(AG_RULE_MAP.map(([f]) => f));
+  const unmapped = listDir(join(REPO_ROOT, "payload")).filter((n) => /^(RULE|METHOD)-.*\.md$/.test(n) && !mapped.has(n));
+  if (unmapped.length) throw new Error(`AG_RULE_MAP has no entry for: ${unmapped.join(", ")}`);
+
+  const rendered = AG_RULE_MAP.map(([ruleFile, trigger, globs, core]) => {
+    const lines = ["---", `trigger: ${trigger}`];
+    if (globs) lines.push(`globs: ${globs}`);
+    if (trigger !== "always_on") lines.push(`description: ${JSON.stringify(agRuleDescription(ruleFile, core, clauses))}`);
+    lines.push("---", "", `<!-- Generated by akidevrule from payload/${ruleFile}. Do not edit here. -->`, "");
+    lines.push(readFileSync(join(REPO_ROOT, "payload", ruleFile), "utf-8"));
+    return [join(GEMINI_RULES_DIR, agDestName(ruleFile)), lines.join("\n")];
+  });
+
   mkdirSync(GEMINI_RULES_DIR, { recursive: true });
   for (const name of listDir(GEMINI_RULES_DIR)) {
     if (name.startsWith("akirule-") && name.endsWith(".md")) rmrf(join(GEMINI_RULES_DIR, name));
   }
-
-  let written = 0;
-  for (const [ruleFile, trigger, desc, globs] of AG_RULE_MAP) {
-    const src = join(REPO_ROOT, "payload", ruleFile);
-    if (!isFile(src)) {
-      console.log(`  ⚠️  ${ruleFile} listed in AG_RULE_MAP but missing from payload/`);
-      continue;
-    }
-    const dest = join(GEMINI_RULES_DIR, agDestName(ruleFile));
-
-    const lines = ["---", `trigger: ${trigger}`];
-    if (globs) lines.push(`globs: ${globs}`);
-    if (trigger !== "always_on" && desc) lines.push(`description: ${JSON.stringify(desc)}`);
-    lines.push("---");
-    lines.push("");
-    lines.push(`<!-- Generated by akidevrule from payload/${ruleFile}. Do not edit here. -->`);
-    lines.push("");
-    lines.push(readFileSync(src, "utf-8"));
-
-    writeTextLf(dest, lines.join("\n"));
-    written += 1;
-  }
-  return written;
+  for (const [dest, content] of rendered) writeTextLf(dest, content);
+  return rendered.length;
 }
 
 // ---------------------------------------------------------------------------
@@ -505,21 +432,9 @@ function mergeSettings(settingsPath, installRoot, claudeDir) {
   perms.allow = perms.allow.filter((x) => x !== readRule && x !== legacyReadRule);
   perms.allow.push(readRule);
 
-  const legacyBashRules = [
-    "Bash(python3 ~/.claude/skills/**)",
-    "Bash(python3 ~/.aki/akidevrule/agskills/**)",
-  ];
-  const managedBashRules = [
-    "Bash(python3 ~/.claude/skills/*)",
-    "Bash(python3 ~/.aki/akidevrule/agskills/*)",
-  ];
-  const variantBashRule = `Bash(python3 ${toTildePath(join(claudeDir, "skills"))}/*)`;
-  if (!managedBashRules.includes(variantBashRule)) {
-    managedBashRules.push(variantBashRule);
-  }
-
-  perms.allow = perms.allow.filter((x) => !legacyBashRules.includes(x));
-  for (const rule of managedBashRules) if (!perms.allow.includes(rule)) perms.allow.push(rule);
+  const skillRoots = [join(PRIMARY_CLAUDE_DIR, "skills"), join(claudeDir, "skills")];
+  const invocations = scriptInvocations({ roots: skillRoots, scripts: listSkillScripts(SKILLS_SRC), home: HOME, isWin: IS_WIN });
+  perms.allow = replaceOwned(perms.allow, ownershipTest(akiSkillNames()), claudeAllowRules(invocations));
 
   perms.additionalDirectories = perms.additionalDirectories.filter((d) => d !== legacyRoot);
   if (!perms.additionalDirectories.includes(installRoot)) perms.additionalDirectories.push(installRoot);
@@ -558,148 +473,53 @@ function mergeSettings(settingsPath, installRoot, claudeDir) {
 }
 
 // ---------------------------------------------------------------------------
-// Antigravity permissions merge
+// Script pre-allow for the non-Claude harnesses (lib/permissions.mjs)
 // ---------------------------------------------------------------------------
 
-function mergeAntigravityPermissions(claudeDirs = []) {
-  if (!isDir(GEMINI_DIR)) return;
-
-  const scriptsDir = join(REPO_ROOT, "skills", "akiflow", "scripts");
-  const skillScripts = listDir(scriptsDir)
-    .filter((n) => n.endsWith(".py"))
-    .map((n) => `akiflow/scripts/${n}`)
-    .sort();
-  const claudeRoots = claudeDirs.map((d) => join(d, "skills"));
-  const skillRoots = [GEMINI_SKILLS_DIR, ...claudeRoots];
-  const launchers = IS_WIN ? ["py -3", "python", "python3"] : ["python3"];
-
-  const managedCommands = [];
-  for (const launcher of launchers) {
-    for (const root of skillRoots) {
-      for (const script of skillScripts) {
-        const target = join(root, script);
-        managedCommands.push(`command(${launcher} ${target})`);
-        const rel = relative(HOME, target);
-        if (rel && !rel.startsWith("..") && !isAbsolute(rel)) {
-          managedCommands.push(`command(${launcher} ~/${rel.split(sep).join("/")})`);
-        }
-      }
-    }
-  }
-  managedCommands.push(
-    `write_file(${join(HOME, ".aki", "agent-council")}/)`,
-    `read_file(${join(HOME, ".aki", "akidevrule")}/)`,
-    "write_file(~/.aki/agent-council/)",
-    "read_file(~/.aki/akidevrule/)"
-  );
-
-  const legacyCommands = [
-    "command(python3 ~/.gemini/config/skills/*)",
-    "command(python3 ~/.claude/skills/*)",
-    "command(python3 ~/.aki/akidevrule/agskills/*)",
-  ];
-
-  const targetFiles = [
-    join(GEMINI_DIR, "antigravity-cli", "settings.json"),
-    join(GEMINI_DIR, "settings.json"),
-  ];
-
-  for (const target of targetFiles) {
-    let data = {};
-    if (isFile(target)) data = JSON.parse(readFileSync(target, "utf-8"));
-
-    if (typeof data.permissions !== "object" || data.permissions === null || Array.isArray(data.permissions))
-      data.permissions = {};
-    const perms = data.permissions;
-    if (!Array.isArray(perms.allow)) perms.allow = [];
-
-    let changed = false;
-    for (const cmd of legacyCommands) {
-      const i = perms.allow.indexOf(cmd);
-      if (i !== -1) {
-        perms.allow.splice(i, 1);
-        changed = true;
-      }
-    }
-    for (const cmd of managedCommands) {
-      if (!perms.allow.includes(cmd)) {
-        perms.allow.push(cmd);
-        changed = true;
-      }
-    }
-
-    if (perms.allowNonWorkspaceAccess !== true) {
-      perms.allowNonWorkspaceAccess = true;
-      changed = true;
-    }
-    if (perms.agentMode !== true) {
-      perms.agentMode = true;
-      changed = true;
-    }
-    if (!Array.isArray(perms.trustedWorkspaces)) {
-      perms.trustedWorkspaces = [];
-      changed = true;
-    }
-    if (!perms.trustedWorkspaces.includes(HOME)) {
-      perms.trustedWorkspaces.push(HOME);
-      changed = true;
-    }
-
-    if (changed || !isFile(target)) {
-      mkdirSync(dirname(target), { recursive: true });
-      if (isFile(target)) {
-        backup(target);
-        pruneBackups(target);
-      }
-      writeTextLf(target, JSON.stringify(data, null, 2) + "\n");
-    }
-  }
+function akiSkillNames() {
+  return listDir(SKILLS_SRC).filter((n) => isDir(join(SKILLS_SRC, n)));
 }
 
-// ---------------------------------------------------------------------------
-// Kiro permissions merge
-// ---------------------------------------------------------------------------
-
-function mergeKiroPermissions(claudeDirs = []) {
-  const kiroDir = join(HOME, ".kiro");
-  if (!isDir(kiroDir)) return;
-
-  const settingsDir = join(kiroDir, "settings");
-  mkdirSync(settingsDir, { recursive: true });
-  const yamlPath = join(settingsDir, "permissions.yaml");
-
-  const managedMatches = [
-    "python3 ~/.kiro/skills/*",
-    "python3 ~/.gemini/config/skills/*",
-    "python3 ~/.aki/akidevrule/agskills/*",
-  ];
-  for (const cDir of claudeDirs) {
-    const m = `python3 ${toTildePath(join(cDir, "skills"))}/*`;
-    if (!managedMatches.includes(m)) managedMatches.push(m);
-  }
-
-  if (!isFile(yamlPath)) {
-    const lines = [
-      "# Generated by akidevrule installer",
-      "rules:",
-      "  - capability: shell",
-      "    match:",
-    ];
-    for (const m of managedMatches) lines.push(`      - "${m}"`);
-    lines.push("    effect: allow\n");
-    writeTextLf(yamlPath, lines.join("\n"));
-  } else {
-    const content = readFileSync(yamlPath, "utf-8");
-    const needed = managedMatches.filter((m) => !content.includes(m));
-    if (needed.length) {
-      backup(yamlPath);
-      pruneBackups(yamlPath);
-      const appendLines = ["", "  - capability: shell", "    match:"];
-      for (const m of needed) appendLines.push(`      - "${m}"`);
-      appendLines.push("    effect: allow\n");
-      writeTextLf(yamlPath, content.replace(/\s+$/, "") + "\n" + appendLines.join("\n"));
+function preAllowHarnessScripts(claudeDirs) {
+  const skillNames = akiSkillNames();
+  const isOwned = ownershipTest(skillNames);
+  // Antigravity's allowlist is shared machine-wide, not per profile — a --claude-dir root omitted this run must not read as stale (lib/permissions.mjs recoverSkillRoots).
+  const knownRoots = new Set([PRIMARY_CLAUDE_DIR, ...claudeDirs.filter((d) => d !== PRIMARY_CLAUDE_DIR)].map((d) => join(d, "skills")));
+  for (const settingsFile of [join(GEMINI_DIR, "antigravity-cli", "settings.json"), join(GEMINI_DIR, "settings.json")]) {
+    if (!isFile(settingsFile)) continue;
+    try {
+      const data = JSON.parse(readFileSync(settingsFile, "utf-8"));
+      const allow = (data.permissions && data.permissions.allow) || [];
+      for (const root of recoverSkillRoots(allow, isOwned, HOME)) knownRoots.add(root);
+    } catch {
+      /* malformed file: preflightInstallSettings already validated this before install runs */
     }
   }
+  const ctx = {
+    home: HOME,
+    isWin: IS_WIN,
+    scripts: listSkillScripts(SKILLS_SRC),
+    akiSkillNames: skillNames,
+    claudeSkillRoots: [...knownRoots],
+    dirs: {
+      gemini: GEMINI_DIR,
+      geminiSkills: GEMINI_SKILLS_DIR,
+      kiro: join(HOME, ".kiro"),
+      kiroSkills: KIRO_SKILLS_DIR,
+      codex: join(HOME, ".codex"),
+      agentsSkills: CODEX_SKILLS_DIR,
+      cursor: join(HOME, ".cursor"),
+      opencode: join(HOME, ".config", "opencode"),
+    },
+  };
+  const io = {
+    backup(path) {
+      backup(path);
+      pruneBackups(path);
+    },
+    writeText: writeTextLf,
+  };
+  return applyHarnessPreAllow(ctx, io);
 }
 
 // ---------------------------------------------------------------------------
@@ -735,7 +555,10 @@ function installClaudeDir(claudeDir) {
   backup(claudeMd);
   pruneBackups(claudeMd);
 
-  const claudeMdSrc = readFileSync(join(REPO_ROOT, "claude", "CLAUDE.md"), "utf-8");
+  const routerImport = "@~/.claude/skills/akirule/SKILL.md";
+  const template = readFileSync(join(REPO_ROOT, "claude", "CLAUDE.md"), "utf-8");
+  if (!template.includes(routerImport)) throw new Error(`claude/CLAUDE.md no longer imports ${routerImport}`);
+  const claudeMdSrc = template.replace(routerImport, `@${toTildePath(join(claudeDir, "skills", "akirule", "SKILL.md"))}`);
   const propagateCmd = `node "${join(REPO_ROOT, "install.mjs")}"`;
   const localMd = join(claudeDir, "CLAUDE.local.md");
   const localMdTilde = toTildePath(localMd);
@@ -888,8 +711,8 @@ async function inspectStatus(claudeDirs) {
         const data = JSON.parse(readFileSync(settingsPath, "utf-8"));
         const readRule = `Read(//${INSTALL_ROOT.replace(/^\/+/, "")}/**)`;
         const allow = (data.permissions && data.permissions.allow) || [];
-        const bashRule = `Bash(python3 ${toTildePath(join(claudeDir, "skills"))}/*)`;
-        const bashOk = allow.includes(bashRule) || allow.includes("Bash(python3 ~/.claude/skills/*)");
+        const isOwned = ownershipTest(akiSkillNames());
+        const bashOk = allow.some((e) => e.startsWith("Bash(") && isOwned(e.slice(5)));
         const readOk = allow.includes(readRule);
         const overrides = data.skillOverrides || {};
         const akiOk = overrides.akirule === "on";
@@ -927,7 +750,7 @@ async function inspectStatus(claudeDirs) {
 // print_summary (post-install)
 // ---------------------------------------------------------------------------
 
-function printSummary(claudeDirs) {
+function printSummary(claudeDirs, preAllow) {
   console.log(`\n${greenBold("=== INSTALL SUCCEEDED ===")}`);
 
   const gitHash = gitShortHash(REPO_ROOT);
@@ -982,12 +805,13 @@ function printSummary(claudeDirs) {
   console.log(`  🤖 Grok CLI  : ${GROK_SKILLS_DIR}`);
 
   console.log();
-  console.log(cyanBold("Permissions configured:"));
-  console.log("  ⚙️  Claude Code     : Read(~/.aki/akidevrule/**), Bash(python3 <target>/skills/*)");
-  if (isDir(GEMINI_DIR))
-    console.log("  ⚙️  Antigravity     : per-script command() rules (akiflow scripts ×all roots ×2 path renderings ×the platform's python launchers), write_file(~/.aki/agent-council/), read_file(~/.aki/akidevrule/)");
-  if (isDir(join(HOME, ".kiro")))
-    console.log("  ⚙️  Kiro CLI        : capability:shell (python3 ~/.kiro/skills/*, ~/.claude*/skills/*)");
+  console.log(cyanBold("Skill scripts pre-allowed (no prompt when a skill runs its own scripts):"));
+  console.log("  ⚙️  claude       settings.json in every target above — plus Read(~/.aki/akidevrule/**)");
+  for (const row of preAllow) {
+    const state = row.error ? `⚠️  skipped: ${row.error}` : `${row.rules} invocation(s)${row.changed ? "" : ", unchanged"}`;
+    console.log(`  ⚙️  ${row.id.padEnd(12)} ${toTildePath(row.file)} — ${state}`);
+  }
+  console.log("  ℹ️  no file-based allowlist exists for Grok CLI or Ollama; approve their script runs interactively.");
 
   console.log();
   console.log(cyanBold("Hooks deployed:"));
@@ -1148,11 +972,10 @@ async function runInstall(claudeDirs) {
     console.log("  ℹ️  Antigravity discovers rules and skills at startup — restart the app or start a new agy session.");
   }
 
-  // --- 5. Antigravity & Kiro permissions ---
-  mergeAntigravityPermissions(claudeDirs);
-  mergeKiroPermissions(claudeDirs);
+  // --- 5. Script pre-allow for every other harness present ---
+  const preAllow = preAllowHarnessScripts(claudeDirs);
 
-  printSummary(claudeDirs);
+  printSummary(claudeDirs, preAllow);
 }
 
 // ---------------------------------------------------------------------------

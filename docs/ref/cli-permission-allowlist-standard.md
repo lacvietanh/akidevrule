@@ -6,34 +6,29 @@ Agent Skills (`SKILL.md`) frequently contain deterministic Python scripts (e.g. 
 
 Each AI developer environment implements its own permission schema, syntax, and configuration path:
 
-| Platform | Configuration Path | Rule Syntax | Wildcard Support | Evaluation Order |
+Installer: `lib/permissions.mjs` — one adapter per rule dialect, fed by one inventory (every `skills/*/scripts/*.py` × the skill roots that harness reads × absolute and `~/`-literal renderings × the platform's Python launchers). Every rule names one exact script; none allows the interpreter as a whole.
+
+| Platform | Config written | Rule written | Matcher | Status |
 |---|---|---|---|---|
-| **Claude Code** | `~/.claude/settings.json` | `Bash(python3 ~/.claude/skills/*)` | `*` only | Deny → Ask → Allow |
-| **Antigravity CLI (`agy`)** | `~/.gemini/antigravity-cli/settings.json` | `command(python3 <HOME>/.gemini/config/skills/akiflow/scripts/council_open.py)` — absolute, one rule per script | **None** — literal string-prefix match | Deny → Ask → Allow |
-| **Antigravity IDE & Desktop** | `~/.gemini/settings.json` | same syntax as CLI | **None** — literal string-prefix match | Deny → Ask → Allow |
-| **Kiro CLI (3.0+)** | `~/.kiro/settings/permissions.yaml` | `capability: shell`, `match: ["python3 ~/.kiro/skills/*"]` | Glob matching | Deny → Ask → Allow |
-| **Grok CLI** | `~/.grok/user-settings.json` | `Bash(python3 ~/.grok/skills/*)` | `*` only | Deny → Ask → Allow |
-| **Codex CLI** | `~/.codex/config.toml` | `prefix_rule(pattern = ["python3", ...], decision = "allow")` | Prefix array | Priority-based |
+| **Claude Code** | `<profile>/settings.json` | `Bash(python3 /abs/…/scythe.py*)` + `~/` rendering | `*` glob on the raw string, **no `~` expansion** | verified (docs + issue #18160) |
+| **Antigravity CLI / IDE** | `~/.gemini/antigravity-cli/settings.json`, `~/.gemini/settings.json` | `command(python3 /abs/…/scythe.py)` | literal string prefix, no glob | measured on CLI (§1.2) |
+| **Kiro CLI 3.x** | `~/.kiro/settings/permissions.yaml` (marker block) | `match: ["python3 /abs/…/scythe.py*"]` | glob on the whole command, no regex | mechanism verified; full-path match unverified |
+| **Codex CLI** | `~/.codex/rules/akidevrule.rules` (owned file) | `prefix_rule(pattern = ["python3", "/abs/…/scythe.py"], decision = "allow")` | token prefix, trailing args free | syntax verified; `~` expansion unverified |
+| **Cursor CLI** | `~/.cursor/cli-config.json` | `Shell(python3:/abs/…/scythe.py*)` | first token + `:args` glob | syntax verified; full-path args example unverified |
+| **OpenCode** | `~/.config/opencode/opencode.json` | `permission.bash["python3 /abs/…/scythe.py*"] = "allow"` | `*`/`?` glob on the full command, last match wins | verified |
+| **Grok CLI** | — | — | no file-based shell allowlist found (xAI `grok-build`, community `grok-cli`) | nothing written |
+| **Ollama** | — | — | a model server; no agent, approvals or skills | not applicable |
+
+Sources: `code.claude.com/docs/en/permissions`, `github.com/anthropics/claude-code/issues/18160`, `kiro.dev/docs/cli/v3/permissions/`, `developers.openai.com/codex/rules`, `cursor.com/docs/cli/reference/permissions`, `opencode.ai/docs/permissions/`, `github.com/xai-org/grok-build` (permissions guide), `github.com/ollama/ollama` — read 2026-09-25.
 
 ---
 
 ## 1. Platform Details & Configurations
 
 ### 1.1 Claude Code
-- **Path**: `~/.claude/settings.json`
-- **Schema**:
-  ```json
-  {
-    "permissions": {
-      "allow": [
-        "Read(//~/.aki/akidevrule/**)",
-        "Bash(python3 ~/.claude/skills/*)",
-        "Bash(python3 ~/.aki/akidevrule/agskills/*)"
-      ]
-    }
-  }
-  ```
-- **Semantics** (verified against Claude Code's own docs, `code.claude.com/docs/en/permissions`): `Bash` rules have **no** gitignore-style `**` — that distinction exists only for `Read`/`Edit` path rules. A bare `*` in a `Bash` rule already matches any sequence of characters *including* `/` and spaces, so it spans multiple path segments and arguments on its own (`Bash(git *)` matches `git log --oneline --all`). Writing `**` adds nothing — it is a dead-weight duplicate of `*`, not a broader match. A **space before a trailing `*`** enforces a word boundary (`Bash(ls *)` matches `ls -la` but not `lsof`; `Bash(ls*)` with no space matches both) — irrelevant here since the path's own `/` already acts as the boundary.
+- **Path**: `<profile>/settings.json` for every detected `~/.claude*` profile.
+- **Semantics** (`code.claude.com/docs/en/permissions`): a bare `*` in a `Bash` rule matches any sequence including `/` and spaces; `**` adds nothing. Matching runs on the raw command string **before** shell expansion, so a rule written `~/.claude/skills/…` never matches an invocation the model wrote as `/home/<you>/.claude/skills/…` (issue #18160). Releases before this one wrote only the `~` directory glob — the reason skill scripts still prompted. Both renderings are now written per script.
+- The trailing `*` has no leading space so a call with no arguments matches too.
 
 ### 1.2 Google Antigravity (AGY CLI, IDE, Desktop)
 
@@ -68,7 +63,7 @@ Three shapes that look plausible and are not real on this platform, listed becau
     }
   }
   ```
-  The block above shows the **full rule set for one script** (`council_open.py`) plus the scoped file actions; the other four akiflow scripts repeat the same four lines. A single-rendering, single-root version of this block is what V1's first run proved insufficient — do not copy one line and expect a match. `install.mjs` writes four rules per script, not one: both skill roots (`~/.gemini/config/skills/…` and `~/.claude/skills/…`, since a `SKILL.md` deployed byte-identical to several roots shows the Claude path in its literal examples) × both renderings (expanded and tilde-literal). That is 20 `command()` rules for five scripts — deliberately, because each one is still a single exact script path with no glob: the redundancy costs nothing and removes the whole class of "the agent wrote the path the other way" denials. The interpreter token multiplies the same way and for the same reason: on Windows the installer emits `py -3`, `python` and `python3` (60 rules), since a rule naming an interpreter the platform does not have is a rule that never matches.
+  The block above shows the **full rule set for one script** (`council_open.py`) plus the scoped file actions; every other `skills/*/scripts/*.py` repeats the same four lines. A single-rendering, single-root version of this block is what V1's first run proved insufficient — do not copy one line and expect a match. The installer writes four rules per script: both skill roots (`~/.gemini/config/skills/…` and `~/.claude/skills/…`, since a `SKILL.md` deployed byte-identical to several roots shows the Claude path in its literal examples) × both renderings (expanded and tilde-literal). Each is still one exact script path with no glob; the redundancy removes the whole class of "the agent wrote the path the other way" denials. On Windows the interpreter token multiplies the same way (`py -3`, `python`, `python3`), since a rule naming an interpreter the platform lacks never matches.
 - **Two denial gates, three signatures — headless `-p` only (measured T8/T8b, plus `write_file` denials 2026-08-21 on agy 1.1.17, Linux; corroborated by the vendor's headless doc). Interactive CLI/IDE prompt instead and are a different path — unmeasured, do not carry these rows over.**
   - *Soft-deny — an approval-needed tool with nobody to ask* (shell commands default to **Ask**): the run **continues and exits 0**, a notice naming the tool goes to stderr, and structured output shows `status: "SUCCESS"` with an empty `response`. A caller that does not check reads a denied call as a clean run.
   - *Hard-deny — a workspace-boundary refusal* (`allowNonWorkspaceAccess` off, path uncovered): the CLI ends the turn at the permission check with an empty `response`, so **the model never learns of the denial** and cannot report it — a prompt contract asking the model to announce a permission failure is out of scope for this path. **Which non-SUCCESS envelope carries it is not stable, and the reason does not always land in the JSON:** `status: "ERROR"` puts it in `error` (`permission check failed for write_file "…": user denied permission for write_file(…)`), while `status: "CANCELED"` leaves `error` **empty** and writes the verbatim reason to **stderr** instead (`jetski: no output produced — a tool required the "write_file" permission that headless mode cannot prompt for, so it was auto-denied.`). Both shapes were observed on the same trap, same tier, minutes apart, 2026-08-21.
@@ -77,37 +72,25 @@ Three shapes that look plausible and are not real on this platform, listed becau
 - **`--dangerously-skip-permissions`**: approves everything, including sandbox bypass (agy issue #36). Not a standing mechanism — acceptable only for a deliberate, isolated one-shot the operator explicitly chose.
 
 ### 1.3 Kiro CLI
-- **Path**: `~/.kiro/settings/permissions.yaml`
-- **Schema**:
-  ```yaml
-  rules:
-    - capability: shell
-      match:
-        - "python3 ~/.kiro/skills/*"
-        - "python3 ~/.claude/skills/*"
-        - "python3 ~/.aki/akidevrule/agskills/*"
-      effect: allow
-  ```
-- **CLI Flag**: `kiro-cli chat --trust-all-tools`
+- **Path**: `~/.kiro/settings/permissions.yaml` (CLI 3.x / IDE 1.x; superseded the regex `toolsSettings.shell.allowedCommands`). Evaluation deny > ask > allow, most restrictive scope wins.
+- **Managed block**: the installer owns everything between `# >>> akidevrule managed` and `# <<< akidevrule managed` at the end of the `rules:` list and regenerates it each run; items outside it are the user's. Unmarked items from older releases are removed only when every `match` line is one the installer owns.
 
-### 1.4 Grok CLI
-- **Path**: `~/.grok/user-settings.json`
-- **Schema**: Uses Claude Code-compatible syntax:
-  ```json
-  {
-    "permissions": {
-      "allow": [
-        "Bash(python3 ~/.grok/skills/*)",
-        "Bash(python3 ~/.claude/skills/*)"
-      ]
-    }
-  }
-  ```
+### 1.4 Codex CLI
+- **Path**: `~/.codex/rules/*.rules` (Starlark execpolicy), not `config.toml` (that holds `approval_policy`/`sandbox_mode`). akidevrule writes its own `akidevrule.rules` and regenerates it whole. Precedence forbidden > prompt > allow.
+
+### 1.5 Cursor CLI
+- **Path**: `~/.cursor/cli-config.json` → `permissions.allow`. `Shell(<first token>)` alone allows every invocation of that command, so the installer always uses the `:args` form. The Cursor IDE's own `~/.cursor/permissions.json` is a separate pipeline with no published schema — not written.
+
+### 1.6 OpenCode
+- **Path**: `~/.config/opencode/opencode.json` → `permission.bash`, an object of glob → `allow|ask|deny`. Last match wins, so owned keys are appended after the user's; a string value (`"ask"`) is preserved as the `"*"` key. A JSONC file that does not parse as JSON is skipped and reported, never rewritten.
+
+### 1.7 Grok CLI, Ollama
+- No file-based command allowlist exists to write (§ table). Skills still deploy to `~/.grok/skills/`; script runs there are approved interactively.
 
 ---
 
 ## 2. Pre-allow Principles for akidevrule
 
-1. **Principle of Least Privilege**: Only pre-allow Python execution for explicitly managed skill and payload script paths. Where the platform's matcher supports globs (`~/.claude/skills/*`, `~/.kiro/skills/*`, `~/.grok/skills/*`) a directory-prefix wildcard is fine — never open-ended `Bash(python3 *)`. **Antigravity's matcher does not support globs at all** (measured, §1.2): its rules must be one absolute-path prefix per script, never a `*`-glob, which would silently match nothing rather than degrade to "broad".
-2. **Non-destructive Merging**: `install.mjs` must preserve existing user permissions, settings keys, and comments/formatting where possible, only inserting or updating the managed entries idempotently — and must tolerate agy re-serializing `settings.json` after a session and dropping false/default-valued keys (observed live, `docs/research/agy-permissions-wrap-bias-aug21.md`).
+1. **Least privilege, uniformly**: one rule per exact script path on every platform — never a directory wildcard, never the interpreter alone. The only glob used is the trailing argument wildcard, and Antigravity (no glob at all, §1.2) gets the bare prefix.
+2. **Owned entries only**: an entry is the installer's when it points a Python launcher into `<aki-skill>/scripts/`, or is a directory-glob rule from an earlier release; those are replaced each run, everything else is preserved. `install.mjs` must preserve existing user permissions, settings keys, and comments/formatting where possible, only inserting or updating the managed entries idempotently — and must tolerate agy re-serializing `settings.json` after a session and dropping false/default-valued keys (observed live, `docs/research/agy-permissions-wrap-bias-aug21.md`).
 3. **Multi-surface Portability**: A `SKILL.md` deployed unmodified to several CLI roots (`docs/ref/agent-skills-standard.md`) cannot hardcode one CLI's absolute script path as its literal invocation example — a Claude-rooted path silently fails Antigravity's per-root permission prefix even though the file exists at that path on disk. `skills/akiflow/SKILL.md` § Harness notes now states which root to substitute per harness.
