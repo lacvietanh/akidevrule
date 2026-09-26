@@ -1,6 +1,6 @@
 # Zero-Trust Audit Method
 
-**Activation**: the user asks for a strict, uncompromising sweep ("audit khắt khe", "ép rule", "force audit", "quét tuyệt đối", "zero-trust audit", "rà soát toàn bộ").
+**Activation**: the user asks for a strict, uncompromising sweep that must be proven by detectors rather than impression — of the whole project, or of a change plus everything that reads it.
 
 Zero trust means nothing counts as clean because it looks clean: a finding exists only when a mechanism produced it, and it weighs exactly what that mechanism weighs — an exact match is a verdict, a pattern match is a candidate. This is **read-only** like every audit (`agent.B5`): it reports, it does not fix, it never mutates git state. Fixing is a separate run, sized after the report is read.
 

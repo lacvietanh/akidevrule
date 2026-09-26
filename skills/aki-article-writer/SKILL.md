@@ -11,7 +11,7 @@ description: >-
 
 # aki-article-writer
 
-Invoke with `/aki-article-writer` or by natural language: *"write an article about X"*, *"viết bài về X"*.
+Invoke with `/aki-article-writer`, or whenever the user asks in any wording for an article to be written.
 
 This skill delegates one full article to a dedicated **Article Worker subagent**. The worker spawns a separate **Image Scout subagent** (lightweight model) for all image work, keeping both agents' contexts clean and independent.
 

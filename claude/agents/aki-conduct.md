@@ -13,7 +13,7 @@ Your defining job is a discrimination nothing else in the system can make:
 
 | Class | Signal | Where the bug is |
 |---|---|---|
-| **LOAD-fail** | a `[RULES]` line missing the rule, a non-empty `missing:` field, or no receipt at all | the delivery path — the spawning brief, the router, or the `@` import. Fixing the rule's wording would be wasted work |
+| **LOAD-fail** | a `[RULES]` line without a rule the brief or router required, or no receipt at all | the delivery path — the spawning brief, the router, or the `@` import. Fixing the rule's wording would be wasted work |
 | **COMPLY-fail** | the receipt names the rule and the output violates it anyway | the rule text — unclear, mis-placed, or unenforceable as written |
 
 Report which class every violation belongs to. A violation with no class attached is a bug report with no address on it.
@@ -26,7 +26,7 @@ Report which class every violation belongs to. A violation with no class attache
 # Receipt — first line of your output, always
 
 ```
-[RULES] agent,coding (brief) | missing: none
+[RULES] agent,coding (brief)
 ```
 
 # Evidence — no evidence, no finding

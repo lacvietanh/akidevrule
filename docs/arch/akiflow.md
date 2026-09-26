@@ -1,6 +1,6 @@
 # Architecture — akiflow, a lead-coordinated agent council
 
-> updated 2026-09-07 · v2.7.0
+> updated 2026-09-26 · v3.4.0
 
 `/akiflow` is the multi-agent skill in this baseline. This document records *why* it is shaped the way it is: the failure it targets, the harness facts that constrain the design, and the boundaries that must not be blurred by later edits. The runnable contract lives in `skills/akiflow/SKILL.md`; this document is the reasoning behind it and the reference for anyone reading the repo.
 
@@ -131,7 +131,7 @@ One fact recorded only so it need not be re-investigated: Claude Code's `/team-o
 | Continuity (needs the prior decision, branches off) | plain subagent, given the plan doc / diff explicitly | the one mechanism that would inherit session history (`fork`) is gated off by default and not a cross-session artifact even where enabled; the plan doc carries the continuity |
 | Independence (must not be contaminated by the lead's reasoning) | plain subagent, strong model | blank context is the asset |
 | Structured debate | named roster convened at once + `SendMessage` | genuine peer challenge, not hub-and-spoke relay |
-| Bandwidth, read-only, off the Claude quota | cross-CLI worker: a Claude Code lead calls `agy --model gemini-3.7-flash-high --mode plan --output-format json -p "<prompt>"` | `--mode plan` enforces read-only by mechanism, stronger than an inherited Claude permission mode; `~/.gemini/GEMINI.md` carries the behavior floor into the call for free; retrieval only, never judgment (`references/harness-facts.md` § Cross-CLI worker) |
+| Bandwidth, read-only, off the Claude quota | cross-CLI worker: a Claude Code lead calls `agy --model gemini-3.8-flash-high --mode plan --output-format json -p "<prompt>"` | `--mode plan` enforces read-only by mechanism, stronger than an inherited Claude permission mode; `~/.gemini/GEMINI.md` carries the behavior floor into the call for free; retrieval only, never judgment (`references/harness-facts.md` § Cross-CLI worker) |
 
 The per-lane detail — when to pick each substrate, and what context and rule files the caller must pass because that lane reads no definition file — now lives in `claude/agents/aki-hands.md` beside the mandate it serves, rather than being restated in the skill. The flags themselves are recorded facts and are read, never re-probed: one drifted run spent three calls re-learning what `harness-facts.md` already stated.
 

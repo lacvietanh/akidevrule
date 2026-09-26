@@ -1,6 +1,6 @@
 # Plan: parked proposals from the 2026-08-22 verification-redundancy review
 
-**Status: parked, deliberately.** Nothing here is scheduled; §6b, added 2026-08-22 as open, was parked on 2026-09-15 with its decision block. The owner's ruling on 2026-08-22 was *tạm thời không can thiệp* — record the reasoning so a later session neither loses it nor re-derives it. Each item below carries the argument **for** it, the argument that beat it, and the trigger that would reopen it.
+**Status: closed 2026-09-25 — every item parked with a reopen trigger; §9 closed by `release.B7` step 6 (3.3.0).** Nothing here is scheduled; §6b, added 2026-08-22 as open, was parked on 2026-09-15 with its decision block. The owner's ruling on 2026-08-22 was *tạm thời không can thiệp* — record the reasoning so a later session neither loses it nor re-derives it. Each item below carries the argument **for** it, the argument that beat it, and the trigger that would reopen it.
 
 ## 1. The painpoint that produced this plan
 
@@ -91,7 +91,7 @@ Three occurrences, one repository, one shared root: that project's `CLAUDE.md` n
 
 ## 9. Incident — `/akiship` 0.27.0 on tachnhac.com shipped a build-breaking doc-index gap
 
-**Status: open, awaiting owner ruling** (`agent.B3` gates edits to shared rules). Raised 2026-08-22, same day as the review above but unrelated to it — this is an under-verification failure, the opposite direction from §1-6's over-verification painpoint.
+**Status: closed 2026-09-25.** `release.B7` step 6 (shipped in 3.3.0) now makes build & test mandatory on every release, derived from CI jobs or the manifest's own scripts; `npm run build` runs a declared `prebuild` hook, so the skipped `check-truth.js` gate is covered by construction. Originally: open, awaiting owner ruling (`agent.B3` gates edits to shared rules). Raised 2026-08-22, same day as the review above but unrelated to it — this is an under-verification failure, the opposite direction from §1-6's over-verification painpoint.
 
 **What happened.** An `/akiship` run minted and pushed 0.27.0. The release-gate's hygiene sweep ran scythe (`[WRAP]`/`[YAP]`) and reviewed doc-sync by static reading against `RULE-docs.md` B1/B3, but never ran `node scripts/check-truth.js` — the project's own `prebuild` hook, wired into `package.json` and executed automatically by Cloudflare on every deploy. That script's check 9 (*every doc file indexed in `docs/index.md`*) failed on a new research doc the same run's own docs-sync commit had created without an index row. Cloudflare's build failed in production; the owner asked *"sao để xảy ra sai sót này? không tuân theo /akiship chuẩn mực tuyệt đối khắt khe à?"*. Root-caused, fixed, pushed, and rebuilt within the same session.
 

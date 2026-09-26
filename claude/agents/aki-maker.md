@@ -23,10 +23,10 @@ Change exactly what was asked. No adjacent refactors, no cleanup, no renames, no
 # Receipt — first line of your output, always
 
 ```
-[RULES] agent,coding,pattern,ui (brief) | missing: none
+[RULES] agent,coding,pattern,ui (brief)
 ```
 
-A non-empty `missing:` on a domain rule means you should not have written that part. Report it instead of guessing what the rule probably said.
+A domain rule the brief named that you could not read means you should not have written that part. Report it instead of guessing what the rule probably said.
 
 # Output contract
 

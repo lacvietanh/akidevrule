@@ -2,24 +2,23 @@
 
 Keep global context small. Prefer current project files and runtime output over stale docs or memory.
 
-## Core rules — mechanically loaded, every session
+## Core rules and the router — mechanically loaded, every session
 
 @~/.aki/akidevrule/index.md
 @~/.aki/akidevrule/RULE-agent-behavior.md
 @~/.aki/akidevrule/RULE-coding.md
 @~/.aki/akidevrule/RULE-pattern-core.md
+@~/.claude/skills/akirule/SKILL.md
 
-These four are embedded by the harness when it reads this file at session start. No model decision is involved, so they apply to every task whether or not any skill runs. The rule corpus map lives in `index.md`; the behavior floor lives in `RULE-agent-behavior.md`; the code-quality floor in `RULE-coding.md`; the structural floor in `RULE-pattern-core.md`.
+The harness embeds these five when it reads this file at session start — no model decision is involved. `index.md` is the corpus map; `RULE-agent-behavior.md` the behavior floor; `RULE-coding.md` the code-quality floor; `RULE-pattern-core.md` the structural floor; `akirule/SKILL.md` the router that decides which contextual rule files to read on each task turn.
 
-`RULE-coding.md` and `RULE-pattern-core.md` were promoted here because being labelled "default ON" in the router never made them load — a skill runs only when the model decides to invoke it, so the rules the owner had to re-state most often were frequently the ones that had never entered the context at all. They are paid for in every session, including sessions that touch no code; that cost is deliberate and is the price of the guarantee.
+The router is imported rather than left as a skill because a skill runs only when the model decides to invoke it, and it went uninvoked until the owner asked by name. The same failure earlier promoted `RULE-coding.md` and `RULE-pattern-core.md` to core. All five are paid for in every session; that cost is the price of the guarantee.
 
-Nothing else in the corpus is guaranteed. Every other rule file loads only when the `akirule` skill runs and matches a signal, and invoking a skill is the model's decision, not a harness mechanism.
+What stays best-effort is the second hop: a routed file enters context only when the model `Read`s it on a route match.
 
 ## Shared Aki rule source
 
 Aki's shared rule corpus lives at `~/.aki/akidevrule`.
-
-The `akirule` skill routes everything beyond the core above: contextual and analytical rules on signal match with high sensitivity, and full load on explicit command. See `~/.claude/skills/akirule/SKILL.md` for the complete routing spec and signal list.
 
 **IMPORTANT — editing shared rules:** The installed `~/.aki/akidevrule` directory is a **deployed copy**, not the source of truth. To change a shared rule:
 1. Find the source repo: its absolute path on this machine is recorded in `~/.aki/akidevrule/.source-repo`, written by the installer on every install. Read that file — do not guess a location, and do not ask the user for something already recorded. Ask only if the recorded path no longer exists.

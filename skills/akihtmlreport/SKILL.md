@@ -5,7 +5,7 @@ description: Visualize a complex report that already exists in the conversation 
 
 # akihtmlreport — single-file visual report extraction
 
-Invoke with `/akihtmlreport`, or when the user asks in their own words to extract the discussion into a visual file ("trích xuất ra html", "xuất báo cáo trực quan", "làm file report", "export this to html"). Its purpose is single and narrow: turn a complex analysis or report that already exists in this conversation into one self-contained HTML file for dense, at-a-glance reading — **nothing else, no new analysis**. Not a replacement for chat responses, and not something to reach for by default.
+Invoke with `/akihtmlreport`, or when the user asks, in any wording, to turn the discussion into a visual file. Its purpose is single and narrow: turn a complex analysis or report that already exists in this conversation into one self-contained HTML file for dense, at-a-glance reading — **nothing else, no new analysis**. Not a replacement for chat responses, and not something to reach for by default.
 
 ## When this skill actually applies
 

@@ -1,6 +1,6 @@
 ---
 name: akiship
-description: Full release ritual end-to-end — front-loaded checks, then an unattended pass. ACTIVATION = an imperative turn ordering the release for this repo — the literal token `/akiship`, or an explicit ship/release order ("release trọn vẹn đi", "chạy full release"). A question about it, or a completion word with no release object ("làm cho trọn vẹn"), activates nothing — consult the checklist and answer in chat, read-only. Sequences RULE-release.md B7's checklist under the B8 autonomy contract; the escalation floor, completion-intensity semantics, and push/deploy authorization are owned by B8 and referenced, never restated, here.
+description: Full release ritual end-to-end — front-loaded checks, then an unattended pass. ACTIVATION = the literal token `/akiship`, or an imperative turn, in any language, ordering the release ritual for this repo. A question about it, or a completion word with no release object, activates nothing — consult the checklist and answer in chat, read-only. Sequences RULE-release.md B7's checklist under the B8 autonomy contract; the escalation floor, completion-intensity semantics, and push/deploy authorization are owned by B8 and referenced, never restated, here.
 ---
 
 # akiship — one-command full release
@@ -12,7 +12,7 @@ Invoke with `/akiship` or an explicit release order, only as described in § Act
 **This skill sequences; it owns no content.** The checklist is `RULE-release.md` (B5 migration doctrine, B7 fail-closed gate, B8 autonomy contract, B10 CI, B11 post-deploy verification) and doc sync is `RULE-docs.md`. Both are installed at `~/.aki/akidevrule/`.
 
 1. `Read` `~/.aki/akidevrule/RULE-release.md` IN FULL and `~/.aki/akidevrule/RULE-docs.md` as the FIRST tool calls after this skill loads. Keyword routing, memory of an earlier session, this file's summary, and a rule that happens to be in context do NOT count as loading — only a `Read` performed in THIS run does.
-2. Emit as the first line of the run: `[RULES] agent,coding,pattern (core) + release,docs (akiship) | missing: none`. Any file that could not be read goes under `missing:` and the run STOPS there.
+2. Emit as the first line of the run: `[RULES] agent,coding,pattern (core) + release,docs (akiship)`. If either file could not be read, say so and the run STOPS there.
 3. A run that starts Phase 1 without those two `Read` calls is INVALID: every finding, commit, tag and deploy it produces is unauthorized and MUST be reported as such. Compliance is checked against the tool-call log, never against the receipt line (`agent.B2`).
 
 If a step in this file disagrees with the rule file, the rule file wins — except the activation gate below, which this skill owns outright (`pattern.A1`) and which no rule file, keyword list, or routing table may widen.
@@ -20,7 +20,7 @@ If a step in this file disagrees with the rule file, the rule file wins — exce
 
 ## Activation gate — two conditions, both required, checked before anything else
 
-**1. Release order.** The current user turn carries either the exact token `/akiship`, or a turn explicitly ordering the release ritual for this repo — "release trọn vẹn đi", "ship đợt này luôn", "chạy full release". A completion-intensity phrase with no release object ("làm cho trọn vẹn") activates nothing: it names no ritual, so it is ordinary vocabulary about finishing something, not an order to run this skill. Seeing this file, or `release.B8`, in context is not an invocation either: being loaded is not being called.
+**1. Release order.** The current user turn carries either the exact token `/akiship`, or a turn explicitly ordering the release ritual for this repo, in any wording (worked examples in the table below). A completion-intensity phrase with no release object activates nothing: it names no ritual, so it is ordinary vocabulary about finishing something, not an order to run this skill. Seeing this file, or `release.B8`, in context is not an invocation either: being loaded is not being called.
 
 **2. Imperative, not interrogative** (`agent.A3`). The order alone authorizes nothing — the turn must ask for the run to be *performed*. Where both readings are available, consult.
 

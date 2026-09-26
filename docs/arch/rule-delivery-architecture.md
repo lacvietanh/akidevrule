@@ -1,6 +1,6 @@
 # Architecture — how rules reach the two agents
 
-> updated 2026-09-15 · v3.1.1
+> updated 2026-09-26 · v3.4.0
 
 akidevrule is the single source of truth for a reusable rule baseline. That baseline has to reach two different agents that load context in fundamentally different ways: **Claude Code** and **Gemini / Antigravity**. This document describes how one source is installed onto a machine and consumed by each.
 
@@ -8,11 +8,11 @@ akidevrule is the single source of truth for a reusable rule baseline. That base
 
 | | Claude Code | Gemini / Antigravity |
 |---|---|---|
-| How rule files reach the model | **Core (4 files)** — `@`-imported by `~/.claude/CLAUDE.md`, read by the harness at session start, no model decision involved. **Everything else** — read only if the model invokes the `akirule` skill and a signal matches | Context files concatenated and prepended to every prompt |
-| Determinism | **Core: deterministic** — 0 model-dependent hops, harness-guaranteed. **Everything else: best-effort** — depends on the model choosing to invoke `akirule` and a signal matching | **Deterministic for the files it auto-loads**, but any "please read file X" pointer inside them is a soft hop the model may skip |
+| How rule files reach the model | **Core (4 files) + router** — `@`-imported by `~/.claude/CLAUDE.md`, read by the harness at session start, no model decision involved. **Everything else** — read when the model `Read`s it on a route match (domain of the task; concept signals are evidence, not the test) | Context files concatenated and prepended to every prompt |
+| Determinism | **Core: deterministic** — 0 model-dependent hops, harness-guaranteed. **Everything else: one model-dependent hop** — the `Read` of a routed file | **Deterministic for the files it auto-loads**, but any "please read file X" pointer inside them is a soft hop the model may skip |
 | Consequence | Rule *content* always arrives | Rule *content* arrives only if it sits in a file the tool hard-loads — not behind a chain of pointers |
 
-**Design conclusion:** behavior rules that Gemini/Antigravity must always obey cannot live behind a soft pointer chain. They are placed in the one file the tool hard-loads globally — `~/.gemini/GEMINI.md` — as literal content, not as a link to go fetch.
+**Design conclusion:** behavior rules that Gemini/Antigravity must always obey cannot live behind a soft pointer chain. They are placed in the one file the tool hard-loads globally — `~/.gemini/GEMINI.md` — as literal content, not as a link to go fetch. The router itself is not loaded there: AG attaches each rule natively (`always_on` for `agent`, `glob` for the stacks, `model_decision` for the rest), and `always_on` stays rationed because AG gives all `always_on` rule files one shared budget of about 43 KB and silently drops whole files past it, largest first — measured 2026-09-26 (`docs/research/rule-delivery-force-load-sep25.md`); description-routed rules are never inlined and carry no size limit, they enter when the model views them. Each native description is generated from the rule's `akirule` route, so the two harnesses route from one table.
 
 ## The same asymmetry inside a skill — the description is resident, the body is not
 
@@ -67,13 +67,14 @@ flowchart TD
     INSTALL -->|"create only if missing"| GGEML["~/.gemini/GEMINI.local.md<br/>machine-local, never overwritten"]
 
     subgraph CCC["Claude Code — deterministic load"]
-        SKILLS -->|"Read on signal match (Tier 1, best-effort)"| RULES
+        SKILLS -->|"Read on route match (one model hop)"| RULES
         GCLAUDE -->|"@import ×4 (core, guaranteed)"| RULES
+        GCLAUDE -->|"@import router (guaranteed)"| SKILLS
     end
 
     subgraph AGC["Gemini / Antigravity — concatenated context"]
         GGEML -->|"cat, appended verbatim at install time"| GGEM
-        GRULES["~/.gemini/config/rules/akirule-*.md<br/>18 rules with YAML trigger frontmatter"]
+        GRULES["~/.gemini/config/rules/akirule-*.md<br/>one per rule file, YAML trigger frontmatter"]
         GSKILLS["~/.gemini/config/skills/<br/>10 skills (native auto-discovery)"]
     end
 

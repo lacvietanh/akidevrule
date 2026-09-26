@@ -22,7 +22,7 @@ Not every decision deserves the same depth. Before applying any module, size the
 
 This METHOD is consumed three ways:
 
-- **Passive (this file, via akirule):** akirule auto-loads it when a normal task hits a matching signal. Apply the lenses inline, briefly, inside the current answer. Ask at most ONE clarifying question. Never turn a routine task into an interrogation session.
+- **Passive (this file, via akirule):** the router loads it whenever a task evaluates, decides or critiques rather than only executes. Apply the lenses inline, briefly, inside the current answer. Ask at most ONE clarifying question. Never turn a routine task into an interrogation session.
 - **Triggered self-run:** fired by `agent.A3`'s deep-think triggers, or by owner-authorized self-run (`skills/akithink/SKILL.md` § Self-run mode). Non-interactive — run Modules 1–3 and 5 (add 4 when there is business context), depth scaled to difficulty. Ends in decide-and-report or escalate per `agent.A3`'s outcomes, never in a question left hanging.
 - **Active (`/akithink` skill):** the user explicitly opens a full structured thinking session. That skill runs a 5-phase interactive protocol and uses this METHOD as its toolbox at maximum depth.
 

@@ -1,5 +1,7 @@
 # Promoting coding and design-core to the core floor: reversing a three-day-old decision
 
+Status: amended 2026-09-26
+
 **Start time:** 2026-08-06
 
 ## Initial purpose
@@ -87,3 +89,7 @@ The compliance class is untouched. `[WRAP]` and `[YAP]` were being violated with
 - `docs/research/akirule-akiflow-upgrade-aug3.md` — the decision reversed here, and the falsifier that authorized the reversal
 - `docs/research/penalty-cards-scythe-aug4.md` — the `[WRAP]`/`[YAP]`/`[FLUFF]` vocabulary the owner should be using instead of "vi phạm akirule", and the detector that makes two of the three mechanical
 - `docs/research/ui-css-minimization-aug4.md` — the precedent for the distinction this session turns on: a rule violated *while loaded* is not a routing problem
+
+## Amendments
+
+- 2026-09-26 · § "Not extended to Antigravity": the constraint is not truncation but one shared budget of about 43 KB across all `always_on` rule files, past which a whole file is dropped silently, largest first; `model_decision` rules are never inlined and have no size limit. Measured in `rule-delivery-force-load-sep25.md`. The decision to keep `coding` and `pattern` at `model_decision` stands: promoting them (14.6 KB + 8 KB on top of 21.6 KB) would exceed the budget and evict the behavior rule.

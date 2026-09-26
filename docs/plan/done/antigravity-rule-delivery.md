@@ -54,6 +54,8 @@ Trong binary, rule được gọi nội bộ là **"memories"**: `memories_to_sy
 
 `customization_budget`, `truncatableItem`, `truncateFromBreakdown`, `HasTruncatedCustomizationType` — đều là symbol thật. **Vượt ngân sách thì rule bị cắt, không có cảnh báo nào.** Giới hạn "12.000 ký tự mỗi file rule" trong doc không có literal tương ứng trong binary → nhiều khả năng cưỡng chế phía server hoặc phía UI.
 
+> **Đính chính 2026-09-26** (đo thật, 26 lượt agy, `docs/research/rule-delivery-force-load-sep25.md`): không có trần 12.000 ký tự mỗi file. Ngân sách là **một tổng chung khoảng 43 KB cho mọi rule `always_on`**; vượt thì **rớt nguyên file, file to rớt trước**, không cảnh báo. Rule `model_decision` không bao giờ được nhét sẵn và không có giới hạn kích thước — vào context khi model tự `view_file`. `GEMINI.md` không tính vào ngân sách này. Hệ quả bên dưới vẫn đúng, lý do đổi.
+
 **Hệ quả thiết kế, phải tuân:** file always-on phải **ngắn**. Mọi thứ không cần trên-mọi-lượt phải đẩy sang `trigger: glob` hoặc `model_decision`. Đây là ràng buộc mạnh nhất chi phối §4.
 
 ### 2.5 Còn chưa biết

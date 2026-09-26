@@ -1,6 +1,6 @@
 ---
 name: akidevsync-notes
-description: Read and edit a project's `.akidevsync/notes.json` task/note file — the per-project task list written by the Aki-Dev-Sync app (github.com/lacvietanh/aki-dev-sync). Use when the user asks to list, add, pin/unpin, mark done, edit, or delete a task in that file, or mentions "task note", "note ghim", "pin task", "mark done", "notes.json", "akidevsync task". Also use when asked to cross-check pinned/open notes against what a release actually shipped (CHANGELOG, code) before marking them done.
+description: Read and edit a project's `.akidevsync/notes.json` task/note file — the per-project task list written by the Aki-Dev-Sync app (github.com/lacvietanh/aki-dev-sync). Use whenever the task reads or changes that project task list — listing, adding, pinning, completing, editing or deleting a task or note, in any wording. Also use when asked to cross-check pinned/open notes against what a release actually shipped (CHANGELOG, code) before marking them done.
 ---
 
 # akidevsync-notes — edit a project's Aki-Dev-Sync task file safely

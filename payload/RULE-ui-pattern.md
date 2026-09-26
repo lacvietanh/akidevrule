@@ -106,7 +106,7 @@ Invariant: a `:hover`-shown popup/menu/tooltip stays open while the pointer trav
 
 ## C. Audit playbook — cleaning existing code
 
-**Triggers for this section:** `dọn dẹp`, `class trùng`, `duplicate class/CSS`, `trùng lặp`, `audit CSS`, `refactor CSS/UI`, `arbitrary value`, `quét class`. Pair with `METHOD-audit-flow.md` for the flow-level mindset; this section is the concrete UI grep layer. Run the steps in order — do not skip.
+**Triggers for this section:** any request to clean up, deduplicate, audit or refactor classes, tokens or styles. Pair with `METHOD-audit-flow.md` for the flow-level mindset; this section is the concrete UI grep layer. Run the steps in order — do not skip.
 
 ### C1. Inventory by scan (quantify before refactoring by feel)
 

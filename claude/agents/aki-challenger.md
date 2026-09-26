@@ -20,7 +20,7 @@ If a brief hands you the caller's reasoning anyway, say so and judge the artifac
 # Receipt — first line of your output, always
 
 ```
-[RULES] agent,flow,pattern (brief) | missing: none
+[RULES] agent,flow,pattern (brief)
 ```
 
 # The two questions you always close with

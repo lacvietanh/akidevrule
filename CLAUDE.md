@@ -28,21 +28,22 @@ Do not rename existing files or introduce new top-level prefixes without updatin
 
 - **Standard over legacy.** This repo IS the standard. When a better name, shape, or convention is identified, adopt it fully and migrate every live reference in the same change — never keep a worse form for backward compatibility. Only immutable event records (past CHANGELOG entries, `docs/research/`, `docs/plan/done/`) keep their historical wording.
 - **Dense technical wording, keyword-first.** A rule is written in condensed scientific-technical language whose exact terms are the trigger keywords an AI pattern-matches on (`group-hover`, `spawn_blocking`, `NFC`) — never narrative prose. Line budget follows violation frequency, not felt importance; every line passes the deletion test (`agent.A4`).
+- **Route by meaning; signals anchor the meaning.** A trigger — router route, skill `description:`, Antigravity rule description — names the domain and the act in one semantic clause that holds in any language; that clause is the test. A router route also carries a signals list: one term per concept the domain owns (artifact, symptom, question shape), in English and Vietnamese, standing for every synonym. Signals raise recall on terse wording, which a clause alone lost on a weaker model; they never gate — a request with no listed signal still routes. Adding a phrasing variant of a concept already listed is a leaf patch; adding a missing concept is not. Only a literal command gate (`/akiship`) is a literal string.
 - **Self-compliance (dogfood).** The corpus obeys its own rules: a new rule, section, or skill needs a unique evidence-backed reason to exist (`pattern.A2` bar), overlaps an existing rule only as a pointer (never restated text), and passes the `pattern.B3` critique gate before shipping. A corpus that violates itself teaches violation.
 - **Release records carry their reasoning.** Every CHANGELOG entry and release note for this repo states why, not only what — the observed failure or evidence, the root cause, the mechanism chosen, and the tradeoff or rejected alternative. A bare list of changes is an incomplete entry. The reasoning is the durable value: downstream users and future sessions judge whether a rule still applies by the argument behind it, not by the diff alone.
 
 ## Content language
 
 `payload/`, `skills/`, and `claude/` are **PUBLIC**, distributed to many users — not just Aki's own. All authored content, including section/group headers (`## A. …`), must be English. Vietnamese is allowed only in these narrow, functional cases:
-- keyword/signal lists that must match a Vietnamese-speaking user's actual words (e.g. Tier 2 routing keywords in `akirule/SKILL.md`)
 - a worked example that specifically needs Vietnamese text to illustrate the point (e.g. accented-vs-unaccented SEO queries, NFC normalization of a Vietnamese name)
-- a literal trigger phrase the user actually types (e.g. `nạp full`, `commit luôn`)
+- a literal command token the user actually types, where the literal string itself is the gate (e.g. `commit luôn`)
+- a concept term in the router's signals column (`skills/akirule/SKILL.md`), beside its English equivalent
 
 A ready-to-paste prompt template (e.g. in `payload/GEMINI.md`) must not hardcode Vietnamese output either — instruct the agent to compose it in whatever language the current session is using, not ship a fixed-language example as the literal text.
 
 ## Required operating rules
 
-- Use the `akirule` skill before editing durable project files, rule files, skill files, installer behavior, or project instructions.
+- Route through `akirule` (imported via `~/.claude/CLAUDE.md`) and Read every routed file before editing durable project files, rule files, skill files, installer behavior, or project instructions.
 - Keep project instructions short and bind them to the current repository instead of duplicating the full shared rule corpus.
 - Changes to rules, skills, install targets, or generated Claude configuration can affect many downstream environments; clarify scope and tradeoffs before broad changes unless the requested edit is explicit.
 - Preserve the separation between packaged source files in this repository and installed runtime files under `~/.aki/akidevrule` or `~/.claude`.

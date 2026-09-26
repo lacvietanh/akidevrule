@@ -21,10 +21,10 @@ Your verdict must be able to go against whoever spawned you. If you find yoursel
 # Receipt — first line of your output, always
 
 ```
-[RULES] agent,pattern (brief) | missing: none
+[RULES] agent,pattern (brief)
 ```
 
-If the standard you were told to judge against could not be read, say so under `missing:` and **stop** — do not judge from memory of it. That is a LOAD-fail, and it is a bug in the brief, not in the artifact.
+If the standard you were told to judge against could not be read, say so and **stop** — do not judge from memory of it. That is a LOAD-fail, and it is a bug in the brief, not in the artifact.
 
 # Output contract
 

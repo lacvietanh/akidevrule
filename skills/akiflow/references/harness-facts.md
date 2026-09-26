@@ -8,6 +8,8 @@ The skill's rules are consequences of these facts. If a fact changes, the rule i
 
 Every entry carries the date it was checked, because all of it is version-bound and expected to rot.
 
+**CRITICAL — this file is facts, not policy: update it the moment a provider ships or retires a model, changes a flag, or a probe contradicts an entry.** Every model id below is a live default that other files quote by reference (`agent.A5`, `claude/agents/aki-hands.md`, `docs/arch/akiflow.md`); a stale id here is silently wrong everywhere. Never ask the owner whether to record an observed fact — record it, date it, and re-point the default when a newer tier of the same family is present (`agy models`, `claude --help`, `kiro-cli`).
+
 ## Worker invocation quick-facts
 
 The lookup table: literal command, read-only mechanism, and the one silent failure each lane hides. Every section below this one is the *why* — a caller assigning a lane needs none of it.
@@ -16,7 +18,7 @@ The lookup table: literal command, read-only mechanism, and the one silent failu
 
 | Lane | Literal command | Read-only by | Silent failure to check |
 |---|---|---|---|
-| **agy flash** — discovery default | `agy --model gemini-3.7-flash-high --mode plan --output-format json -p "<prompt>"` | `--mode plan` (mechanism, not wording) | a denied call still returns `status: "SUCCESS"` with empty `response`; `-p` takes the next token as its value, so any flag written after it is sent as prompt text |
+| **agy flash** — discovery default | `agy --model gemini-3.8-flash-high --mode plan --output-format json -p "<prompt>"` | `--mode plan` (mechanism, not wording) | a denied call still returns `status: "SUCCESS"` with empty `response`; `-p` takes the next token as its value, so any flag written after it is sent as prompt text |
 | **kiro-cli** | `kiro-cli chat --no-interactive --trust-tools=fs_read --model claude-sonnet-4.5 --effort high "<prompt>"` | `--trust-tools=fs_read` | none recorded; `--effort` is operative on every Kiro model, unlike `claude` + haiku |
 | **claude via proxy gateway** | `CLAUDE_CONFIG_DIR=~/.claude-9rt claude -p --tools "Read,Grep" --model <alias> --effort low "<prompt>"` | `--tools` allowlist | `cl-9rt` is a shell alias and does not exist in a non-interactive shell — run the expanded literal; the gateway may route an alias to a non-Anthropic core |
 | **claude in-harness subagent** | Agent tool, `model` passed explicitly | the agent file's `tools:` frontmatter | an omitted `model` inherits the caller's top tier; the Agent tool has no `effort` parameter at all, so a declared effort is decorative |
@@ -61,10 +63,10 @@ Probe exactly two things, once, at the moment of assigning a lane: liveness/quot
 
 ## Cross-CLI worker (Claude Code lead → agy headless)
 
-Verified by real runs, 2026-08-01; model re-probed 2026-08-15. Invocation, flag order load-bearing:
+Verified by real runs, 2026-08-01; model re-probed 2026-09-26. Invocation, flag order load-bearing:
 
 ```
-agy --model gemini-3.7-flash-high --mode plan --output-format json -p "<prompt>"
+agy --model gemini-3.8-flash-high --mode plan --output-format json -p "<prompt>"
 ```
 
 | Fact | Design consequence |
@@ -77,7 +79,7 @@ agy --model gemini-3.7-flash-high --mode plan --output-format json -p "<prompt>"
 | **[obs]** Measured on a real read-only repo sweep: 8.2s wall / 3.4s model time, correct answer; ~20–26k tokens of fixed input overhead per call (agy's system prompt plus `~/.gemini/GEMINI.md`). *A prior version of this row cited one observed `cache_read_tokens: 32621` as evidence that repeat calls hit a warm cache. That reading was too generous — see § Stateful workers, where a controlled three-turn test shows the cache is unreliable and the latency curve is the real constraint.* | The fixed overhead means this mechanism pays for itself on a non-trivial sweep, not on a one-line lookup — the same shape as the "self-contained question" cutoff already in the Step 2 mechanism table. |
 | **[obs]** The `json`/`stream-json` output carries `usage`: `input_tokens`, `output_tokens`, `thinking_tokens`, `cache_read_tokens`, plus `conversation_id`. | Cost is measurable per call — but it is invisible to `council_cost.py`, which only parses the Claude Code session transcript. The lead must add it to the close-out tally by hand (`SKILL.md` Step 6). |
 | **[obs]** agy 1.1.9 expands skills in print mode, so `agy -p "/akiflow …"` resolves the skill; `akiflow` is already deployed to agy at `~/.gemini/config/skills/akiflow`. | A cross-CLI call can invoke the skill itself, not just an ad hoc prompt — relevant if a future revision routes part of a run through agy directly. |
-| **[owner]** + **[obs]** Model choice inside agy is not free-form. **`gemini-3.7-flash-high` is the default discovery tier** (owner directive, 2026-08-15, superseding the prior `gemini-3.6-flash-medium` default once `gemini-3.7-flash-*` shipped — see § agy headless below for the full re-probed model list): ~1M context, generous quota. Its weakness is carelessness, not capacity — it skims. The counter is prompt precision, not a bigger model: name the exact paths, the exact question, and the exact output shape, leaving it nothing to improvise. **`claude-sonnet-4-6` / `claude-opus-4-6-thinking` inside agy are quota-scarce even on a Pro plan** (owner-reported) and additionally sit on the no-cache resume curve above. | Route discovery to `gemini-3.7-flash-high` by default and hand it a fully-specified task. Reach for agy's Claude tiers only for a single-shot, self-contained, high-value call where context and cache are demonstrably under control — never for a conversation, never as a habit. When strong-model judgment is needed *and* stateful, that is a Claude session id, not agy. |
+| **[owner]** + **[obs]** Model choice inside agy is not free-form. **`gemini-3.8-flash-high` is the default discovery tier** (owner rule, 2026-08-15: the newest Flash `-high` tier is the default; re-pointed 2026-09-26 when `gemini-3.8-flash-*` shipped — see § agy headless below for the full re-probed model list): ~1M context, generous quota. Its weakness is carelessness, not capacity — it skims. The counter is prompt precision, not a bigger model: name the exact paths, the exact question, and the exact output shape, leaving it nothing to improvise. **`claude-sonnet-4-6` / `claude-opus-4-6-thinking` inside agy are quota-scarce even on a Pro plan** (owner-reported) and additionally sit on the no-cache resume curve above. | Route discovery to `gemini-3.8-flash-high` by default and hand it a fully-specified task. Reach for agy's Claude tiers only for a single-shot, self-contained, high-value call where context and cache are demonstrably under control — never for a conversation, never as a habit. When strong-model judgment is needed *and* stateful, that is a Claude session id, not agy. |
 | **[obs]** A flash-tier worker (`gemini-*-flash-*`, any generation) is for **retrieval, never for judgment**. | akiflow's thinking floor turns on the FACT/CONSTRAINT/ASSUMPTION distinction, which the skill already names as the one unrecoverable error to mislabel — exactly what a cheap model does worst. Hard rule wherever this mechanism is used, in the same voice as the existing "never downgrade implementation to save cost": retrieval only. |
 
 ## Cost model
@@ -110,7 +112,7 @@ Skills are deployed unmodified to five hosts, and **[doc]** Cursor additionally 
 |---|---|---|---|---|---|
 | Claude Code | `haiku` (no `--effort`) | `sonnet` | `opus`, or `inherit` from the lead | agent frontmatter `model:`; Agent tool `model`; `claude -p --model <alias> --effort <e>` | **[obs]** verified across this file |
 | Cursor (IDE + `agent` CLI) | Composer family — the current id from Cursor's model picker (`composer-2`-style), never an API-pool Claude/GPT model | `inherit` (the session's model) | `inherit`, or the session's top API-pool model | `.cursor/agents/*.md` or `~/.claude/agents/*.md` frontmatter `model: inherit \| <id>[effort=…]`; `agent -p --model <id>` | **[doc]** field and syntax; **UNCONFIRMED** how Cursor treats a Claude alias (`haiku`) it cannot resolve — reopen trigger: one measured Cursor run of an `aki-hands` spawn |
-| Antigravity `agy` | `gemini-3.7-flash-high` (§ Cross-CLI worker) | `gemini-3.1-pro-low` | `gemini-3.1-pro-high` (`claude-opus-4-6-thinking` is quota-scarce, § agy headless) | `agy --model <slug>` — effort is inside the slug; agy 1.1.6+ agent markdown carries `model` | **[obs]** 2026-08-15 |
+| Antigravity `agy` | `gemini-3.8-flash-high` (§ Cross-CLI worker) | `gemini-3.1-pro-low` | `gemini-3.1-pro-high` (`claude-opus-4-6-thinking` is quota-scarce, § agy headless) | `agy --model <slug>` — effort is inside the slug; agy 1.1.6+ agent markdown carries `model` | **[obs]** 2026-09-26 |
 | Codex CLI | UNCONFIRMED low-cost alias | `[agents] default_subagent_model` in `config.toml`; `codex exec -c model=<id> -c model_reasoning_effort=medium` | same model, `model_reasoning_effort=xhigh` | `config.toml [agents]`, per-agent `model`; `codex exec -c …` | **[doc, secondary]** 2026-09-08, model ids drift monthly — read them from `codex` itself |
 | Kiro CLI | `qwen3-coder-next` (0.05×) or `claude-haiku-4.5` (0.4×) | `auto` (1×) or `claude-sonnet-4.5` (1.3×) | Opus-class, ~22× — rarely worth it on this host | `kiro-cli chat --no-interactive --model <id> --effort <e>`; custom agent JSON `model` | **[obs]** 2026-08-02 list; multipliers re-read with `--list-models` |
 | Grok CLI | UNCONFIRMED | `grok-build-0.1` default | UNCONFIRMED | `grok -p` (`--model` flag unconfirmed) | **[doc, secondary]** 2026-09-08 |
@@ -150,7 +152,7 @@ Full narrative and the measurements behind these rows: `docs/research/headless-c
 
 ### agy headless — see § Cross-CLI worker above
 
-**[obs]** Re-probed 2026-08-15 (prior check 2026-08-02 predates the `gemini-3.7-flash-*` release — do not cite the old list), `agy models`: `gemini-3.7-flash-{low,medium,high}`, `gemini-3.6-flash-{low,medium,high}`, `gemini-3.5-flash-{low,medium,high}`, `gemini-3.1-pro-{low,high}`, **`claude-sonnet-4-6`**, **`claude-opus-4-6-thinking`**, `gpt-oss-120b-medium`. Also present: `--json-schema`, `--effort`, `--agent`, `--add-dir`, `--print-timeout`, `--disable-slash-commands`, and an `agents` subcommand (empty on this machine — no custom agy agents defined).
+**[obs]** Re-probed 2026-09-26 (agy 1.2.11; the 2026-08-15 list predates the `gemini-3.8-flash-*` release — do not cite it), `agy models`: `gemini-3.8-flash-{low,medium,high}`, `gemini-3.7-flash-{low,medium,high}`, `gemini-3.6-flash-{low,medium,high}`, `gemini-3.1-pro-{low,high}`, **`claude-sonnet-4-6`**, **`claude-opus-4-6-thinking`**, `gpt-oss-120b-medium`. Also present: `--json-schema`, `--effort`, `--agent`, `--add-dir`, `--print-timeout`, `--disable-slash-commands`, and an `agents` subcommand (empty on this machine — no custom agy agents defined).
 
 *Consequence:* a Claude-family model can be reached **on the Antigravity quota**. The vendor paying and the model reasoning are independent choices, which is a second axis the Step 2 mechanism table did not previously have.
 
