@@ -106,11 +106,7 @@ After updating CHANGELOG and the version bump, produce the GitHub Release withou
 - **Otherwise** (no `gh`, or the user will publish manually) → output the copy-ready block below instead.
 - Before minting, cross-check tags against Releases (`gh release list` vs `git tag`) and offer to backfill any tag that has no matching Release, so the Releases page has no gaps.
 
-**Title:** `v{version}: {2-5 word specific impact}` — no generic words ("patch fixes", "bug fixes", "improvements")
-- Good: `v1.5.1: fix production icons blank, caret, grid gap`
-- Bad: `v1.5.1: patch fixes`, `v1.5.1: various improvements`
-
-**Body:** same `#### Fixed` / `#### Changed` / `#### Added` sections as CHANGELOG, but each bullet trimmed to one short sentence — symptom first, no file paths, no internal jargon.
+**Title and body are B6's tiers, written once:** title `v{version}: {Headline}`, body = the Full tier. Nothing about their wording lives here.
 
 **Compare link (GitHub-hosted repos — mandatory footer):** the notes end with `**Full Changelog**: <repo-url>/compare/<prev-tag>...<new-tag>` — or use `gh release create --generate-notes`, which inserts it automatically. The Release page renders notes only, never a diff, and the tag itself points at a single commit (usually the version-mint commit, a tiny diff) — without this line there is no one-click view of the commits accumulated since the previous release. First release with no prior tag: link `<repo-url>/commits/<new-tag>` instead.
 
@@ -133,10 +129,32 @@ Do not report a plan, task, or release/deploy as complete when a migration/infra
 4. **REHEARSE from the PREVIOUS state, never from empty.** A test or dry-run that starts from a fresh database exercises `CREATE`, not the migration, and proves NOTHING about an upgrade. REQUIRED evidence: the migration executed against (a) a schema generated or snapshotted from the previous release, AND (b) for any data-dependent change (unique index, `NOT NULL` backfill, type change, dedupe) a COPY of real target data. State which was run and quote its output. "The tests pass" is not evidence.
 5. **POSTCONDITIONS asserted, ROLLBACK named.** After the real run, assert expected columns, indexes and row counts by query (condition 1 above), and record the backup or fix-forward path BEFORE any destructive step ([[RULE-agent-behavior]] B3). A migration with no stated rollback or fix-forward path does NOT ship.
 
-### B6. Content discipline
-- Release note copy: no em/en dash (`—` `–`); short user-facing sentences, benefit first. See [[RULE-content-write]].
-- Keep terminology stable across versions (e.g. always "Release Notes", not mixed synonyms). See [[RULE-content-write]] semantic stability.
-- Doc/version moves are part of the change, not an afterthought. See [[RULE-docs]].
+### B6. Release copy — one user-facing text per release, three lengths, printed by default
+The developer record and the user-facing copy are two channels (C1); this item owns the user-facing one for every project type, and every surface that shows a release to a person renders it: the GitHub Release (B4), `releases.json` (C2, web only), an in-app "what's new", a store listing, a post or notification the owner sends by hand. One source, three lengths, all telling one story (`biz.C4`):
+- **Headline** — at most 12 words naming the one thing the user gets: the C2 highlight when there is one, else the most user-visible change. It is the GitHub Release title after `v{version}: ` (A3: the `v` is render-time only) and the `releases.json` `title`. Good: `fix production icons blank, caret, grid gap`; bad: `patch fixes`, `various improvements`, `bug fixes`.
+- **Short** — one or two sentences for a post, a notification, a chat message: the headline's benefit, the concrete mechanism as proof, the link. Says nothing the Full tier does not.
+- **Full** — the highlight first as its own line, then every other change as one sentence each, grouped under C1's sections in C1's order, symptom first for fixes; the compare-link footer per B4 when GitHub-hosted.
+Wording in every tier: benefit first, then proof (`biz.C1`); what the user can now do, never the file, route, symbol or component; no em/en dash, short sentences (`content.B2`); the audience's language per C1's table (English default, plus Vietnamese where the product is bilingual); one canonical term per concept across versions ("Release Notes", never a synonym — `content.A3`). Internal-only work is one honest line ("under-the-hood improvements…", C3), never dressed as a feature.
+**Choosing the headline — a protocol with a written verdict, never a feeling.** The agent that wrote the code is the worst judge of what users gained: it ranks by effort spent, by what landed last, or by what the owner talked about most, and none of those is value. So the choice is made from the user's side, in five steps, and the reasoning is written into the run's receipt where the owner can overrule it:
+1. **Candidates** — every change in the accumulation that alters what a user can do: a new tool, page, mode, format, integration, or an option inside one. `fixed` and `internal` are excluded by construction; a fix that unblocks a core flow may become the *Headline* when nothing else qualifies, but it is never a `highlight` (C2), because the highlight tier means capability gained, not capability restored.
+2. **Three kill-tests per candidate, from the primary audience's seat** (`docs/biz/`, `biz.A1`; when no audience is recorded, the person the product's front page addresses). *Return:* would someone who last used the product before this version come back, or use it differently, because of this? *Tell:* can it be said in one sentence that person would repeat to a peer, with a concrete verb and no file, route, component or internal term? *Before/after:* is there something they could not do before, or could only do with a workaround? A polish, copy, layout or speed change fails the third unless it removes a workaround; an admin-only or owner-only capability fails the first; a candidate whose Tell sentence needs internal vocabulary fails the second. One failed test disqualifies.
+3. **Rank survivors by reach × delta**, both estimated and labeled so: reach is how many of that audience meet it in a normal session (every session > a common task > a niche path); delta is the size of the gain (a new tool or mode > a new option inside an existing tool > a removed workaround).
+4. **Cut to one.** A second only when it is independent of the first (a different job, not a sub-feature of it) and ranks close; three never — a third means the release bundled two releases (A5 materiality) or the ranking is undecided, and undecided resolves to one, not two. Zero survivors is a normal result: the Headline then names the most user-visible fix or change, and the announce verdict is judged on that.
+5. **Cross-check the surfaces before writing.** The Headline, the first `changes[]` line, the `highlight` flag, the Short tier and the GitHub Release title must all point at the same thing; when the title you would naturally write names something the highlight does not, the selection is wrong, not the title. Then write the verdict into the receipt: one line per candidate — `highlight: <thing> — passes return/tell/before-after, reach every session, delta new mode` or `rejected: <thing> — fails return (admin-only)` — so a `release_lint.py` `[HILITE]` line is answered by this record and the owner can overrule a choice without re-deriving it.
+
+**Announce verdict.** The copy ends with `Announce: yes` when the version carries a highlight or a fix the user would notice, or `Announce: no — <reason>` for an internal-only or invisible-fix accumulation: a follower who reads three "stability improvements" posts in a week stops reading the fourth, so the materiality test (A5) applies at the channel too. Channels are the project's own, read from `docs/biz/`, the project `CLAUDE.md` or an existing post history — never invented; with none recorded the verdict stands alone.
+**Where it is produced.** Every `/akiship` run ends with this block, a deferred version included (`deferred — no copy`), and any other run that mints a version prints it in its closing report. It is reused, never rewritten: the `releases.json` entry and the GitHub Release body already are this copy, so the block quotes them rather than composing a third variant; where neither exists (CLI, desktop app without a GitHub Release) the block is the copy's only home and the owner pastes it where it goes.
+
+```
+## Release copy — {version} ({date})
+Headline: …
+Short: …
+Full:
+…
+Announce: yes | no — <reason>
+```
+
+Doc/version moves are part of the change, not an afterthought ([[RULE-docs]]).
 
 ### B7. Pre-ship gate — work finished, nothing pushed yet
 
@@ -154,7 +172,7 @@ Run in order; each step names the rule that owns it.
 1. **Release state** — derive it cold from the repo per B1, never from session memory. `Drifted` blocks everything until A5's recovery has run.
 2. **Hygiene sweep — scoped to the accumulation, never the whole repo.** On the files touched since the boundary commit (B1.5): scythe `[WRAP]`/`[YAP]` lint ([[RULE-agent-behavior]] §0), dead code / redundant guards / duplication the accumulation itself introduced (`pattern.A8`; subtract-class detectors at diff scope), and doc references in touched comments still resolving ([[RULE-docs]] B3). A repo-wide subtraction or zero-trust sweep is a separately scheduled audit, never a per-release cost — diff scope is what keeps this gate affordable at many releases per day. Unlike an audit, findings here are fixed in place: this is a gate, not a report.
 3. **Migration & external-action completeness — the B5 detector runs FIRST, on EVERY release, without exception.** Paste its output (or `empty`) into the receipt. A hit obliges a written answer to each of B5 points 2–5: is it separate, is the order expand → migrate → deploy → contract, was it rehearsed from the PREVIOUS state (which one, quoted output), are postconditions and rollback stated. Startup-embedded migration code counts. Then every other change whose "done" lives outside the repo (remote config, env vars, cron registrations, cache purges) is confirmed live, and each script sits in its completion location ([[RULE-coding]] B3). A green build proves nothing about the database; a green test on an empty database proves nothing about an upgrade.
-4. **Record truthfulness** — every closed problem has its `CHANGELOG.md` entry, and no entry claims something step 3 has not cleared (B2). Web stacks additionally need `releases.json` parity (C3).
+4. **Record truthfulness** — every closed problem has its `CHANGELOG.md` entry, and no entry claims something step 3 has not cleared (B2). Web stacks additionally need `releases.json` parity (C3). Shape is mechanical: `python3 ~/.claude/skills/akiflow/scripts/release_lint.py --latest .` (C4) must exit 0; a `[HILITE]` review line is answered in writing per C2, never silently passed.
 5. **Doc sync — every record surface the accumulation touched, not only `docs/`.** Enumerate, then check each against the diff: plans whose work shipped moved to `docs/plan/done/`; `arch`/`feat` docs match what is about to ship ([[RULE-docs]] B1, B3); `README.md` wherever the accumulation changed setup, commands, layout, or a documented behavior; the project's task-note file when one exists (`.akidevsync/notes.json`, edited only through the `akidevsync-notes` skill — a note whose fix is in this accumulation is marked done with the matching CHANGELOG line, an unmatched or unverified one stays open and is named in the report); and any external standards doc the project `CLAUDE.md` binds the project to, updated in place when the accumulation changed a convention that doc owns. A surface skipped because it was not in `docs/` is the same drift finding as a stale doc.
 6. **Build & test — mirror CI.** Commands are derived, never invented: the jobs `.github/workflows/*` run on push/tag take priority; a repo with no such workflow falls back to the manifest's own scripts (`npm run typecheck`/`build`/`test`, `cargo build`/`cargo test`, equivalent). Run every one of them locally, self-authorized ([[RULE-coding]] B3 — ship/release is the moment full build+test is mandatory, not optional). A failure blocks the gate and is fixed in place, same as step 2. A CI step that cannot be reproduced locally (an other-OS matrix leg, a job needing secrets) is named explicitly and left to B10 to catch post-push. A repo with no build/test command at all says so plainly — that is a finding, not a silent pass. This step sits after 2–5 because those fix code and docs first, and the build must cover what is actually about to ship.
 7. **Verification honesty** — anything only checkable at runtime is reported as unverified rather than assumed ([[RULE-coding]] B3). "Untested but I expect it works" is a valid gate output; a silent "Done" is not.
@@ -204,10 +222,12 @@ After ANY deploy or restart, in any flow (not only `/akiship`), verify FUNCTION,
 ### C1. Two separate channels — do not merge them
 | File | Audience | Language | Tone |
 |------|----------|----------|------|
-| `CHANGELOG.md` | developer / technical | English only | Precise, may name files/symbols. Keep a Changelog format (`Added` / `Changed` / `Fixed` / `Removed`) |
+| `CHANGELOG.md` | developer / technical | English only | Precise, may name files/symbols. Keep a Changelog shape, closed and ordered — see below |
 | `app/data/releases.json` | public / end user | Bilingual EN + VI if the site is multilingual (default EN); EN-only if single-language | Popular, user-friendly, benefit-first. No jargon, no file paths |
 
 The changelog explains *what changed and why* for maintainers. The release note tells users *what they get*. Write them separately; do not paste changelog lines into the release note.
+
+**CHANGELOG shape — one canonical form, mechanically checked (`release_lint.py`, C4).** Version heading `## [x.y.z] - YYYY-MM-DD` (`## [Unreleased]` while open), sections `### <Name>` at exactly one level below, each at most once per version, in this fixed order and from this closed vocabulary: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`. Sections that ship nothing are omitted, never left empty. There is no `Internal`, `Docs`, `Notes`, `Verified`, `Refactored` or any other heading: internal, tooling and docs work is `Changed`; a verification or caveat is a clause on the bullet it qualifies; a decision's reasoning lives in the bullet or in `docs/research/`. The order is the standard's, not importance-ranked: an order chosen per release is unobservable across releases and drifts the moment two people, or two sessions, write entries. Evidence: 21 of 25 audited projects had entries out of order, 9 distinct orderings within one file, 13 invented headings across the set, and this rule itself named two different orders in two sections.
 
 `releases.json` exists **only where a public web page renders it** (the Nuxt stack's release-notes page). Tauri, CLI, and other non-web projects keep `CHANGELOG.md` only — a release-notes file nothing renders is dead data; do not create one. Where `releases.json` does not exist, every rule below that mentions it simply does not apply.
 
@@ -215,6 +235,7 @@ The changelog explains *what changed and why* for maintainers. The release note 
 - Single-language site: `{ version, date, title, changes: [{ type, text }] }`
 - Multilingual site: localize the human text — `title: { en, vi }`, `changes: [{ type, text: { en, vi } }]`. Keep `version`, `date`, `type` locale-neutral. Default/fallback language is English.
 - `type` is one of `new` | `improved` | `fixed` | `internal` (stable badge keys).
+- `highlight: true` (optional, locale-neutral) marks the line B6's headline protocol selected — a capability gained, chosen from the primary audience's seat through the three kill-tests and the reach × delta ranking, with the verdict written in the run's receipt. It is a tier, never a filter: every change still ships as a line (C3); the page renders the highlighted line as a distinct card, because a flat list gives a bug fix and a new tool the same weight, so the reader's eye has nothing to land on and the page reads as a log, not a product moving. Shape: the highlighted line is the **first** in `changes[]`; at most one, two only when B6 step 4 allows it; never on `fixed` or `internal`; zero is correct when no candidate survives. The `title` is B6's Headline tier and names the same thing the highlight marks (one story per surface, `biz.C4`); a title that headlines something the highlight does not, or vice versa, means one of them is wrong. Write the highlighted line benefit-first with the concrete mechanism as proof (`biz.C1`, `content.B2`): what the user can now do, then how — never the file, route or component that does it. Mechanical review: `release_lint.py` emits `[HILITE]` for a version with a `new` change and no highlight — a candidate, answered by B6 step 5's per-candidate verdict lines in the gate receipt, never silently passed.
 
 ### C3. No version gaps, and no content gaps, in releases.json
 Every version that appears in `CHANGELOG.md` MUST also appear in `releases.json` (no missing version), and every `Added`/`Changed`/`Fixed`/`Removed` section in that version's CHANGELOG entry must be represented by at least one `changes[]` line in `releases.json` (no missing content) — skipping a version, or silently dropping a whole category of its work, because it reads as "internal" or "technical" is not allowed. This page is the one place both a human visitor and a crawling/LLM bot judge whether the product is actively maintained; a version that reads as empty is worse than one that reads as unglamorous.
@@ -228,14 +249,13 @@ Every version that appears in `CHANGELOG.md` MUST also appear in `releases.json`
 Never leave a gap like `1.0.5 → 1.0.7` or `0.1.0 → 0.1.3` in releases.json. A one-line entry is better than a missing version.
 
 ### C4. Sync check — required before closing a task
-After editing `CHANGELOG.md` or `releases.json`, run:
+After editing `CHANGELOG.md` or `releases.json`, run from the project root:
 
 ```
-grep '"version"' app/data/releases.json
-grep -E '^## \[' CHANGELOG.md
+python3 ~/.claude/skills/akiflow/scripts/release_lint.py --latest .
 ```
 
-Confirm every CHANGELOG version has a matching entry in releases.json and the order (newest-first in releases.json, newest-first in CHANGELOG) is consistent. Fix any gap before the task is done.
+Exit 0 is the pass. Verdict tags — `[ORDER]`, `[SECTION]`, `[LEVEL]` (C1 shape), `[PARITY]` (a version in one surface and not the other, C3), `[TYPE]` (a badge key outside C2) — are fixed before the task closes. `[HILITE]` is a review line (C2), answered, never auto-fixed. Without `--latest` the script sweeps every version — that is an audit run (`agent.B5`), never a per-task cost; historical entries are corrected only when a task already touches them, never as a backfill sweep.
 
 ### C5. Live production verification
 Never trust a deployment CLI's success status alone. A web deploy is only verified when the live production URL explicitly returns the new version data.

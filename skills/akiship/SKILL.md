@@ -45,6 +45,7 @@ Consult is the default whenever both readings are available. A withheld executio
 Run B7 steps 2–7 in order, fixing findings as they surface (this is a gate, not an audit — no findings doc):
 
 - **Hygiene, diff scope only**: `python3 ~/.claude/skills/akiflow/scripts/scythe.py <files changed since boundary>` for `[WRAP]`/`[YAP]`; dead code / redundant guards / duplication the accumulation introduced (`pattern.A8`); doc refs in touched comments still resolve (`docs.B3`). Never widen to the whole repo.
+- **Record shape (B7 step 4)**: `python3 ~/.claude/skills/akiflow/scripts/release_lint.py --latest .` — verdict tags fixed in place; each `[HILITE]` line gets a written answer in the receipt (`release.C2`).
 - **Migration & external-action completeness — FIRST gate step, every release.** Run the `release.B5` detector over the accumulation diff and paste its output. A hit (startup-embedded migration code included) obliges written answers to B5 points 2–5, including a rehearsal from the PREVIOUS state; a pending migration qualifying under `stack.C8`'s execution-ownership clause is run here, not deferred. Then record truthfulness (CHANGELOG + `releases.json` parity where it exists) and doc sync over every record surface B7 step 5 enumerates (plans → `done/`, `arch`/`feat` stamps per `docs.A4`, `README.md`, the task-note file via `akidevsync-notes`, any standards doc the project `CLAUDE.md` binds).
 - **Build & test — mirror CI (B7 step 6)**: derive commands from `.github/workflows/*` first, else the manifest's own scripts; run them all locally; a failure blocks and is fixed in place, same as the hygiene step above; a CI-only leg (other-OS matrix, secrets) is named and left to `release.B10`.
 - Verification honesty — anything else runtime-only, or a migration that does not qualify above, is carried to the final report as **unverified**, never silently assumed (`coding.B3`).
@@ -61,6 +62,8 @@ Run B7 steps 2–7 in order, fixing findings as they surface (this is a gate, no
 **The FIRST block is the checklist receipt, and it is mandatory:** the `release.B7` lines `S0`–`S8` (`PASS | FIXED | FAIL | N/A — evidence`), the B5 detector output, and the four written self-interrogation answers. A report without them declares the run INCOMPLETE and says which steps were NOT RUN; an unreported step is a failed step (`release.B7` fail-closed contract), never an implicit pass.
 
 Then one dense summary (`agent.A4`): state derived → findings fixed (counts per gate step) → commits made → version minted or deferred with the reason → artifacts created → CI results (`release.B10`) → any owner-worded criteria self-decided this run, as an `agent.A3` decision block (`Decided: X · because Y · rejected Z (why) · reopen if W`) → anything left **unverified**, each with the exact command that would settle it.
+
+**The LAST block is the release copy, every run, in `release.B6`'s shape** — Headline, Short, Full, and the announce verdict — quoting the `releases.json` entry and GitHub Release body the run already wrote rather than composing a third text; a deferred version prints `deferred — no copy`. It is the owner's paste-ready text for whatever channel they announce on (a post, a notification, a store listing); the block never names a channel the project's own records do not.
 
 ## Boundaries
 
