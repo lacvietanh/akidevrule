@@ -1,6 +1,6 @@
 # SEO Rule — Nuxt + Cloudflare Stack
 
-<!-- Address map: seo.A1-5 · seo.B1-4 · seo.C1-3 (⟨Aki⟩) -->
+<!-- Address map: seo.A1-6 · seo.B1-3 · seo.C1-3 (⟨Aki⟩) -->
 
 ## Scope
 Cross-project rules for all Nuxt 4 + Cloudflare Pages sites. For project-specific keyword strategy and schema values, see the project's own `docs/ref/seo.md` or equivalent.
@@ -78,6 +78,15 @@ sitemap: {
 - **Location**: `public/ogimage/[slug].jpg` or `.png`
 - **Fallback**: if page-level image is absent, the composable falls back to the site-wide default OG image
 - Never reference an OG image path that doesn't exist in `public/`
+- Referenced site-relative (`/ogimage/slug.jpg`); the SEO composable makes it absolute (A6)
+
+### A6. URL form — relative at rest, absolute only at emission
+
+- Every same-site URL is stored and rendered root-relative (`/images/x.jpg`, `/path/`): content data, internal links, `<img src>`/`srcset`, asset references. An own-origin literal (`https://domain.com/...`) there breaks localhost and preview deploys, and hides a missing local asset behind the production copy.
+- Consumers that require an absolute URL (`og:image`, `twitter:image`, `og:url`, canonical, hreflang, JSON-LD `url`/`image`/`logo`, sitemap, RSS, email, share text) get it from one helper at the emission boundary (SEO composable, schema builder, feed generator), never from the stored value. The helper is idempotent (relative → absolute, absolute → unchanged), so legacy absolute data keeps working without a migration.
+- The origin comes from the one configured site URL (`pattern.A1`), never from the request host: a preview deploy must still emit production canonical and OG URLs.
+- A subpath deploy (`baseURL` ≠ `/`) prefixes through the framework's base-URL mechanism, never by string concatenation per call site.
+- Detected mechanically in C3.
 
 ## B. AI visibility & entity
 
@@ -91,7 +100,7 @@ These rules help content appear in AI-generated answers (Perplexity, ChatGPT, Ge
 - **alternateName in Organization/WebSite schema**: include all brand spelling variants (accented + unaccented + lowercase + domain form) so AI can resolve them to a single entity
 - **knowsAbout**: list the topics the brand covers — helps AI cite the site as a relevant source
 
-> ⚠️ **`llms.txt` is not an AI-visibility strategy (2026).** A log study across 137,000 domains found **97% of `llms.txt` files received zero requests over a full month**; no major LLM vendor has committed to reading the format, and Google's John Mueller has compared it to the meta keywords tag — a standard proposed by publishers that no consumer agreed to honour. Keep the file if it already exists (it costs nothing and is genuinely useful for *internal* agents reading the site), but never list it as an SEO/GEO deliverable and never let it substitute for the thing that does work: getting the content into the server-rendered HTML (B4).
+> ⚠️ **`llms.txt` is not an AI-visibility strategy (2026).** A log study across 137,000 domains found **97% of `llms.txt` files received zero requests over a full month**; no major LLM vendor has committed to reading the format, and Google's John Mueller has compared it to the meta keywords tag — a standard proposed by publishers that no consumer agreed to honour. Keep the file if it already exists (it costs nothing and is genuinely useful for *internal* agents reading the site), but never list it as an SEO/GEO deliverable and never let it substitute for the thing that does work: getting the content into the server-rendered HTML (B3).
 
 ### B2. Entity & ecosystem linking
 
@@ -103,16 +112,7 @@ For sites that belong to a multi-site ecosystem or brand family:
 
 Keep the concrete domain list (parent org URL, sibling sites) in the project's own docs — one source of truth per ecosystem, not hardcoded in shared rules.
 
-### B3. Vietnamese keyword handling (vi locale)
-
-Google treats accented and unaccented Vietnamese as different queries (`vst là gì` ≠ `vst la gi`). To cover both without degrading UX:
-
-- **Embed the unaccented form in parentheses** in the first mention of a term in body copy or FAQ: *"...VST (vst la gi)..."*
-- **Or include it in** `keywords` meta or `alternateName` in schema
-- **Never** put unaccented forms in H1, H2, visible headings, or the FAQ question text — it looks unprofessional
-- **Meta title and description**: use correctly accented Vietnamese; unaccented coverage comes from schema + body copy
-
-### B4. Prerendering & SSR
+### B3. Prerendering & SSR
 
 - SEO-critical content must be in the HTML at crawl time — not injected by client-side JS. **This is the single highest-evidence rule in this file for AI visibility**: roughly 69% of AI crawlers (GPTBot, OAI-SearchBot, ClaudeBot, Claude-SearchBot, PerplexityBot) do **not** execute JavaScript, so a client-only SPA is simply invisible to them. Googlebot and Gemini do render; ChatGPT, Claude and Perplexity do not. Prerendering beats every schema tweak combined.
 - Public pages: prerender/SSG preferred
@@ -129,7 +129,7 @@ Every public page must call `usePageSeo()`. Canonical URL is derived automatical
 usePageSeo({
   title: 'Page Topic',               // Max 60 chars total — NO brand suffix (see @nuxtjs/seo note below)
   description: 'Action-oriented…',   // Max 155 chars, unique per page
-  ogImage: 'https://domain.com/ogimage/slug.jpg',  // optional
+  ogImage: '/ogimage/slug.jpg',      // optional, site-relative — the composable absolutizes it (A6)
   ogImageAlt: 'Description of image',              // optional
   noindex: true,                      // optional, for admin/private pages
 })
@@ -161,6 +161,8 @@ Run `scripts/validate-seo.js` (or equivalent) after every build. At minimum it s
 - [ ] All descriptions ≤ 155 chars
 - [ ] No em dash (`—`) or en dash (`–`) in title or description
 - [ ] All canonical URLs end with `/`
+- [ ] No rendered `src`, `srcset` or `<a href>` carries the site's own origin (A6); `<head>` `link`/`meta` are exempt, they are emission targets
+- [ ] Every `og:image`, `twitter:image` and JSON-LD `image` is an absolute `https://` URL
 - [ ] Homepage `Organization` schema has `alternateName` and `sameAs`
 - [ ] `/admin/**` pages absent from sitemap output
 - [ ] Skip redirect stub files (`http-equiv="refresh"`) — they have no SEO content to validate

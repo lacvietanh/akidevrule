@@ -1,17 +1,17 @@
 ---
 name: aki-article-writer
 description: >-
-  Per-project article writing skill: research & fact-verification, SEO metadata,
-  JSON-LD schema generation, UX-psychology-aware content, and a separate Image Scout
-  subagent (Gemini Flash / Haiku) for image search, download, visual inspection,
-  slug-named processing, and WebP output. Activate when the user asks to write a
-  new article, create content, draft a blog post, or produce a knowledge entry for
-  any project.
+  Per-project pipeline for publishable site prose: research & fact-verification, SEO
+  metadata, JSON-LD, UX-psychology-aware content, a rendered-output pass, and a
+  separate Image Scout subagent for images. Activate whenever the task writes,
+  rewrites, translates or reviews an article, news or blog post, announcement or
+  knowledge entry for any site, in any wording or language, including turning a
+  release, changelog or finding into a post.
 ---
 
 # aki-article-writer
 
-Invoke with `/aki-article-writer`, or whenever the user asks in any wording for an article to be written.
+Invoke with `/aki-article-writer`, or whenever a task writes, rewrites, translates or reviews publishable site prose (article, news/blog post, announcement, knowledge entry), in any wording — including a release or finding to be turned into a post.
 
 This skill delegates one full article to a dedicated **Article Worker subagent**. The worker spawns a separate **Image Scout subagent** (lightweight model) for all image work, keeping both agents' contexts clean and independent.
 

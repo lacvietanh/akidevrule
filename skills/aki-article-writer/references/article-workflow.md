@@ -92,7 +92,7 @@ Select the correct schema type based on project:
 
 ### 2.5 URL canonical & trailing slash
 
-All canonical URLs, sitemap entries, `og:url`, internal links, and JSON-LD `url` fields must end with `/`. Required for Cloudflare Pages compatibility.
+All canonical URLs, sitemap entries, `og:url`, internal links, and JSON-LD `url` fields must end with `/`. Required for Cloudflare Pages compatibility. Those absolute URLs are produced at emission; every URL stored in the record or rendered in the body is site-relative (`seo.A6`).
 
 ---
 
@@ -130,16 +130,7 @@ Example:
 
 Use exactly one canonical term for each concept throughout the article. Synonym variation may seem stylistically rich but confuses both readers and AI crawlers. Pick the term, define it once, use it consistently.
 
-### 3.4 Vietnamese dual-coverage (vi locale)
-
-Google treats `vst là gì` and `vst la gi` as different queries. To cover both without degrading readability:
-
-- Embed the unaccented form in parentheses at its **first occurrence** in body copy or FAQ: `…VST (vst la gi) là loại phần mềm…`
-- Or place it in `keywords` meta or `alternateName` in schema
-
-**Never** place unaccented forms in H1, H2, H3, or FAQ question text — it degrades the visual quality of the interface.
-
-### 3.5 Anxiety handling at CTA
+### 3.4 Anxiety handling at CTA
 
 At every call-to-action point (sign-up, purchase, download, consult), identify the dominant user anxiety at that moment and answer it right there — not on a distant FAQ page:
 
@@ -150,12 +141,12 @@ At every call-to-action point (sign-up, purchase, download, consult), identify t
 | Compatibility | "Hỗ trợ Win/Mac, tương thích mọi DAW phổ biến" |
 | Privacy | "Không lưu dữ liệu cá nhân, xoá tài khoản bất cứ lúc nào" |
 
-### 3.6 Internal & external links
+### 3.5 Internal & external links
 
 - **Internal links:** ≥ 2 links to related articles or service pages within the same project
 - **External links:** link to authoritative sources when citing data; add `rel="noopener"`
 
-### 3.7 SSR / prerender requirement
+### 3.6 SSR / prerender requirement
 
 69% of AI crawlers (ChatGPT, ClaudeBot, PerplexityBot, OAI-SearchBot) do not execute JavaScript. All article content, meta tags, and schema must be present in the server-rendered HTML at crawl time — never client-side only.
 
@@ -331,7 +322,7 @@ Embed with markdown image syntax directly in body content:
 ### `article_arch: component` (single-image mode)
 
 Do **not** write `![]()` anywhere in body/paragraph fields — the renderer does not parse it and will print the literal text. Instead:
-1. Set the content record's existing share-image field (e.g. `ogImage`) to `/images/articles/<slug>.<ext>`.
+1. Set the content record's existing share-image field (e.g. `ogImage`) to `/images/articles/<slug>.<ext>`, site-relative. Confirm the SEO composable and schema make it absolute (`seo.A6`); if either passes it through raw, fix that helper once — never write the site origin into the record, even when neighbouring records do.
 2. Confirm the shared render component (e.g. `ContentArticle.vue`) already displays that field as a hero image above the body. If it does not yet, that is a one-time component change to flag to the user — do not route around it with markdown text in a paragraph.
 3. No separate body images in this mode; one image serves as both hero and OG/share image.
 
@@ -354,7 +345,6 @@ Article Worker runs through the full checklist before reporting completion.
 - [ ] No `UNVERIFIED` claim appears in the published text
 - [ ] No banned openers in any paragraph or FAQ answer
 - [ ] No paragraph exceeds 5 lines
-- [ ] Unaccented Vietnamese keyword embedded in parentheses at first occurrence in body / FAQ (vi locale only)
 - [ ] CTA point has an anxiety-answering line
 - [ ] ≥ 1 H2 is a direct question (ends with `?`)
 - [ ] ≥ 2 internal links
@@ -369,6 +359,12 @@ Article Worker runs through the full checklist before reporting completion.
 
 ### 6.4 SSR / prerender
 - [ ] Article content, meta tags, and schema are present in server-rendered HTML, not deferred to client-side JS
+
+### 6.5 Rendered-output pass
+Source strings, a green build and a passing SEO validator do not show what the reader sees. After the build, open the article's built HTML (every locale) — the build is self-authorized, no dev server needed (`coding.B3`):
+- [ ] `grep` the page body: no `src`, `srcset` or `<a href>` carries the site's own origin; `og:image` and JSON-LD `image` are absolute (`seo.C3`)
+- [ ] Read the full rendered text top to bottom as the target reader, in each locale, and fix anything that reader would stumble on — before reporting the article done
+- [ ] Any SEO device visible in the text (a parenthetical keyword variant, a repeated keyphrase) is listed as a review line, never shipped silently
 
 ---
 

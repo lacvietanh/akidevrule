@@ -35,7 +35,7 @@ Do not rename existing files or introduce new top-level prefixes without updatin
 ## Content language
 
 `payload/`, `skills/`, and `claude/` are **PUBLIC**, distributed to many users — not just Aki's own. All authored content, including section/group headers (`## A. …`), must be English. Vietnamese is allowed only in these narrow, functional cases:
-- a worked example that specifically needs Vietnamese text to illustrate the point (e.g. accented-vs-unaccented SEO queries, NFC normalization of a Vietnamese name)
+- a worked example that specifically needs Vietnamese text to illustrate the point (e.g. a `Đây là...` FAQ preamble, NFC normalization of a Vietnamese name)
 - a literal command token the user actually types, where the literal string itself is the gate (e.g. `commit luôn`)
 - a concept term in the router's signals column (`skills/akirule/SKILL.md`), beside its English equivalent
 
