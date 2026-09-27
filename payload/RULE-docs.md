@@ -1,6 +1,6 @@
 # Core Docs Rules
 
-<!-- Address map: docs.A1-5 · docs.B1-3 · docs.C1-4 -->
+<!-- Address map: docs.A1-6 · docs.B1-3 · docs.C1-4 -->
 
 ## Goals
 Docs should be readable for both humans and LLMs.
@@ -19,7 +19,7 @@ Use these short, stable topic folders:
 - `docs/feat/` — features, systems, behaviors
 - `docs/arch/` — architecture, structure, technical design
 - `docs/plan/` — plans and execution notes
-- `docs/ref/` — stable references, setup notes, lookup docs
+- `docs/ref/` — stable lookups: commands, paths and setup steps, verified by running them; `ref/fact-*.md` holds claims about the outside world, verified by evidence (A6)
 - `docs/research/` — exploratory, comparative, or time-bound findings
 
 Do not create new top-level doc topics unless the existing set clearly fails.
@@ -32,10 +32,11 @@ Filenames across all `docs/*` never lead with a date — the content-identifying
 - For any project with a business dimension, `docs/biz/` is REQUIRED and is the spine.
 - All `arch/`, `feat/`, and `plan/` docs that touch product direction or money must reference it.
 - When code intent and a `biz/` doc disagree, the `biz/` doc wins — reconcile or escalate.
+- `biz/` holds decisions, not facts: it wins because the owner chose it, never because a source proved it. A market fact the decision rests on (a competitor's price, a platform limit) belongs in `ref/fact-*` with its evidence (A6), and the `biz/` doc cites it.
 
-### A4. Anchor stamp — `updated <time> <version>` on every `arch|biz|feat` doc
+### A4. Anchor stamp — `updated <time> <version>` on every `arch|biz|feat` doc and every `ref/fact-*`
 
-`arch/`, `biz/` and `feat/` hold current state and are the SSoT other docs and code are written against, so a reader cannot tell a still-true doc from a silently rotted one without knowing when it was last confirmed. These three folders carry a stamp; `plan/`, `research/` and `ref/` do not — the first two are event records whose own schema already dates them (B1, B2), and `ref/` is verified by running its commands, not by a date.
+`arch/`, `biz/` and `feat/` hold current state and are the SSoT other docs and code are written against, so a reader cannot tell a still-true doc from a silently rotted one without knowing when it was last confirmed. These three folders carry a stamp, and so does every `ref/fact-*` doc (A6): a fact is confirmed by reading a source on a date, and the outside world moves without touching this repo. `plan/`, `research/` and the rest of `ref/` do not — the first two are event records whose own schema already dates them (B1, B2), and a command lookup is verified by running it, not by a date.
 
 **Placement** — first line of the file's own header block: immediately under the H1 for a plain Markdown doc, or as a `updated:` key in the frontmatter/description field where the file already has one. One stamp per file, never per section.
 
@@ -61,6 +62,15 @@ The harness prepends this file to every request, so every line in it is paid on 
 5. **Facts and limits, not behavior** — the file binds the project's facts (stack, reference implementation, test and compile command, ship platform, hard limits) and stricter constraints; behavior rules live in the corpus (`index.md` § Precedence). Those bindings are the router's standing signal for every task in the project.
 
 One file is the source: a per-project `GEMINI.md` or `AGENTS.md` is a bootstrap that points at `CLAUDE.md`, never a second copy.
+
+### A6. Fact docs — `docs/ref/fact-*.md`
+
+Three claim classes, three authorities, never interchangeable: a **biz** claim is decided by the owner and wins by decision (A3); a **decision** is reached by research and holds by its recorded reasoning (B2); a **fact** is a claim about the outside world — a vendor's behavior, a limit, a price, what a standard specifies, what an artifact of a given version contains — and holds only by evidence. A fact nobody can trace is an unverified claim: it lives in `research/` marked as such, never in `ref/fact-*`.
+
+- **Every fact carries its own trail, on the claim, not only on the file**: the source — an official page with the date it was read, or a named artifact pinned by version with the path inside it — and the research doc and section that verified it (`research/<doc>.md § R3`). A fact with a source but no research origin was asserted, not verified.
+- **Current state only; history lives in research.** The fact doc is the distilled answer (B2 Action). Every change lands through a research event — an `## Amendments` entry when the finding stands, a successor doc when it changes — and the fact doc is updated in the same edit with its stamp rewritten (A4). A fact doc edited with no research event behind it is a **Wrong** finding (C3).
+- **A fact earns its row when a second consumer needs to cite it** — a rule, another doc, an audit (`content.C2`'s fact-check reads here before the product's repo or live page). A one-off finding stays in the research doc that produced it.
+- **The filename declares the class**: `fact-<subject>.md`. The rest of `ref/` stays commands and setup, verified by running.
 
 ## B. Lifecycle & Sync
 
@@ -90,7 +100,7 @@ Required fields, in order:
    - **Verification** — the evidence/method that hardens the result (data, test, cross-check against another case). If not verified, say so explicitly — silence reads as certainty when it isn't.
    - **Corroborating links** — links to the evidence/cases the result rests on or conflicts with (not just a verified/unverified flag)
 6. **Decision** — the resolution reached, one of:
-   - **Action** — link to the artifact(s) where it materialized (`arch/`, `plan/`, `feat/`, `biz/`, `ref/`, or code/commit); 0 or many. Landing in `ref/` always means a **new** clean lookup doc, never the research doc itself relocated or rewritten into ref format — `ref/` is a distilled answer, research is the narrative trail behind it.
+   - **Action** — link to the artifact(s) where it materialized (`arch/`, `plan/`, `feat/`, `biz/`, `ref/`, or code/commit); 0 or many. Landing in `ref/` always means a **new** clean lookup doc, never the research doc itself relocated or rewritten into ref format — `ref/` is a distilled answer, research is the narrative trail behind it. A fact lands in `ref/fact-*` (A6) with this doc's section named on the claim, so the trail runs both ways.
    - **No action** — state why explicitly, so it reads as a deliberate stop, not an abandoned doc
    - **Follow-up research** — link to the new research doc opened by this result
    - **Rejected/closed** — an option eliminated with no replacement; no link needed
@@ -139,7 +149,7 @@ Walk the topology, checking each doc against what is actually true now:
 - `docs/feat/` — the described behavior still matches what the code does
 - `docs/biz/` — where code intent contradicts it, A3 decides: the `biz/` doc wins until it is explicitly changed
 - `docs/research/` — a conclusion whose recorded context no longer holds needs a successor doc plus a `Status: superseded by` line; a claim corrected while the Decision stands needs an `## Amendments` entry plus a `Status: amended` notice; a body rewritten in place with neither is a **Wrong** finding (B2)
-- `docs/ref/` — commands, paths, and setup steps still run
+- `docs/ref/` — commands, paths, and setup steps still run; in `ref/fact-*`, every source still resolves and still says what the claim says, every pinned artifact version is still the one in use, and every claim's research origin exists — a claim changed with no research event behind it is **Wrong** (A6)
 - Doc references inside code comments (B3) still point at a heading that exists
 - **The inverse walk — code → docs:** a complex feature or subsystem shipped with no corresponding `feat/`/`arch/` doc is an **Incomplete** finding (C4). The audit checks both directions, never only whether existing docs still hold
 
