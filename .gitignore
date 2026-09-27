@@ -35,3 +35,6 @@ Icon?
 # Postman GUI workspace scaffolding (auto-generated when Postman opens this folder)
 .postman/
 postman/
+
+# Claude Code harness lock, per-session runtime state
+.claude/scheduled_tasks.lock
