@@ -89,6 +89,7 @@ A worker is a subagent, or the same or another CLI called headlessly (`claude -p
 ### B3. Decision boundaries
 Ask before:
 - destructive or hard-to-reverse actions — hard-to-reverse means no backup/restore or fix-forward path exists; an action that has one (e.g. an additive migration with a backup, `stack.C8`) climbs `coding.B5`'s ladder instead of asking
+- discarding or hiding tracked/uncommitted work: `git stash`, `checkout -- <path>`/`checkout .`, `restore .`, `reset --hard`, `clean -f[d]`, `push --force`, `branch -D` — run only on the user's explicit ask, never as a shortcut past a failing check or an obstacle (`coding.B3`'s stash-for-attribution ban is the narrow instance of this)
 - changing deployment, infrastructure, auth, billing, or shared config assumptions
 - any test, benchmark, or trial run that spends paid API credits or session quota
 - modifying shared rule files, templates, or project-wide conventions
