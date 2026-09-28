@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **`release_lint.py --latest` false-positive `[PARITY]` on every project with an open `[Unreleased]` section.** Evidence: running the B7-gate command on aiobox flagged `releases.json version 0.4.6 has no CHANGELOG entry` even though 0.4.6 has a full CHANGELOG entry — reproduced identically on akitao.com (real ecosystem repo, also mid-accumulation with `[Unreleased]` open). Root cause: `--latest` truncates `_changelog_blocks()` to the single newest block for the reverse `releases.json → CHANGELOG` parity check; the moment that newest block is `[Unreleased]` (the normal `release.A5` working state between releases), the truncated version list cannot contain the last *shipped* version, so the check misreports every prior release as missing. `lint_changelog` now returns both the `--latest`-scoped version list (still used for the forward "did I add this new entry to releases.json" check, which is exactly what `--latest` is meant to scope) and the full, untruncated version list; the reverse check now tests membership against the full list — the truncation still limits which `releases.json` entries get inspected (`items[:1]`), only the comparison target was wrong. Verified: `--all` output is byte-identical before/after on aiobox and 7 other ecosystem repos (zero regression); a synthetic case with a `releases.json` version absent from CHANGELOG entirely still fires `[PARITY]` in both modes (true positive preserved); a synthetic `[Unreleased]`-open-plus-matching-older-version case now exits 0 (the bug scenario, fixed). Rejected: skipping the reverse check whenever `--latest`'s top block is `Unreleased` — that would also blind the check to a `releases.json` entry added without any matching CHANGELOG entry anywhere, which is the exact drift `[PARITY]` exists to catch.
+
 ## [3.5.0] - 2026-09-27
 
 ### Added
