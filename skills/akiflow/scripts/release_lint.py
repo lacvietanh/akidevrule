@@ -94,9 +94,7 @@ def lint_releases(path: Path, changelog_versions: list[str], all_changelog_versi
     for v in [x for x in changelog_versions if x.lower() != 'unreleased']:
         if v not in json_versions:
             findings.append(f"[PARITY] {path}:1 | CHANGELOG version {v} has no releases.json entry")
-    # Reverse check needs the FULL CHANGELOG history, not the --latest-scoped block: with
-    # an open [Unreleased] on top (the normal A5 state), the newest releases.json entry is
-    # always some older shipped version that --latest's single-block scope no longer sees.
+    # Reverse check needs the full history: with [Unreleased] on top, --latest's one block never holds the newest shipped version.
     for r, v in zip(items, json_versions):
         n = line_of(v)
         if v not in all_changelog_versions:
