@@ -59,7 +59,7 @@ The harness prepends this file to every request, so every line in it is paid on 
 2. **Reach** — it governs the majority of requests in this project. A line that matters to one domain belongs in the doc that domain's route loads (`feat/`, `arch/`, `biz/`, a project rule file), not here.
 3. **Not derivable** — it cannot be read from the code, the manifest (`package.json`, `Cargo.toml`), or a doc the router already loads for that task.
 4. **Not a restatement** — a shared-corpus rule is pointed at by address (`coding.B3`), never copied; a copy drifts and doubles the cost.
-5. **Facts and limits, not behavior** — the file binds the project's facts (stack, reference implementation, test and compile command, ship platform, hard limits) and stricter constraints; behavior rules live in the corpus (`index.md` § Precedence). Those bindings are the router's standing signal for every task in the project.
+5. **Facts and limits, not behavior** — the file binds the project's facts (stack, reference implementation, test and compile command, ship platform, hard limits) and stricter constraints; behavior rules live in the corpus (`agent.B6` Precedence). Those bindings are the router's standing signal for every task in the project.
 
 One file is the source: a per-project `GEMINI.md` or `AGENTS.md` is a bootstrap that points at `CLAUDE.md`, never a second copy.
 

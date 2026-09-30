@@ -11,6 +11,7 @@
 - **Composition over duplication (Law 5)** → slots / dynamic components / `v-for`, never hand-copied markup.
 - **OCP (Law 4)** → extend a component via props / variant / slot, never fork a copy.
 - **Name by role (Law 7)** → semantic tokens and variants, never value-names.
+- **Draft, then commit once (Law 9)** → `dragenter`/`dragover`/`pointermove`/`input` handlers touch a local draft only; `drop`/`pointerup`/`Enter`/Save writes the store once. Grep: no store setter, `localStorage`, IPC or fetch inside a preview handler.
 - **Reshape, don't stack (Law 8)** → before packaging a repeated style, try to remove it. The tier ladder only *packages* repetition; Law 8 is the only thing that *eliminates* it, and without it a codebase obeys every rule here while growing without bound.
 - **Documentation** → every global pattern is looked up before writing and recorded after, so the next agent reuses instead of rewriting.
 
