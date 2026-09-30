@@ -122,7 +122,17 @@
       "title": "hình như dạo gần đây không nạp akirule tự động",
       "updated_at": 1790304041309,
       "wish": false
+    },
+    {
+      "created_at": 1790572038685,
+      "detail": "",
+      "done": true,
+      "id": "task-1790572038685",
+      "pin": true,
+      "title": "docs/plan/resident-context-slim-sep28.md",
+      "updated_at": 1790760336023,
+      "wish": false
     }
   ],
-  "updated_at": 1790304041392
+  "updated_at": 1790760336023
 }

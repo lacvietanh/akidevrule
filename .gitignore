@@ -38,3 +38,6 @@ postman/
 
 # Claude Code harness lock, per-session runtime state
 .claude/scheduled_tasks.lock
+
+# akidevsync local project state and its timestamped backups
+.akidevsync/project.json*
