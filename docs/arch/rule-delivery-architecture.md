@@ -1,6 +1,6 @@
 # Architecture — how rules reach the two agents
 
-> updated 2026-09-26 · v3.4.0
+> updated 2026-09-30 · v3.5.0
 
 akidevrule is the single source of truth for a reusable rule baseline. That baseline has to reach two different agents that load context in fundamentally different ways: **Claude Code** and **Gemini / Antigravity**. This document describes how one source is installed onto a machine and consumed by each.
 
@@ -8,11 +8,19 @@ akidevrule is the single source of truth for a reusable rule baseline. That base
 
 | | Claude Code | Gemini / Antigravity |
 |---|---|---|
-| How rule files reach the model | **Core (4 files) + router** — `@`-imported by `~/.claude/CLAUDE.md`, read by the harness at session start, no model decision involved. **Everything else** — read when the model `Read`s it on a route match (domain of the task; concept signals are evidence, not the test) | Context files concatenated and prepended to every prompt |
-| Determinism | **Core: deterministic** — 0 model-dependent hops, harness-guaranteed. **Everything else: one model-dependent hop** — the `Read` of a routed file | **Deterministic for the files it auto-loads**, but any "please read file X" pointer inside them is a soft hop the model may skip |
+| How rule files reach the model | **Resident (agent, router)** — `@`-imported by `~/.claude/CLAUDE.md`, read by the harness at session start, no model decision involved. **Everything else** — read when the model `Read`s it on a route match (domain of the task; concept signals are evidence, not the test); for routes with an artifact signature the `aki-route-guard` PreToolUse hook denies the first edit of that artifact type until the Read has happened | Context files concatenated and prepended to every prompt |
+| Determinism | **Resident: deterministic** — 0 model-dependent hops, harness-guaranteed. **Artifact routes: deterministic by gate** — the edit cannot proceed before the `Read`, 0 model hops in the check. **Meaning-only routes: one model-dependent hop** — the `Read` | **Deterministic for the files it auto-loads**, but any "please read file X" pointer inside them is a soft hop the model may skip |
 | Consequence | Rule *content* always arrives | Rule *content* arrives only if it sits in a file the tool hard-loads — not behind a chain of pointers |
 
 **Design conclusion:** behavior rules that Gemini/Antigravity must always obey cannot live behind a soft pointer chain. They are placed in the one file the tool hard-loads globally — `~/.gemini/GEMINI.md` — as literal content, not as a link to go fetch. The router itself is not loaded there: AG attaches each rule natively (`always_on` for `agent`, `glob` for the stacks, `model_decision` for the rest), and `always_on` stays rationed because AG gives all `always_on` rule files one shared budget of about 43 KB and silently drops whole files past it, largest first — measured 2026-09-26 (`docs/research/rule-delivery-force-load-sep25.md`); description-routed rules are never inlined and carry no size limit, they enter when the model views them. Each native description is generated from the rule's `akirule` route, so the two harnesses route from one table.
+
+## The route gate — the second hop enforced, not requested
+
+Importing the router made the routing deterministic and left the `Read` of a routed file to the model. Measured on the owner's Claude Code transcripts (`../research/rule-delivery-second-hop-sep29.md`): after the import the `[RULES]` receipt appeared in 81% of edit sessions but the routed file was read in 57%, and most of those reads followed an owner reminder — about 18% organic. Text had been changed twice for this and moved only what text can move.
+
+`claude/hooks/aki-route-guard.mjs` is a `PreToolUse` hook on `Edit|MultiEdit|Write|NotebookEdit`. It maps the edited path to rule files (code extension → `coding` + `pattern`; `.md` → `docs`; `CHANGELOG.md`/`releases.json` → `release`; `.vue`/`.css`/`.scss`/`.tsx` → `ui`; `.vue`/`.ts` in a project with `nuxt.config.*` → `stack`; `.rs`/`src-tauri/` → `tauri`; `.sql`/`migrations/` → `db`; `locales/`/`i18n/` → `content`), drops any file the global `CLAUDE.md` already `@`-imports, then scans the actor's transcript — the subagent's own file when `agent_id` is present, else the session's — for a `Read` (or a `cat` in Bash) of each remaining file. Any still unread is denied with a reason naming the files; the model reads them and retries. Properties: zero model hops in the check; at most one denial per artifact type per session; a subagent is gated on its own transcript, which closes the `agent.A5` "worker inherits nothing" gap by mechanism; fail-open on any error, a missing transcript, or three denials for the same file (a detection bug must never lock a session); `AKI_ROUTE_GUARD=0` disables it; edits under `~/.aki/akidevrule/` are never gated. It ships only to Claude Code — Antigravity attaches rules natively by glob and `model_decision`, and the other skill-only harnesses have no hook surface.
+
+What the gate cannot reach: routes with no artifact signature (`think`, `proportion`, `biz`, `ux`, the audit methods) and code discussed but not edited. Those stay on the router's meaning clause and the receipt.
 
 ## The same asymmetry inside a skill — the description is resident, the body is not
 
@@ -25,10 +33,10 @@ A rule file is either loaded or not. A **skill** is split across two residencies
 ```text
 akidevrule/
   payload/
-    index.md, RULE-*.md, METHOD-*.md   → the rule corpus (Claude Code consumes this)
+    RULE-*.md, METHOD-*.md             → the rule corpus (Claude Code consumes this)
     GEMINI.md                          → Gemini/Antigravity global behavior overrides (NOT a rule file)
   skills/                              → shared Agent Skills corpus (SKILL.md open standard); deployed
-                                          unmodified to both agents, see docs/ref/agent-skills-standard.md
+                                          unmodified to both agents, see docs/ref/fact-agent-skills-standard.md
   claude/
     CLAUDE.md, hooks/                  → Claude Code-only runtime assets
     agents/                            → 5 agent definitions, deployed per file to ~/.claude/agents/
@@ -47,7 +55,7 @@ Two distinct `GEMINI.md` files, different jobs:
 ```mermaid
 flowchart TD
     subgraph SRC["akidevrule repo — source of truth"]
-        P["payload/ RULE-*.md · METHOD-*.md · index.md"]
+        P["payload/ RULE-*.md · METHOD-*.md"]
         PG["payload/GEMINI.md<br/>AG overrides + version marker"]
         SKSRC["skills/ (shared open standard)"]
         CCSRC["claude/ CLAUDE.md · hooks"]
@@ -68,7 +76,8 @@ flowchart TD
 
     subgraph CCC["Claude Code — deterministic load"]
         SKILLS -->|"Read on route match (one model hop)"| RULES
-        GCLAUDE -->|"@import ×4 (core, guaranteed)"| RULES
+        GCLAUDE -->|"@import (agent, guaranteed)"| RULES
+        GATE["hooks/aki-route-guard.mjs<br/>PreToolUse: deny first edit of an artifact type until its rule was Read"] -.->|"enforces the hop for artifact routes"| RULES
         GCLAUDE -->|"@import router (guaranteed)"| SKILLS
     end
 

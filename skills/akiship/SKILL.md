@@ -12,7 +12,7 @@ Invoke with `/akiship` or an explicit release order, only as described in § Act
 **This skill sequences; it owns no content.** The checklist is `RULE-release.md` (B5 migration doctrine, B7 fail-closed gate, B8 autonomy contract, B10 CI, B11 post-deploy verification) and doc sync is `RULE-docs.md`. Both are installed at `~/.aki/akidevrule/`.
 
 1. `Read` `~/.aki/akidevrule/RULE-release.md` IN FULL and `~/.aki/akidevrule/RULE-docs.md` as the FIRST tool calls after this skill loads. Keyword routing, memory of an earlier session, this file's summary, and a rule that happens to be in context do NOT count as loading — only a `Read` performed in THIS run does.
-2. Emit as the first line of the run: `[RULES] agent,coding,pattern (core) + release,docs (akiship)`. If either file could not be read, say so and the run STOPS there.
+2. Emit as the first line of the run: `[RULES] agent (core) + release,docs (akiship)`. If either file could not be read, say so and the run STOPS there.
 3. A run that starts Phase 1 without those two `Read` calls is INVALID: every finding, commit, tag and deploy it produces is unauthorized and MUST be reported as such. Compliance is checked against the tool-call log, never against the receipt line (`agent.B2`).
 
 If a step in this file disagrees with the rule file, the rule file wins — except the activation gate below, which this skill owns outright (`pattern.A1`) and which no rule file, keyword list, or routing table may widen.

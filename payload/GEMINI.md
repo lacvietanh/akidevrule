@@ -33,8 +33,8 @@ These directives patch Antigravity's known weak spots. They are hard-loaded (no 
 
 ## 3. Always comply with the akirule corpus — and with rule 0
 - The shared rule corpus installed at `~/.aki/akidevrule/` ("akirule") applies to you, not only to other agents. When a task touches an area it covers, follow it.
-- **Session start, before the first task action:** `view_file` `~/.aki/akidevrule/RULE-coding.md` and `~/.aki/akidevrule/RULE-pattern-core.md` in full. They are core rules; the rules budget cannot inline them, so this read is how they enter context. Read every `~/.aki/akidevrule/` file from that directory — the copies under `~/.gemini/config/rules/` are not readable by `view_file`.
-- **First line of every response is the receipt** `[RULES] agent (always_on) + coding,pattern,<topics you viewed this session> (viewed)` — topic addresses from `~/.aki/akidevrule/index.md`. A rule absent from the line was not read; the line is self-reported and is a diagnostic, never proof of compliance.
+- **Nothing is read at session start.** `RULE-coding.md` and `RULE-pattern-core.md` are attached natively by their rule descriptions on code turns (`akirule-coding`, `akirule-pattern-core`), like every other contextual rule; a turn that only reads, counts or explains what exists loads nothing. When a rule must be viewed, read it from `~/.aki/akidevrule/` — the copies under `~/.gemini/config/rules/` are not readable by `view_file`.
+- **First line of every response is the receipt** `[RULES] agent (always_on) + <topics attached or viewed this session> (viewed)` — a topic is the rule's name stem (`akirule-coding` → `coding`), an item inside it `topic.A1`. A rule absent from the line was not read; the line is self-reported and is a diagnostic, never proof of compliance.
 - **Re-assertion of rule 0, by design:** whatever else you are doing, you comply with the prime directive. Never act outside the requested scope.
 
 ## 4. Rule 0 again — no unrequested action, at any cost

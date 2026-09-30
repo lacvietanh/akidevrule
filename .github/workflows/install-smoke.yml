@@ -52,7 +52,7 @@ jobs:
           run([]);
           run([], { CLAUDE_CONFIG_DIR: envProfile });
           run(["--claude-dir", flagProfile]);
-          for (const file of [path.join(primary, "CLAUDE.md"), path.join(envProfile, "CLAUDE.md"), path.join(flagProfile, "CLAUDE.md"), path.join(home, ".aki", "akidevrule", "index.md")]) if (!fs.existsSync(file)) throw new Error(`missing ${file}`);
+          for (const file of [path.join(primary, "CLAUDE.md"), path.join(envProfile, "CLAUDE.md"), path.join(flagProfile, "CLAUDE.md"), path.join(home, ".aki", "akidevrule", "RULE-agent-behavior.md"), path.join(primary, "hooks", "aki-route-guard.mjs")]) if (!fs.existsSync(file)) throw new Error(`missing ${file}`);
           if (!JSON.parse(fs.readFileSync(path.join(primary, "settings.json"))).unrelated || !fs.existsSync(path.join(primary, "skills", "other", "SKILL.md")) || !fs.existsSync(path.join(primary, "agents", "other.md"))) throw new Error("unrelated Claude content changed");
           const ag = JSON.parse(fs.readFileSync(path.join(gemini, "settings.json")));
           if (!ag.unrelated || ag.permissions.allowNonWorkspaceAccess !== true || ag.permissions.agentMode !== true || !ag.permissions.trustedWorkspaces.includes(home)) throw new Error("Antigravity permission fields did not persist");

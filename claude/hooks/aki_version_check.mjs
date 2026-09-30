@@ -66,9 +66,9 @@ function isFile(p) {
   }
 }
 
-/** True when installRoot looks intact enough to compare (CHANGELOG.md and index.md both present). */
+/** True when installRoot looks intact enough to compare (CHANGELOG.md and the core rule both present). */
 export function localInstallPresent(installRoot) {
-  return isFile(join(installRoot, "CHANGELOG.md")) && isFile(join(installRoot, "index.md"));
+  return isFile(join(installRoot, "CHANGELOG.md")) && isFile(join(installRoot, "RULE-agent-behavior.md"));
 }
 
 /** One of the STATE_* constants — see README.md "Update notifications" for the full 5-state table. */

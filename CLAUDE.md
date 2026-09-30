@@ -11,8 +11,8 @@ Treat this repository as a standards distribution project, not as an application
 ## Source of truth
 
 - Edit canonical rule and skill content in this Git repository first.
-- `payload/` contains the packaged Aki rule corpus installed to `~/.aki/akidevrule`. `docs/` is repo-internal and never installed, with one exception: `docs/ref/macos-codesign-tcc.md`, a lookup with no `RULE-`/`METHOD-` shape, which the installer (`install.mjs`) deploys to `~/.aki/akidevrule/docs/ref/`.
-- `skills/` contains the shared Agent Skills corpus (the `SKILL.md` open standard) deployed unmodified to `~/.claude/skills/`, `~/.gemini/config/skills/`, `~/.agents/skills/` (Codex CLI), `~/.kiro/skills/` (Kiro CLI), and `~/.grok/skills/` (Grok CLI) — see `docs/ref/agent-skills-standard.md`.
+- `payload/` contains the packaged Aki rule corpus installed to `~/.aki/akidevrule`. `docs/` is repo-internal and never installed, with one exception: `docs/ref/fact-macos-codesign-tcc.md`, a lookup with no `RULE-`/`METHOD-` shape, which the installer (`install.mjs`) deploys to `~/.aki/akidevrule/docs/ref/`.
+- `skills/` contains the shared Agent Skills corpus (the `SKILL.md` open standard) deployed unmodified to `~/.claude/skills/`, `~/.gemini/config/skills/`, `~/.agents/skills/` (Codex CLI), `~/.kiro/skills/` (Kiro CLI), and `~/.grok/skills/` (Grok CLI) — see `docs/ref/fact-agent-skills-standard.md`.
 - `claude/` contains Claude Code-only runtime assets (CLAUDE.md template, `agents/` definitions, hooks, settings fragment) installed to `~/.claude`. `agents/*.md` is Claude Code's own agent format and lives here, not in a vendor-neutral top-level folder, because that format currently has one implementation — unlike `SKILL.md`, which has five. It is copied per file into a directory shared with the user's own agents, so it is never mirrored with `--delete`.
 - `README.md` documents the architecture, file conventions, and install flow for both humans and agents. Read it when you need to understand the full layout or how the smart router works. It is not an agent instruction file — it does not override this CLAUDE.md.
 
@@ -22,7 +22,7 @@ Files in `payload/` follow this convention:
 - `RULE-*.md` — constraint rules: behavior, coding, content, stack requirements.
 - `METHOD-*.md` — analytical frameworks loaded on demand for auditing or optimization tasks.
 
-Do not rename existing files or introduce new top-level prefixes without updating `payload/index.md`, `skills/akirule/SKILL.md`, `claude/CLAUDE.md`, `README.md`, and `install.mjs` (the pure-Node installer SSOT; `install.sh`/`install.ps1` are thin `node` launchers) consistently.
+Do not rename existing files or introduce new top-level prefixes without the change sweep below; `install.mjs` is the pure-Node installer SSOT (`install.sh`/`install.ps1` are thin `node` launchers).
 
 ## Rule authoring principles
 
@@ -47,9 +47,12 @@ A ready-to-paste prompt template (e.g. in `payload/GEMINI.md`) must not hardcode
 - Keep project instructions short and bind them to the current repository instead of duplicating the full shared rule corpus.
 - Changes to rules, skills, install targets, or generated Claude configuration can affect many downstream environments; clarify scope and tradeoffs before broad changes unless the requested edit is explicit.
 - Preserve the separation between packaged source files in this repository and installed runtime files under `~/.aki/akidevrule` or `~/.claude`.
-- Any change to `payload/*` or `skills/*` that adds/removes a topic, changes what a file covers, or changes install behavior must also update `README.md` (file manifest / "What you get" / layout sections) wherever the change makes it stale.
-- **Any change to `skills/*` (add/remove/rename a skill, or change what a skill covers) must be checked against `skills/akihelp/SKILL.md`.** It reads live installed state at runtime and never needs a content update for the normal case — but when the *mechanism* of introducing the system changes (e.g. a new deploy surface, a new category of thing to introduce), update its steps, not just the other docs.
+- **Change sweep — every add, change or removal of a rule, law, section, address, tier, skill or delivery mechanism is finished only when every reference to it in the tree agrees.** The rule text is one copy; the corpus carries it in many more places, each of which goes stale silently. Before closing, grep the repo for the old name, address, file name and tier wording, and update every hit: `docs/arch/corpus-map.md` (groups, lens rows), `skills/akirule/SKILL.md` (route clause and signals), `claude/CLAUDE.md`, `README.md` (manifest / "What you get" / layout), `docs/arch/*` and the active `docs/plan/*`, every `skills/*/SKILL.md` and `references/*` that names the rule or emits a `[RULES]` receipt (`akiship`, `akiflow`, `akihelp`), every `claude/agents/*.md` manifest and receipt, `install.mjs` (`AG_RULE_MAP`, hook registration, printed summary), the hooks under `claude/hooks/`, the scripts under `scripts/` and `skills/*/scripts/` (`scythe.py`, `release_lint.py`, `second_hop_audit.py`), the CI workflows, and code comments that cite an address. The CHANGELOG entry lists what was updated together, so a reviewer can check the sweep rather than repeat it. `skills/akihelp/SKILL.md` reads live installed state and needs no edit for a normal content change — it changes only when the *mechanism* of introducing the system changes (a new deploy surface, a new category of thing to introduce).
 - Always update `CHANGELOG.md` for every change to `payload/`, `skills/`, or `claude/`.
+
+## Reporting a rule change to the owner
+
+When a rule line was added or changed, the report quotes it verbatim in a four-backtick fence (`agent.C3`), then gives its meaning in one or two plain sentences in the conversation's language directly beneath — what the line rules in, what it rules out, and where it sits (root law vs domain application, with the address). The owner reads rule text in a terminal between many projects and judges wording, not diffs: a paraphrase hides drift, a bare diff hides meaning, and the two together are what gets checked. One quoted line per change; a section that changed shape gets its address and a one-line summary, not a full paste.
 
 ## Release process
 

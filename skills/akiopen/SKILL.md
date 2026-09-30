@@ -25,7 +25,7 @@ grep -rn -i 'needs owner\|needs mac\|manual test\|unverified' docs/plan/*.md 2>/
 | Active plans | `docs/plan/*.md` outside `done/` with open `- [ ]` items, or a plan whose text says done but still sits outside `done/` (`docs.B1`) |
 | Inbox files | any top-level `docs/*.md` with open `- [ ]` items — tasks pushed in from an upstream standard or another repo |
 | Release | `[Unreleased]` has entries, or the tree changed with no entry yet (`release.A`) |
-| Hand-offs | a line in an active plan waiting on the owner or another machine (`coding.B5`) |
+| Hand-offs | a line in an active plan waiting on the owner or another machine (`coding.B3`) |
 
 A surface the project does not have is skipped silently. A project `CLAUDE.md` may name additional inbox or plan paths; read it before scanning.
 
