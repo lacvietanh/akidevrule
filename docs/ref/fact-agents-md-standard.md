@@ -1,6 +1,10 @@
 # `AGENTS.md` is a repo instruction file — not `SKILL.md`, not `CLAUDE.md`
 
-Lookup. **`SKILL.md` (Agent Skills)** is a different standard: `docs/ref/agent-skills-standard.md`. This repo’s Claude vs Gemini *rule delivery* is `docs/arch/rule-delivery-architecture.md`.
+`updated 2026-09-30 · v3.5.0`
+
+**Trail.** Every row of the table below carries its own vendor source, read 2026-08-28; no research doc preceded this lookup, so the vendor pages are the whole trail.
+
+Lookup. **`SKILL.md` (Agent Skills)** is a different standard: `docs/ref/fact-agent-skills-standard.md`. This repo’s Claude vs Gemini *rule delivery* is `docs/arch/rule-delivery-architecture.md`.
 
 **`AGENTS.md`** is plain Markdown at a repo root (or nested; closest file wins; user chat overrides). No schema. Steward: [agents.md](https://agents.md/) / Agentic AI Foundation under the Linux Foundation (donated 2025). ~60k public repos. It is a growing convention, not a file every agent is required to hard-load.
 

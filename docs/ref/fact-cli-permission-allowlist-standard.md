@@ -1,5 +1,9 @@
 # Multi-CLI Permission & Allowlist Standard
 
+`updated 2026-09-30 · v3.5.0`
+
+**Trail.** Rows marked *measured* come from `../research/agy-permissions-wrap-bias-aug21.md` §5 Topic 1 and its Correction (agy 1.1.17, headless, 2026-08-21); rows marked *verified* were read against the vendor page named in Sources on 2026-09-25 (the Codex and Cursor rewrite in CHANGELOG 3.5.0); rows marked *unverified* say so on the row.
+
 ## The fact
 
 Agent Skills (`SKILL.md`) frequently contain deterministic Python scripts (e.g. `scythe.py` format lint, `council_verify.py` gate validation) meant to run unattended. When an agent CLI/IDE executes these scripts via shell/command tools, platform security policies prompt the user for permission unless pre-allowed in the platform's configuration.
@@ -93,4 +97,4 @@ Three shapes that look plausible and are not real on this platform, listed becau
 
 1. **Least privilege, uniformly**: one rule per exact script path on every platform — never a directory wildcard, never the interpreter alone. The only glob used is the trailing argument wildcard, and Antigravity (no glob at all, §1.2) gets the bare prefix.
 2. **Owned entries only**: an entry is the installer's when it points a Python launcher into `<aki-skill>/scripts/`, or is a directory-glob rule from an earlier release; those are replaced each run, everything else is preserved. `install.mjs` must preserve existing user permissions, settings keys, and comments/formatting where possible, only inserting or updating the managed entries idempotently — and must tolerate agy re-serializing `settings.json` after a session and dropping false/default-valued keys (observed live, `docs/research/agy-permissions-wrap-bias-aug21.md`).
-3. **Multi-surface Portability**: A `SKILL.md` deployed unmodified to several CLI roots (`docs/ref/agent-skills-standard.md`) cannot hardcode one CLI's absolute script path as its literal invocation example — a Claude-rooted path silently fails Antigravity's per-root permission prefix even though the file exists at that path on disk. `skills/akiflow/SKILL.md` § Harness notes now states which root to substitute per harness.
+3. **Multi-surface Portability**: A `SKILL.md` deployed unmodified to several CLI roots (`docs/ref/fact-agent-skills-standard.md`) cannot hardcode one CLI's absolute script path as its literal invocation example — a Claude-rooted path silently fails Antigravity's per-root permission prefix even though the file exists at that path on disk. `skills/akiflow/SKILL.md` § Harness notes now states which root to substitute per harness.

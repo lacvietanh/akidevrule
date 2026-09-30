@@ -1,13 +1,17 @@
 # Agent Skills is a shared open standard — Claude Code ↔ Antigravity/AGY
 
-Not `AGENTS.md` (the repo instruction file). That standard: `docs/ref/agents-md-standard.md`.
+`updated 2026-09-30 · v3.5.0`
+
+Not `AGENTS.md` (the repo instruction file). That standard: `docs/ref/fact-agents-md-standard.md`.
+
+**Trail.** Verified 2026-09-30 against the vendor pages: `code.claude.com/docs/en/skills` (Claude Code follows the Agent Skills open standard at agentskills.io; YAML frontmatter `name`/`description`; a skill's body loads only when it is used; personal `~/.claude/skills/`, project `.claude/skills/`) and `antigravity.google/docs/skills` (required `SKILL.md`, `name` optional and defaulting to the folder, `description` required; the agent sees names and descriptions at session start and reads the full file on activation; workspace `.agents/skills/`, global `~/.gemini/config/skills/` for Antigravity 2.0 and the IDE, `~/.gemini/antigravity-cli/skills/` for the CLI). Installed-path behaviour on this repo's machines is measured, not read: the installer also registers `~/.aki/akidevrule/agskills` in `~/.gemini/config/skills.json`, and `agy` 1.2.14 lists the skills from that path (2026-09-30), so the CLI path above is recorded, not relied on. Earlier trail: canary 2026-07-22 (`../arch/rule-delivery-architecture.md` § Verified behavior), `../research/antigravity-claude-skills-native-discovery.md`.
 
 ## The fact
 
 `SKILL.md` (YAML frontmatter + instructions, plus optional `references/`, `scripts/`, `assets/` subfolders, with progressive disclosure — the agent sees only name+description until the skill is actually triggered) is not a Claude-specific format. Google adopted the same open standard for Antigravity. Both platforms agree on:
 
 - **File format** — `SKILL.md` as the source of truth, same frontmatter fields (`name`, `description`) used for discovery.
-- **Folder contents** — identical: `SKILL.md` + optional `scripts/`, `references/`, `assets/`.
+- **Folder contents** — `SKILL.md` required, subfolders optional and free-form; the two vendors name different examples (Claude: `references/`, `scripts/`, `assets/`; Antigravity: `scripts/`, `examples/`, `resources/`) and neither validates the names, so a folder written for one loads on the other.
 - **Progressive disclosure** — both list name+description at session start, load full content only when a skill is triggered.
 - **Zero transformation needed** — a skill folder written for one platform works unmodified on the other. This is unlike this repo's `payload/` rule corpus, which *does* need a per-agent adapter (Antigravity requires generated YAML `trigger` frontmatter that Claude Code has no concept of).
 
@@ -15,8 +19,8 @@ The only real difference is **where each platform looks for skills**, not the fo
 
 | Scope | Claude Code | Antigravity / AGY |
 |---|---|---|
-| Project-level | `.claude/skills/` | `.agent/skills/` |
-| Global (this repo's target) | `~/.claude/skills/` | `~/.gemini/config/skills/` — the one root read by AG Desktop, AG IDE, and AGY CLI alike |
+| Project-level | `.claude/skills/` | `.agents/skills/` (vendor page 2026-09-30; older secondary sources say `.agent/skills/`) |
+| Global (this repo's target) | `~/.claude/skills/` | `~/.gemini/config/skills/` (Antigravity 2.0 and IDE per vendor page; the CLI documents `~/.gemini/antigravity-cli/skills/`, and on this repo's installs discovers the skills through `skills.json` — see Trail) |
 
 This repo already deploys to the two global paths — the installer's skill sync (now `install.mjs`'s `syncAkiSkills()`) was already syncing the same folder to `~/.gemini/config/skills/` unmodified (plain file copy, rsync `--delete` semantics, no rsync binary) before this finding was verified; only the *source-repo* layout (`claude/skills/` implying Claude ownership) was inaccurate to what was actually happening.
 
