@@ -18,7 +18,7 @@ The script is the SSoT for these detectors — akiflow's `aki-conduct` seat runs
 
 - `[WRAP]` — a logical line split across physical lines: a 2-line comment whose second line reads as a lowercase continuation, or a markdown prose line broken mid-sentence. Root rule: `agent.C3`.
 - `[YAP]` — a comment block ≥3 lines, or a comment line >200 chars. Always labeled **(review)**: a flag for judgment against `coding.B4`, never an auto-delete verdict — a legitimate long WHY exists and `agent.C3` forbids wrapping it, so length alone convicts nothing.
-- `[FLUFF]` (density, `agent.A4`) is content understanding — a script cannot check it and this skill never claims it.
+- `[FLUFF]` (density, `agent.A4`) and `[SKIP]` (a skipped mandatory step, `agent.B7`) are content understanding — a script cannot check them and this skill never claims them.
 
 ## Protocol
 

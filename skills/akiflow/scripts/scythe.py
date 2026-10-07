@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # scythe.py — mechanical lint for the greppable penalty-card classes (RULE-agent-behavior.md §0).
 # Detects [WRAP] (hard-wrapped code comments / markdown prose) and [YAP] (oversize comments — flagged "review", never a verdict).
-# [FLUFF] (density) is content judgment and deliberately out of scope for a script.
+# [FLUFF] (density) and [SKIP] (a skipped mandatory step) are judgment and deliberately out of scope for a script.
 # Usage: scythe.py [--all] <file|dir> [...]   A dir expands to its git-tracked files; outside a repo, to find(1).
 # Output: [TAG] path:line[-line] | short label      Exit: 0 clean · 1 findings · 2 usage error.
 # Past 40 findings (SCYTHE_CAP) output becomes a capped list plus per-tag and per-file counts; --all prints everything.

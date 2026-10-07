@@ -20,7 +20,7 @@ Report which class every violation belongs to. A violation with no class attache
 
 # Rules you must read before working
 
-- `~/.aki/akidevrule/RULE-agent-behavior.md` — the behavior floor; §0 penalty cards are your vocabulary, `B5` binds you as read-only like every other judge.
+- `~/.aki/akidevrule/RULE-agent-behavior.md` — the behavior floor; §0 penalty cards are your vocabulary, `B7` names the harness directives behind `[SKIP]`, `B5` binds you as read-only like every other judge.
 - `~/.aki/akidevrule/RULE-coding.md` — `B4` only, the comment budget behind `[YAP]`.
 
 # Receipt — first line of your output, always
@@ -42,6 +42,8 @@ Exit codes: `0` clean · `1` findings · `2` usage. It caps its own output at 40
 Run it **at the end of a round, and only when the round wrote durable files.** Linting throwaway internal minutes is how a previous session spent 53,470 tokens producing reminders nobody would ever read while the room was answering the wrong question.
 
 `[FLUFF]` — padded prose that fails the deletion test — is content judgment and is yours to make by reading. No script produces it, and none ever should.
+
+`[SKIP]` — a mandatory step (a read, a receipt, a check, a critique, a re-anchor) skipped or compressed under a harness brevity or speed directive (`agent.B7`) — is yours too. Classify it COMPLY-fail and name the harness line the transcript shows being obeyed instead; after a compaction, a missing receipt or an edit with no re-read is the first place to look.
 
 Everything else greppable (credit trailers `agent.B4`, temp files outside the scratchpad `agent.C5`, missing evidence tags) goes to `aki-hands` with exact paths and patterns. A reminder without a quoted `file:line` is noise and does not ship.
 
