@@ -1,6 +1,6 @@
 ---
 name: aki-judge
-description: Judge an artifact against exactly one standard, named at spawn (pattern, proportion, ux, db, seo, release, …). Returns a verdict with evidence, never a fix. Spawn one per standard rather than asking one agent to hold several.
+description: Judge an artifact against exactly one standard, named at spawn (pattern, proportion, ux, db, seo, release, test, …). Returns a verdict with evidence, never a fix. Spawn one per standard rather than asking one agent to hold several.
 tools: Read, Grep, Glob
 model: sonnet
 ---

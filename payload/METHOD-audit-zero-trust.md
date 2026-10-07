@@ -14,7 +14,7 @@ Zero trust means nothing counts as clean because it looks clean: a finding exist
 
 ## B. Mechanical pass runs first
 
-1. **Run the detectors before forming any opinion** — typecheck, the repo's linter, `scythe.py` (`skills/akiflow/scripts/scythe.py` in the akidevrule source repo) for `[WRAP]`/`[YAP]`, and the targeted `grep` scans the relevant rule file already specifies (`ui.C1` for frontend, `flow` for state, `release.B` for version state).
+1. **Run the detectors before forming any opinion** — typecheck, the repo's linter, `scythe.py` (`skills/akiflow/scripts/scythe.py` in the akidevrule source repo) for `[WRAP]`/`[YAP]`, and the targeted `grep` scans the relevant rule file already specifies (`ui.C1` for frontend, `flow` for state, `release.B` for version state, `test.D1` for a test suite).
 2. **Run only what the project actually has**, and name what you skipped and why. A missing `tsconfig.json` means there is no typecheck to run, not a gap to invent one for. Never run a build or a dev server to satisfy this step.
 3. **Attach the raw output**, and attach it *before* stating a conclusion. A tool run afterwards to confirm something already asserted is not verification.
 

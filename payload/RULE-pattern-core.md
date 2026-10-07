@@ -1,6 +1,6 @@
 # Pattern Core — Universal Architecture Pattern Rules
 
-<!-- Address map: pattern.A1-8 · pattern.B1-3 · pattern.C1 -->
+<!-- Address map: pattern.A1-9 · pattern.B1-3 · pattern.C1 -->
 
 **Tier: Contextual, gated** — routed by `akirule` on every code turn and enforced on Claude Code by the `aki-route-guard` hook, which denies the first code edit of a session until this file was read. Stack-agnostic. This file is the universal pattern philosophy — the "forest view" that keeps a codebase coherent as it grows, instead of accreting local patches. It applies to every project type: backend, API/worker, Tauri/desktop, CLI, library, DB layer, and UI.
 
@@ -35,7 +35,7 @@ These are constraints on **structure and reuse**, not style. Reach for this file
 **A6 — Stable boundaries between modules.** Split along independent responsibilities/domains (bounded context). Modules talk through a narrow, explicit contract — a stable ID, a typed interface, a `Result` — and never reach into another module's internals. Volatile details (provider SDKs, frameworks, transport) sit at the edges behind a boundary; stable abstractions sit at the core, and dependencies point inward toward them.
 
 **A7 — Name by role, never by concrete value.** Name things for what they *mean*, not what they *currently are*: `retryLimit` not `three`, `PrimaryAction` not `BlueButton`, `AuthBoundary` not `FirebaseWrapper`. Value-names rot the instant the value changes and force codebase-wide find-and-replace.
-- *Root rule for naming.* Every other naming item in this corpus (`agent.C1` file names, `ui.A` tokens, `stack.C1` component names, `release.A3` version/tag format, `content` semantic stability) is a **domain application** of A7, not a competing rule — do not restate A7 in them, and do not move them out of their domain.
+- *Root rule for naming.* Every other naming item in this corpus (`agent.C1` file names, `ui.A` tokens, `stack.C1` component names, `release.A3` version/tag format, `content` semantic stability, `test.A3` test names) is a **domain application** of A7, not a competing rule — do not restate A7 in them, and do not move them out of their domain.
 
 **A8 — One flow, made natural — not guarded.** When the same guard / check / fallback keeps reappearing around a path, the path's shape is wrong. Reshape the flow so the correct behavior is automatic; do not stack more enforcement on a weak path. "Correct" is measured against the project's pinned facts (`coding.C1`), so a guard for a state those facts rule out is a patch, not a flow. Full method: `METHOD-audit-flow.md`.
 

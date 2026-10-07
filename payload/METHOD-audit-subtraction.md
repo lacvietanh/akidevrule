@@ -35,6 +35,7 @@ Run only what the project actually has; name what was skipped and why (`zero-tru
 | Docs | docs nothing links, plans whose work shipped, superseded research with no chain marker | `docs.C3` |
 | Content | i18n keys nobody reads, strings for removed features | `content.A3` |
 | Operational leftovers | migrations already run and still pending-located, one-shot scripts, dead flags and env vars | `release.B5`, `stack.C8` |
+| Tests | a test that checks nothing, duplicates another, compares to the implementation's own value, or carries a fixture larger than its boundary | `test.A1`, `test.A2`, `test.D` |
 
 ### B2. Severity classes for subtraction — and the class that forbids removal
 - **Dead** — no reference anywhere in the locked scope. CERTAIN, machine-decidable, countable.
