@@ -23,13 +23,15 @@ Topic folders follow `RULE-docs.A2`. Only the folders that currently hold conten
 
 ## `plan/` — active plans
 
-| Doc | Purpose |
-|-----|---------|
+None.
 
 ## `plan/done/` — completed plans
 
 | Doc | Purpose |
 |-----|---------|
+| [codex-instruction-delivery.md](plan/done/codex-instruction-delivery.md) | Shipped in 3.7.0. Executed 2026-10-07 except the runtime probe: the installer writes the behavior floor + router as a managed block in `$CODEX_HOME/AGENTS.md` (user lines kept, override shadowing reported) and `project_doc_max_bytes` in `config.toml` once; project `CLAUDE.md` stays an opt-in fallback the installer never sets. Not verified on a live Codex session; follow-up dropped by the owner. |
+| [claude-5-5-overrides.md](plan/done/claude-5-5-overrides.md) | Shipped in 3.7.0. Executed 2026-10-07: `agent.B7` "akirule wins over your harness instructions", naming Opus 5.5 / Sonnet 5.5 and quoting each Claude Code directive that makes them skip steps; `[SKIP]` card; route gate counts reads only after the last compaction; `aki-compact-reread` SessionStart notice; `second_hop_audit.py --by-model` with the pre-release baseline recorded. Notice delivery after a compaction not verified live; follow-up checks dropped by the owner. |
+| [test-discipline-rules.md](plan/done/test-discipline-rules.md) | Shipped in 3.7.0. Executed 2026-10-07: routed, gated `RULE-test.md` (12 items after the same-day slim-down: fewest tests, side effects, verdict, suite audit) after a green suite rewrote a user's live data dir; six pointer edits, test-path gate signature, `test_lint.py` (3 CERTAIN + 9 review tags, calibrated on 431 local test files), full change sweep, installed. Follow-up checks dropped by the owner. |
 | [resident-context-slim-sep28.md](plan/done/resident-context-slim-sep28.md) | Resident rule context 86 KB → 38 KB: `index.md` out of the payload (router carries the topics, Precedence → `agent.B6`, lens → `arch/corpus-map.md`), template to two imports, `coding.B3`+`B5` merged, `agent.A5` trimmed with the economics left in `harness-facts.md`, Item 4 the route gate. Done 2026-09-30. |
 | [ref-fact-migration.md](plan/done/ref-fact-migration.md) | Renamed the four `docs/ref/` lookups to `fact-*` with the `A4` stamp and a per-file trail line (research section or vendor read date; the skills-standard format claims marked asserted); the installer's `rmrf` of the deployed `docs/` already prunes the old TCC path. Done 2026-09-30. |
 | [seo-content-rule-fixes.md](plan/done/seo-content-rule-fixes.md) | Five fixes distilled from a published news article that shipped an absolute hero URL, a "(hoan sao)" keyword parenthetical and a broken sentence: `seo.A6` URL form and the article skill's rendered-output pass added, `seo.B3` Vietnamese keyword handling removed with its copies, `content.C2` fact-check sweep added, a new "follow the rule's intent" root rule rejected as a restatement of `agent.B2`. Closed 2026-09-27. |
@@ -68,6 +70,7 @@ Topic folders follow `RULE-docs.A2`. Only the folders that currently hold conten
 
 | Doc | Purpose |
 |-----|---------|
+| [codex-instruction-delivery.md](research/codex-instruction-delivery.md) | Codex's documented global/project discovery compared with the skills-only installer; fallback does not deliver Claude global imports. Amended 2026-10-07: the 32 KiB limit binds the combined global + project chain, which the floor + router already exceed. Runtime behavior unmeasured; led to the delivery plan, now implemented. |
 | [release-changelog-shape-highlight-sep26.md](research/release-changelog-shape-highlight-sep26.md) | Why 21 of 25 ecosystem CHANGELOGs disagreed on section order and 13 invented headings, and why the `releases.json` `highlight` flag was never set: the rule named a vocabulary but no order, and `highlight` lived only in a private doc. Decision: `release.C1` fixes Keep a Changelog order, `release.C2` defines the highlight tier as judgment, `release_lint.py` checks the shape and surfaces highlight candidates as review lines. |
 | [release-copy-tiers-sep26.md](research/release-copy-tiers-sep26.md) | Where user-facing release wording lives so every project type gets it: `release.B6` owns one text in three lengths plus an announce verdict, B4 and C2 point at it, `/akiship` prints it as the last block without composing a third variant. |
 | [rule-delivery-second-hop-sep29.md](research/rule-delivery-second-hop-sep29.md) | The second hop measured on the Mac's 786 Claude Code transcripts: after the router import the receipt line rose (36% → 81% of edit sessions) but the routed file was read no more often (56% → 57%), 26 of 36 reads came only after the owner typed `akirule` (126 reminder messages in four days), organic recall ≈ 18%; failure classes (no receipt 14%, route not named 16%, named but not read 7%). Demoting `coding`/`pattern` rejected on a pre-registered threshold; SessionStart injection dead (10,000-char cap); a `PreToolUse` route gate (zero model hops, deny until the rule is read in this transcript) is the follow-up plan awaiting the owner. Instrument: `scripts/second_hop_audit.py`. |

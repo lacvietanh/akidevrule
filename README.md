@@ -104,7 +104,7 @@ Loading happens on two different mechanisms.
 
 **Everything else — routed by meaning, and gated where the artifact gives it away.** Each task turn is classified by the domains it touches and the act (create, decide, audit, ship), in any language; each route carries concept signals in English and Vietnamese as evidence, never as the test, so a paraphrase routes as well as the listed word. The one model-dependent hop left is the `Read` of a routed file, and on Claude Code the `aki-route-guard` PreToolUse hook (`claude/hooks/aki-route-guard.mjs`) enforces it for every route with an artifact signature: the first Edit/Write of each artifact type in a session — a code file (`coding` + `pattern`), `.md` (`docs`), `CHANGELOG.md` (`release`), `.vue`/`.css` (`ui`, plus `stack` in a Nuxt project), `.rs` (`tauri`), `.sql` (`db`), `locales/` (`content`) — is denied until those files have been read in that transcript; a subagent is gated on its own transcript. Zero model hops in the check, at most one denial per artifact type per session, fail-open on any error, `AKI_ROUTE_GUARD=0` disables it. `RULE-coding.md` and `RULE-pattern-core.md` were resident imports from 2026-08-06 to 2026-09-30 because the router as a skill went uninvoked; importing the router restored the routing but not the read (measured: the model read a routed file unprompted in about one session in five — `docs/research/rule-delivery-second-hop-sep29.md`), so the gate now restores the guarantee by mechanism and the two files load only on code turns. Meaning-only routes (`think`, `proportion`, `biz`, `ux`, the audits) stay on the router alone, with sensitivity deliberately high (err toward loading — a false positive costs a few tokens, a false negative causes wrong behavior). The one deliberate exception is a lookup: a turn that only reads, counts, locates or explains what exists routes nothing, because no rule's act is performed — those turns are the majority for many users of this corpus, and the tiering exists so they pay for nothing beyond the two resident files.
 
-- **Contextual and analytical — read on route match:** `RULE-coding.md` (code-quality floor: source of truth, changing existing code, verification and the hand-off ladder, comment budget, runtime safety), `RULE-pattern-core.md` (the 9 structural laws, decomposition, the critique gate before any abstraction), `RULE-docs.md` (structure and lifecycle, evidence-bound `ref/fact-*` fact docs, plus the docs-vs-code drift audit), `RULE-content-write.md` (UI copy and writing style, plus the content audit — canonical-term drift, density deletion test, i18n coverage, fact-check), `RULE-stack-akiNuxtCf.md`, `RULE-stack-tauri.md` (Tauri v2 + Rust: never-block-the-UI, version SSOT, target context, the macOS TCC/Gatekeeper boundary for spawned sidecars), `RULE-ui-pattern.md` (design-system layer: the subtraction pass that runs before the tier ladder, class taxonomy, tokens, variant API, and the audit playbook), `RULE-seo.md` (metadata, schema, sitemap, and URL form: relative at rest, absolute only where a consumer requires it), `RULE-release.md`, `RULE-db-design.md`, `RULE-biz.md` (market-facing decisions: positioning, pricing, audience) — plus the analytical methods (`METHOD-*`, loaded on route match like the rest): `METHOD-audit-flow.md` (refactors, multi-file bugs, fragile flows), `METHOD-audit-zero-trust.md` (strict mechanical-first audit: detectors before opinion, exact matches separated from pattern-level candidates), `METHOD-deep-think.md` (scope/architecture/value decisions, first-principles and critique-style thinking), `METHOD-ux-psych.md` (UX/user-behavior evaluation, onboarding and conversion flows), `METHOD-proportionality.md` (sizing a guard, limit or accepted risk against reach, capability, motive and blast radius — the lens that stops both over-engineering and client-side-limits-as-enforcement), `METHOD-audit-subtraction.md` (repo-wide "does this need to exist" sweep, terminating on two dry rounds), and `METHOD-audit-frozen-reference.md` (compliance audit for a clause naming a concrete external artifact as the canonical shape to match — resolve to an exact path, diff literally against it, never judge from memory of the rule's prose).
+- **Contextual and analytical — read on route match:** `RULE-coding.md` (code-quality floor: source of truth, changing existing code, verification and the hand-off ladder, comment budget, runtime safety), `RULE-pattern-core.md` (the 9 structural laws, decomposition, the critique gate before any abstraction), `RULE-test.md` (fewest tests: no new test by default, no new test file or folder when one fits, nothing touched the test does not own, a verdict that means what it exercised — gated on test-file edits), `RULE-docs.md` (structure and lifecycle, evidence-bound `ref/fact-*` fact docs, plus the docs-vs-code drift audit), `RULE-content-write.md` (UI copy and writing style, plus the content audit — canonical-term drift, density deletion test, i18n coverage, fact-check), `RULE-stack-akiNuxtCf.md`, `RULE-stack-tauri.md` (Tauri v2 + Rust: never-block-the-UI, version SSOT, target context, the macOS TCC/Gatekeeper boundary for spawned sidecars), `RULE-ui-pattern.md` (design-system layer: the subtraction pass that runs before the tier ladder, class taxonomy, tokens, variant API, and the audit playbook), `RULE-seo.md` (metadata, schema, sitemap, and URL form: relative at rest, absolute only where a consumer requires it), `RULE-release.md`, `RULE-db-design.md`, `RULE-biz.md` (market-facing decisions: positioning, pricing, audience) — plus the analytical methods (`METHOD-*`, loaded on route match like the rest): `METHOD-audit-flow.md` (refactors, multi-file bugs, fragile flows), `METHOD-audit-zero-trust.md` (strict mechanical-first audit: detectors before opinion, exact matches separated from pattern-level candidates), `METHOD-deep-think.md` (scope/architecture/value decisions, first-principles and critique-style thinking), `METHOD-ux-psych.md` (UX/user-behavior evaluation, onboarding and conversion flows), `METHOD-proportionality.md` (sizing a guard, limit or accepted risk against reach, capability, motive and blast radius — the lens that stops both over-engineering and client-side-limits-as-enforcement), `METHOD-audit-subtraction.md` (repo-wide "does this need to exist" sweep, terminating on two dry rounds), and `METHOD-audit-frozen-reference.md` (compliance audit for a clause naming a concrete external artifact as the canonical shape to match — resolve to an exact path, diff literally against it, never judge from memory of the rule's prose).
 - **Full load on explicit request:** asking, in any wording, to load the whole corpus reads every `RULE-*`/`METHOD-*` file at once.
 
 No harness magic beyond the `CLAUDE.md` import: routes are instructions telling Claude to Read the file from `~/.aki/akidevrule/` when the task's domain matches; the full-load request is the escape hatch.
@@ -184,6 +184,7 @@ payload/                          → installed to ~/.aki/akidevrule/
   RULE-seo.md
   RULE-release.md
   RULE-db-design.md
+  RULE-test.md
   RULE-biz.md
   METHOD-audit-flow.md
   METHOD-audit-zero-trust.md
@@ -191,6 +192,7 @@ payload/                          → installed to ~/.aki/akidevrule/
   METHOD-ux-psych.md
   METHOD-proportionality.md
   METHOD-audit-subtraction.md
+  METHOD-audit-frozen-reference.md
   GEMINI.md                       → installed to ~/.gemini/GEMINI.md (NOT a rule file)
 
 skills/                            → shared Agent Skills corpus (SKILL.md open standard), deployed
@@ -203,6 +205,7 @@ skills/                            → shared Agent Skills corpus (SKILL.md open
   akiflow/scripts/council_verify.py    (mechanical closure gate: ghost seats, missing evidence tags, unanswered REMINDs)
   akiflow/scripts/scythe.py            (penalty-card lint [WRAP]/[YAP] — shared engine of /akilint and the enforcer's evidence sweeps)
   akiflow/scripts/release_lint.py      (release-record lint: CHANGELOG section order/vocabulary/level, releases.json parity, type keys, highlight review — RULE-release.md C4, B7 step 4)
+  akiflow/scripts/test_lint.py         (test-file lint: literal /tmp, missing temp cleanup, exit calls as verdicts; sleeps, vacuous asserts, ambient ifs, HOME reads, live URLs, ports, source pins, history comments as review — RULE-test.md D1)
   akiflow/scripts/*.sh                 (transitional Unix wrappers, one per script above — each execs its .py sibling)
   akiflow/references/harness-facts.md  (subagent/cost/model facts, with sources)
   akithink/SKILL.md
@@ -217,7 +220,8 @@ skills/                            → shared Agent Skills corpus (SKILL.md open
 
 scripts/                           → repo-only tooling, never installed
   test-agy-bias.sh                     (6-trap agy/Gemini bias regression suite, runnable by anyone with agy — docs/plan/done/agy-helpful-bias-containment.md §3)
-  second_hop_audit.py                  (measures, per route and era, whether Claude Code sessions read the routed rule before the first edit — docs/research/rule-delivery-second-hop-sep29.md)
+  second_hop_audit.py                  (measures, per route and era, whether Claude Code sessions read the routed rule before the first edit — docs/research/rule-delivery-second-hop-sep29.md; `--by-model` adds the per-model compaction and shell-read table behind agent.B7)
+  codex_probe.sh                       (Mac hand-off: records the Codex CLI version and whether the managed AGENTS.md block reaches a fresh session — spends one Codex turn)
 
 claude/                           → Claude Code-only runtime assets, installed to ~/.claude/
   CLAUDE.md
@@ -228,7 +232,8 @@ claude/                           → Claude Code-only runtime assets, installed
   agents/aki-maker.md
   hooks/aki-update-check.mjs
   hooks/aki_version_check.mjs       (shared version-status parser, imported by both the hook and install.mjs --check)
-  hooks/aki-route-guard.mjs         (PreToolUse route gate: denies the first edit of an artifact type until its routed rule was Read)
+  hooks/aki-route-guard.mjs         (PreToolUse route gate: denies the first edit of an artifact type until its routed rule was Read after the last compaction)
+  hooks/aki-compact-reread.mjs      (SessionStart on `compact` only: one notice that the rules read earlier left context)
   fragments/settings.akidoc.fragment.json   (illustrative reference only — never apply manually)
 
 docs/                             → repo-internal records; one TCC lookup is installed
@@ -257,7 +262,7 @@ flowchart TD
         CSKILLS["skills/ (11 skills, shared open standard)"]
         CCLAUDE["claude/CLAUDE.md (template)"]
         CAGENTS["claude/agents/ (5 agent definitions)"]
-        CHOOKS["claude/hooks/aki-update-check.mjs + aki_version_check.mjs (shared parser)"]
+        CHOOKS["claude/hooks/ aki-update-check.mjs + aki_version_check.mjs (shared parser) · aki-route-guard.mjs · aki-compact-reread.mjs"]
     end
 
     INSTALL["⚙️ install.mjs (via install.sh / install.ps1)"]
@@ -277,7 +282,7 @@ flowchart TD
         C_LOCAL["CLAUDE.local.md (Machine local)"]
         C_SKILLS["skills/<skill_name>/SKILL.md"]
         C_AGENTS["agents/aki-*.md (copied per file, your own agents kept)"]
-        C_HOOKS["hooks/aki-update-check.mjs + aki_version_check.mjs"]
+        C_HOOKS["hooks/ aki-update-check.mjs + aki_version_check.mjs · aki-route-guard.mjs · aki-compact-reread.mjs"]
         C_SET["settings.json (Permissions + Skill Overrides)"]
     end
 
@@ -291,8 +296,9 @@ flowchart TD
     end
 
     %% TARGETS 4-6: other CLIs that natively consume the SKILL.md standard
-    subgraph T4["🧩 4. Codex CLI (~/.agents/skills/)"]
+    subgraph T4["🧩 4. Codex CLI (~/.agents/skills/ + $CODEX_HOME/)"]
         X_SKILLS["<skill_name>/SKILL.md"]
+        X_AGENTS["AGENTS.md managed block (behavior floor + router) + config.toml project_doc_max_bytes"]
     end
     subgraph T5["🧩 5. Kiro CLI (~/.kiro/skills/)"]
         K_SKILLS["<skill_name>/SKILL.md"]
@@ -309,7 +315,7 @@ flowchart TD
     INSTALL -->|"sync per skill folder"| T6
 ```
 
-Targets 4-6 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`GEMINI.md`-style overrides — those CLIs have no equivalent hard-load hook this baseline plugs into yet). Each sync is scoped per skill folder name via a Node `fs` copy plus a managed-names-only prune, same never-touch-the-rest guarantee as targets 2 and 3, and runs unconditionally — harmless if that CLI isn't installed on the machine, picked up the moment it is.
+Targets 5-6 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`GEMINI.md`-style overrides — those CLIs have no equivalent hard-load hook this baseline plugs into yet). Target 4 also gets the behavior floor and the router as a managed block in `$CODEX_HOME/AGENTS.md` (default `~/.codex/AGENTS.md`), the one file Codex hard-loads globally — only when that directory exists, lines of your own in the file are kept, and `project_doc_max_bytes` is written to `config.toml` when absent because Codex stops loading instruction files once global plus project files pass 32 KiB (the block alone is ~36 KB). Codex expands no `@` imports and never reads Claude's global file, so copying `~/.claude/CLAUDE.md` would deliver nothing (`docs/research/codex-instruction-delivery.md`). A project's `CLAUDE.md` stays unread unless you opt in per machine with `project_doc_fallback_filenames = ["CLAUDE.md"]`; a native `AGENTS.md` in the same directory wins over it. Each sync is scoped per skill folder name via a Node `fs` copy plus a managed-names-only prune, same never-touch-the-rest guarantee as targets 2 and 3, and runs unconditionally — harmless if that CLI isn't installed on the machine, picked up the moment it is.
 
 1. Syncs `payload/*` into `~/.aki/akidevrule/` (Node `fs` copy, excludes `ref-ECC/`), removes stale files left by renames, syncs `agskills/` for Antigravity skill inheritance, and deploys the full TCC lookup to `~/.aki/akidevrule/docs/ref/fact-macos-codesign-tcc.md`.
 2. Deploys to **all detected Claude config directories** — `~/.claude` (default primary), all existing `~/.claude*` profile variants (e.g. `~/.claude-9rt`, `~/.claude-prx`), plus `$CLAUDE_CONFIG_DIR` or `--claude-dir <path>` if provided:
@@ -318,10 +324,10 @@ Targets 4-6 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`G
    - Replaces `<target>/CLAUDE.md` with the packaged guidance (timestamped backup first), appending this machine's source-repo path and an `@<target>/CLAUDE.local.md` import.
    - Creates `<target>/CLAUDE.local.md` **only if missing** — never overwritten afterward. On profile variants (`~/.claude-*`), the template imports `@~/.claude/CLAUDE.local.md` by default so machine-wide facts are inherited. Put per-machine/per-profile rules there; they survive every reinstall.
    - Before the confirmation prompt or any mutation, preflights every existing JSON file it may update: each detected profile's `settings.json`, `~/.gemini/config/skills.json`, `~/.gemini/antigravity-cli/settings.json`, and `~/.gemini/settings.json`. A malformed file or non-object root aborts the install with originals untouched. After preflight, updates `<target>/settings.json` with a timestamped backup: read permission for `~/.aki/akidevrule/**`, one `Bash(<launcher> <script>*)` rule per Aki skill script per rendering (absolute and `~/`-literal — Claude Code does not expand `~` before matching), `skillOverrides.akirule = "on"`, idempotent registration of the `SessionStart` update-check hook.
-   - Installs `<target>/hooks/aki-update-check.mjs` plus its shared parser `<target>/hooks/aki_version_check.mjs`, and `<target>/hooks/aki-route-guard.mjs` registered as a `PreToolUse` hook on `Edit|MultiEdit|Write|NotebookEdit` (idempotent, same filter-then-push as the update check).
+   - Installs `<target>/hooks/aki-update-check.mjs` plus its shared parser `<target>/hooks/aki_version_check.mjs`, `<target>/hooks/aki-route-guard.mjs` registered as a `PreToolUse` hook on `Edit|MultiEdit|Write|NotebookEdit`, and `<target>/hooks/aki-compact-reread.mjs` registered as a `SessionStart` hook with matcher `compact` (all idempotent, same filter-then-push as the update check).
 3. Writes `~/.aki/akidevrule/.version` with `installed=`/`version=`/`commit=`/`branch=` and records the source-repo path in `~/.aki/akidevrule/.source-repo` — `version=` is the just-installed CHANGELOG's latest released semver, the same value `install.mjs --check` and the hook compare against remote.
 4. Installs `payload/GEMINI.md` to `~/.gemini/GEMINI.md` — Antigravity global behavior overrides, stamped with a version marker (`[AKIRULE-AG-OVERRIDES-…]`) on line 1. Generates one native rule file per `RULE-*`/`METHOD-*` under `~/.gemini/config/rules/` with YAML `trigger` frontmatter — `agent` `always_on`, the stacks `glob`, the rest `model_decision` — each description generated from its `akirule` route, so both harnesses route from one table. Deploys 11 skills directly to `~/.gemini/config/skills/` for native auto-discovery (synced per skill folder, same never-touch-the-rest guarantee as step 2), configures `~/.gemini/config/skills.json` with absolute paths as secondary, and merges skill execution permissions into `~/.gemini/antigravity-cli/settings.json` and `~/.gemini/settings.json` — a `command()` prefix rule for every `skills/*/scripts/*.py` per skill root, in both the expanded and the tilde-literal rendering (agy's matcher compares command strings literally — no glob expansion, and no tilde expansion in either direction — so a directory wildcard never matches and a rule only matches a command written the same way; see [docs/ref/fact-cli-permission-allowlist-standard.md](docs/ref/fact-cli-permission-allowlist-standard.md) §1.2) plus scoped `write_file`/`read_file` rules for the council workspace and rule corpus.
-5. Syncs the same skill folders to `~/.agents/skills/` (Codex CLI, Cursor), `~/.kiro/skills/` (Kiro CLI), and `~/.grok/skills/` (Grok CLI) — each a plain global skills root these CLIs read natively, synced per skill folder name exactly like step 2. Skills-only: no rule corpus is generated for these targets.
+5. Syncs the same skill folders to `~/.agents/skills/` (Codex CLI, Cursor), `~/.kiro/skills/` (Kiro CLI), and `~/.grok/skills/` (Grok CLI) — each a plain global skills root these CLIs read natively, synced per skill folder name exactly like step 2. Kiro and Grok are skills-only. Codex additionally gets the managed `AGENTS.md` block and the `project_doc_max_bytes` key described above, only when `$CODEX_HOME` (default `~/.codex`) exists; the summary names the block size, the budget written or found, and a non-empty `AGENTS.override.md` that would shadow it.
 6. Pre-allows every Aki skill script in each harness present on the machine, one adapter per rule dialect (`lib/permissions.mjs`): `~/.kiro/settings/permissions.yaml` (a marker-delimited managed block), `~/.codex/rules/akidevrule.rules` (a file akidevrule owns), `~/.cursor/cli-config.json` (`Shell(python3:<script>*)`, never a bare `Shell(python3)`), `~/.config/opencode/opencode.json` (`permission.bash`). Every rule names one exact script, in both path renderings; entries a previous install wrote are replaced, the user's own are kept. Grok CLI and Ollama have no file-based allowlist, so nothing is written for them — [docs/ref/fact-cli-permission-allowlist-standard.md](docs/ref/fact-cli-permission-allowlist-standard.md).
 
 Re-running the installer updates the same managed files cleanly.
@@ -351,15 +357,15 @@ rm -rf ~/.agents/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitco
 rm -rf ~/.kiro/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiopen,akiship,aki-article-writer,akidevsync-notes}     # Kiro CLI
 rm -rf ~/.grok/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiopen,akiship,aki-article-writer,akidevsync-notes}     # Grok CLI (other, non-Aki skills already in this folder are untouched)
 rm -f  ~/.claude/agents/aki-{hands,judge,conduct,challenger,maker}.md   # your own agents in that folder are untouched
-rm -f  ~/.claude/hooks/aki-update-check.mjs ~/.claude/hooks/aki_version_check.mjs ~/.claude/hooks/aki-route-guard.mjs
-# then delete the two entries whose command names those hooks from hooks.SessionStart and hooks.PreToolUse in ~/.claude/settings.json
-rm -f  ~/.claude/hooks/aki-update-check.mjs ~/.claude/hooks/aki_version_check.mjs ~/.claude/hooks/aki-route-guard.mjs ~/.claude/hooks/aki-update-check.py ~/.claude/hooks/aki_version_check.py
+rm -f  ~/.claude/hooks/aki-update-check.mjs ~/.claude/hooks/aki_version_check.mjs ~/.claude/hooks/aki-route-guard.mjs ~/.claude/hooks/aki-compact-reread.mjs ~/.claude/hooks/aki-update-check.py ~/.claude/hooks/aki_version_check.py
+# then delete the three entries whose command names those hooks from hooks.SessionStart and hooks.PreToolUse in ~/.claude/settings.json
+# Codex: delete the `>>> akidevrule managed` … `<<< akidevrule managed` block in ~/.codex/AGENTS.md (the rest is yours), and the project_doc_max_bytes line in ~/.codex/config.toml if unwanted
 rm -f  ~/.gemini/GEMINI.md          # restore from a *.akidevrule-backup-* if needed; GEMINI.local.md is left untouched
 ```
 
 On **Windows** the same targets live under `%USERPROFILE%` (e.g. `%USERPROFILE%\.aki\akidevrule`, `%USERPROFILE%\.claude\skills\...`); remove them with `Remove-Item -Recurse -Force`.
 
-Then remove the akidevrule block from `~/.claude/CLAUDE.md` and its entries (permission, skillOverrides, SessionStart and PreToolUse hooks) from `~/.claude/settings.json` if desired.
+Then remove the akidevrule block from `~/.claude/CLAUDE.md` and its entries (permission, skillOverrides, SessionStart and PreToolUse hooks) from `~/.claude/settings.json` if desired. `~/.codex/rules/akidevrule.rules` is a whole file the installer owns and can simply be deleted.
 
 ## Content for dev.akitao.com
 

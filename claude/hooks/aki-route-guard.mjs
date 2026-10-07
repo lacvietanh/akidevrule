@@ -8,10 +8,13 @@ const HOME = homedir();
 const RULE_DIR = join(HOME, ".aki", "akidevrule");
 const CONFIG_DIR = process.env.CLAUDE_CONFIG_DIR || join(HOME, ".claude");
 const MARK = "aki-route-guard";
-const MAX_DENIALS_PER_RULE = 3; // a detection bug must never lock a session; after this many denials the rule is treated as read
+const COMPACT = "compact_boundary";
+const MAX_DENIALS_PER_RULE = 3; // a detection bug must never lock a session; after this many denials in one compaction segment the rule is treated as read
 
 const CODE_EXT = new Set(["ts", "tsx", "js", "jsx", "mjs", "cjs", "vue", "svelte", "rs", "py", "go", "rb", "php", "java", "kt", "swift", "c", "cc", "cpp", "h", "hpp", "cs", "sh", "bash", "zsh", "ps1", "sql", "css", "scss", "lua", "dart"]);
 const FRONTEND_EXT = new Set(["vue", "svelte", "css", "scss", "tsx", "jsx"]);
+const TEST_NAME = /\.(test|spec)\.[a-z]+$|_test\.[a-z]+$|^test_.*\.py$|^conftest\.py$/;
+const TEST_DIR = /(^|\/)(test|tests|__tests__|spec)\//;
 
 function allow() {
   process.exit(0);
@@ -23,6 +26,9 @@ function routesFor(filePath, cwd) {
   const name = basename(p);
   const ext = extname(name).slice(1).toLowerCase();
   const rules = new Set();
+  const root = cwd ? cwd.replace(/\\/g, "/") + "/" : "";
+  const rel = "/" + (root && p.startsWith(root) ? p.slice(root.length) : p.replace(/^\//, "")); // directory routes match inside the project only: a project under ~/tests/ or ~/lang/ must not route every file
+  if (TEST_NAME.test(name) || (TEST_DIR.test(rel) && ext !== "md")) rules.add("RULE-test.md");
   if (CODE_EXT.has(ext)) {
     rules.add("RULE-coding.md");
     rules.add("RULE-pattern-core.md");
@@ -30,9 +36,9 @@ function routesFor(filePath, cwd) {
   if (ext === "md") rules.add("RULE-docs.md");
   if (name === "CHANGELOG.md" || name === "releases.json") rules.add("RULE-release.md");
   if (FRONTEND_EXT.has(ext)) rules.add("RULE-ui-pattern.md");
-  if (ext === "sql" || /\/migrations\//.test(p)) rules.add("RULE-db-design.md");
-  if (/\/(locales|i18n|lang)\//.test(p)) rules.add("RULE-content-write.md");
-  if (ext === "rs" || /\/src-tauri\//.test(p) || name === "tauri.conf.json") rules.add("RULE-stack-tauri.md");
+  if (ext === "sql" || /\/migrations\//.test(rel)) rules.add("RULE-db-design.md");
+  if (/\/(locales|i18n|lang)\//.test(rel)) rules.add("RULE-content-write.md");
+  if (ext === "rs" || /\/src-tauri\//.test(rel) || name === "tauri.conf.json") rules.add("RULE-stack-tauri.md");
   if ((ext === "vue" || ext === "ts") && isNuxtProject(cwd)) rules.add("RULE-stack-akiNuxtCf.md");
   return rules;
 }
@@ -76,7 +82,7 @@ function transcriptFor(input) {
   return main;
 }
 
-/** Scan a transcript once: which rule files were Read (Read tool, or a Bash cat/sed/head/bat of the file), and how many times this hook already denied for each. */
+/** Scan a transcript once: which rule files were Read (Read tool, or a Bash cat/sed/head/bat of the file) since the last compaction, and how many times this hook already denied for each in that segment. A compaction drops the rule text from the model's context, so reads and denials before it do not count (agent.B7 row 2). */
 function scanTranscript(path, wanted) {
   const read = new Set();
   const denials = new Map();
@@ -87,14 +93,17 @@ function scanTranscript(path, wanted) {
     return { read, denials, unreadable: true };
   }
   for (const line of text.split("\n")) {
-    if (!line.includes("akidevrule") && !line.includes(MARK)) continue;
+    if (!line.includes("akidevrule") && !line.includes(MARK) && !line.includes(COMPACT)) continue;
     let d;
     try {
       d = JSON.parse(line);
     } catch {
       continue;
     }
-    if (d.type === "assistant") {
+    if (d.type === "system" && d.subtype === COMPACT) {
+      read.clear();
+      denials.clear();
+    } else if (d.type === "assistant") {
       const content = d.message && Array.isArray(d.message.content) ? d.message.content : [];
       for (const c of content) {
         if (!c || c.type !== "tool_use" || !c.input) continue;
@@ -115,7 +124,7 @@ function scanTranscript(path, wanted) {
 
 function deny(missing, filePath) {
   const files = missing.map((r) => `~/.aki/akidevrule/${r}`).join(" and ");
-  const reason = `[${MARK}] Editing ${basename(filePath)} is gated on rule files not yet read in this session: ${missing.join(", ")}. Read ${files} in full with the Read tool, add them to the [RULES] receipt, then retry this edit.`;
+  const reason = `[${MARK}] Editing ${basename(filePath)} is gated on rule files not read since the last compaction of this session: ${missing.join(", ")}. Read ${files} in full with the Read tool, add them to the [RULES] receipt, then retry this edit.`;
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } }) + "\n");
   process.exit(0);
 }

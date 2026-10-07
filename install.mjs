@@ -45,6 +45,7 @@ const GEMINI_RULES_DIR = join(GEMINI_DIR, "config", "rules");
 const GEMINI_SKILLS_DIR = join(GEMINI_DIR, "config", "skills");
 
 const CODEX_SKILLS_DIR = join(HOME, ".agents", "skills");
+const CODEX_HOME = process.env.CODEX_HOME ? expandTilde(process.env.CODEX_HOME.trim()) : join(HOME, ".codex");
 const KIRO_SKILLS_DIR = join(HOME, ".kiro", "skills");
 const GROK_SKILLS_DIR = join(HOME, ".grok", "skills");
 const SKILLS_SRC = join(REPO_ROOT, "skills");
@@ -342,6 +343,7 @@ const AG_RULE_MAP = [
   ["RULE-agent-behavior.md", "always_on", ""],
   ["RULE-coding.md", "model_decision", ""],
   ["RULE-pattern-core.md", "model_decision", ""],
+  ["RULE-test.md", "model_decision", ""],
   ["RULE-docs.md", "model_decision", ""],
   ["RULE-content-write.md", "model_decision", ""],
   ["RULE-stack-akiNuxtCf.md", "glob", '["**/*.vue", "nuxt.config.*", "wrangler.toml", "app/**", "server/**", "composables/**", "middleware/**", "plugins/**", "layouts/**"]'],
@@ -394,6 +396,63 @@ function installAgRules() {
   }
   for (const [dest, content] of rendered) writeTextLf(dest, content);
   return rendered.length;
+}
+
+// ---------------------------------------------------------------------------
+// Codex global instructions — behavior floor + router as a managed block in $CODEX_HOME/AGENTS.md
+// (docs/research/codex-instruction-delivery.md: Codex hard-loads that file; it expands no imports and reads no Claude global file)
+// ---------------------------------------------------------------------------
+
+const CODEX_BLOCK_START = "<!-- >>> akidevrule managed: behavior floor + router, regenerated on every install — edit the source repo, never this block -->";
+const CODEX_BLOCK_END = "<!-- <<< akidevrule managed -->";
+const CODEX_DOC_BUDGET = 131072; // Codex stops adding instruction files once global + project files reach project_doc_max_bytes (32 KiB by default); the managed block alone is larger
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const TOML_HEADER = /^[ \t]*\[\[?[ \t]*[\w.\-"' ]+[ \t]*\]\]?[ \t]*(#.*)?$/m; // a whole-line [table] or [[array]] header, not a nested-array line inside a multi-line value
+
+function codexInstructionBlock() {
+  const preamble =
+    "# akidevrule on Codex\n\n" +
+    "This block is the resident rule context for Codex: the behavior floor (`RULE-agent-behavior.md`) and the rule router (`skills/akirule/SKILL.md`), both installed under `~/.aki/akidevrule/`. Codex has no route gate: the Read of a routed rule file is your own mandatory step before the first edit of that artifact type. Do not invoke the `akirule` skill as well — the routing below is already loaded.";
+  const floor = readFileSync(join(REPO_ROOT, "payload", "RULE-agent-behavior.md"), "utf-8").trim();
+  const router = readFileSync(ROUTER_SRC, "utf-8").trim();
+  return [CODEX_BLOCK_START, preamble, floor, router, CODEX_BLOCK_END].join("\n\n") + "\n";
+}
+
+// Top-level TOML keys must precede the first table header, so the key is inserted before it, once, and only when absent.
+function ensureCodexDocBudget(blockBytes) {
+  const cfg = join(CODEX_HOME, "config.toml");
+  const text = isFile(cfg) ? readFileSync(cfg, "utf-8") : "";
+  const firstTable = text.search(TOML_HEADER);
+  const top = (firstTable === -1 ? text : text.slice(0, firstTable)).replace(/\s*$/, "");
+  const m = top.match(/^\s*project_doc_max_bytes\s*=\s*(\d+)/m);
+  if (m) return { value: Number(m[1]), written: false, enough: Number(m[1]) >= blockBytes };
+  const line = `project_doc_max_bytes = ${CODEX_DOC_BUDGET} # akidevrule: the managed block in AGENTS.md plus project instructions exceed Codex's 32 KiB default\n`;
+  const after = (top ? top + "\n\n" : "") + line + (firstTable === -1 ? "" : "\n" + text.slice(firstTable));
+  if (text) {
+    backup(cfg);
+    pruneBackups(cfg);
+  }
+  writeTextLf(cfg, after);
+  return { value: CODEX_DOC_BUDGET, written: true, enough: true };
+}
+
+function installCodexInstructions() {
+  if (!isDir(CODEX_HOME)) return null;
+  const file = join(CODEX_HOME, "AGENTS.md");
+  const before = isFile(file) ? readFileSync(file, "utf-8") : "";
+  const block = codexInstructionBlock();
+  const user = before.replace(new RegExp(`\\n?${escapeRe(CODEX_BLOCK_START)}[\\s\\S]*?${escapeRe(CODEX_BLOCK_END)}\\n?`), "\n").trim();
+  const after = (user ? user + "\n\n" : "") + block;
+  const changed = after !== before;
+  if (changed) {
+    backup(file);
+    pruneBackups(file);
+    writeTextLf(file, after);
+  }
+  const override = join(CODEX_HOME, "AGENTS.override.md");
+  const shadowed = isFile(override) && readFileSync(override, "utf-8").trim() !== "";
+  const bytes = Buffer.byteLength(block, "utf-8");
+  return { file, bytes, changed, shadowed, budget: ensureCodexDocBudget(bytes) };
 }
 
 // ---------------------------------------------------------------------------
@@ -456,7 +515,14 @@ function mergeSettings(settingsPath, installRoot, claudeDir) {
       return false;
     }
   };
-  hooks.SessionStart = hooks.SessionStart.filter((e) => !isAkiUpdate(e));
+  const isAkiCompact = (entry) => {
+    try {
+      return (entry.hooks || []).some((h) => (h.command || "").includes("aki-compact-reread"));
+    } catch {
+      return false;
+    }
+  };
+  hooks.SessionStart = hooks.SessionStart.filter((e) => !isAkiUpdate(e) && !isAkiCompact(e));
   hooks.SessionStart.push({
     matcher: "startup|resume",
     hooks: [
@@ -464,6 +530,16 @@ function mergeSettings(settingsPath, installRoot, claudeDir) {
         type: "command",
         command: `node "${join(claudeDir, "hooks", "aki-update-check.mjs")}"`,
         timeout: 8,
+      },
+    ],
+  });
+  hooks.SessionStart.push({
+    matcher: "compact",
+    hooks: [
+      {
+        type: "command",
+        command: `node "${join(claudeDir, "hooks", "aki-compact-reread.mjs")}"`,
+        timeout: 5,
       },
     ],
   });
@@ -560,6 +636,7 @@ function installClaudeDir(claudeDir) {
   copyFileSync(join(REPO_ROOT, "claude", "hooks", "aki-update-check.mjs"), join(hooksDest, "aki-update-check.mjs"));
   copyFileSync(join(REPO_ROOT, "claude", "hooks", "aki_version_check.mjs"), join(hooksDest, "aki_version_check.mjs"));
   copyFileSync(join(REPO_ROOT, "claude", "hooks", "aki-route-guard.mjs"), join(hooksDest, "aki-route-guard.mjs"));
+  copyFileSync(join(REPO_ROOT, "claude", "hooks", "aki-compact-reread.mjs"), join(hooksDest, "aki-compact-reread.mjs"));
   for (const legacy of ["aki-update-check.py", "aki_version_check.py"]) {
     const p = join(hooksDest, legacy);
     if (existsSync(p)) rmrf(p);
@@ -745,6 +822,8 @@ async function inspectStatus(claudeDirs) {
     }
   }
 
+  if (isDir(CODEX_HOME)) console.log(`🤖 Codex (${toTildePath(CODEX_HOME)}): will write the managed block in AGENTS.md (your own lines kept) and set project_doc_max_bytes in config.toml when absent`);
+
   if (isDir(GEMINI_DIR)) {
     const agSettings = join(GEMINI_DIR, "antigravity-cli", "settings.json");
     if (isFile(agSettings)) {
@@ -770,7 +849,7 @@ async function inspectStatus(claudeDirs) {
 // print_summary (post-install)
 // ---------------------------------------------------------------------------
 
-function printSummary(claudeDirs, preAllow) {
+function printSummary(claudeDirs, preAllow, codex) {
   console.log(`\n${greenBold("=== INSTALL SUCCEEDED ===")}`);
 
   const gitHash = gitShortHash(REPO_ROOT);
@@ -818,6 +897,19 @@ function printSummary(claudeDirs, preAllow) {
   console.log(`  🤖 Grok CLI  : ${GROK_SKILLS_DIR}`);
 
   console.log();
+  console.log(cyanBold("Codex global instructions (behavior floor + router, resident):"));
+  if (!codex) {
+    console.log(`  ℹ️  ${toTildePath(CODEX_HOME)} not found — skipped; set CODEX_HOME or install Codex and re-run`);
+  } else {
+    console.log(`  📝 ${toTildePath(codex.file)} — managed block ${(codex.bytes / 1024).toFixed(1)} KB${codex.changed ? "" : ", unchanged"}; lines of your own in that file are kept`);
+    const b = codex.budget;
+    const budgetNote = b.written ? "written to config.toml — Codex stops loading instruction files past 32 KiB by default" : b.enough ? "already set" : `⚠️  smaller than the managed block (${codex.bytes} B) — raise it in ${toTildePath(join(CODEX_HOME, "config.toml"))}`;
+    console.log(`  ⚙️  project_doc_max_bytes = ${b.value} — ${budgetNote}`);
+    if (codex.shadowed) console.log(`  ⚠️  ${toTildePath(join(CODEX_HOME, "AGENTS.override.md"))} is non-empty and shadows AGENTS.md — Codex ignores the managed block until it is removed`);
+    console.log(`  ℹ️  Codex does not read a project's CLAUDE.md; opt in per machine with project_doc_fallback_filenames = ["CLAUDE.md"] in config.toml (a native AGENTS.md in the same directory still wins)`);
+  }
+
+  console.log();
   console.log(cyanBold("Skill scripts pre-allowed (no prompt when a skill runs its own scripts):"));
   console.log("  ⚙️  claude       settings.json in every target above — plus Read(~/.aki/akidevrule/**)");
   for (const row of preAllow) {
@@ -828,7 +920,8 @@ function printSummary(claudeDirs, preAllow) {
 
   console.log();
   console.log(cyanBold("Hooks deployed:"));
-  console.log("  🚧 aki-route-guard (PreToolUse on Edit|MultiEdit|Write|NotebookEdit) — denies the first edit of an artifact type until its routed rule was Read; AKI_ROUTE_GUARD=0 disables");
+  console.log("  🚧 aki-route-guard (PreToolUse on Edit|MultiEdit|Write|NotebookEdit) — denies the first edit of an artifact type until its routed rule was Read after the last compaction; AKI_ROUTE_GUARD=0 disables");
+  console.log("  🔁 aki-compact-reread (SessionStart, compact only) — one notice after a compaction: routed rules left context, re-read before the next edit");
   console.log("  📢 aki-update-check (SessionStart, notify-only) — notifies when a new rule version is available");
 
   console.log(`\n${greenBold("==============================")}`);
@@ -921,10 +1014,11 @@ async function runInstall(claudeDirs) {
     installClaudeDir(cDir);
   }
 
-  // --- 3. Other CLI skill roots ---
+  // --- 3. Other CLI skill roots, and Codex's resident instructions ---
   syncAkiSkills(CODEX_SKILLS_DIR);
   syncAkiSkills(KIRO_SKILLS_DIR);
   syncAkiSkills(GROK_SKILLS_DIR);
+  const codex = installCodexInstructions();
 
   // --- 4. GEMINI.md (only when ~/.gemini exists) ---
   if (isDir(GEMINI_DIR)) {
@@ -989,7 +1083,7 @@ async function runInstall(claudeDirs) {
   // --- 5. Script pre-allow for every other harness present ---
   const preAllow = preAllowHarnessScripts(claudeDirs);
 
-  printSummary(claudeDirs, preAllow);
+  printSummary(claudeDirs, preAllow, codex);
 }
 
 // ---------------------------------------------------------------------------
