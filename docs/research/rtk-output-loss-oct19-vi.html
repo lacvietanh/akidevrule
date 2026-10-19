@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rtk làm mất output — báo cáo theo hướng chính xác trước</title>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f5f6f8; --border: #d9dce1; --text: #1b1f24; --muted: #5d6673; --link: #0b5cad;
+  --bad: #b42318; --bad-bg: #fde8e7; --ok: #1a7f37; --ok-bg: #e3f5e8; --warn: #9a6700; --warn-bg: #fff4d6; --info: #3b4ea8; --info-bg: #e8ecfb;
+  --gap: 10px; --pad: 8px; --radius: 6px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216; --surface: #171b21; --border: #2b313a; --text: #e3e7ec; --muted: #9aa4b1; --link: #6cb6ff;
+    --bad: #ff8b80; --bad-bg: #3a1714; --ok: #6fdd8b; --ok-bg: #12301b; --warn: #f2c94c; --warn-bg: #352a0b; --info: #a5b4fc; --info-bg: #1c2240;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: var(--pad) calc(var(--pad) * 2); background: var(--bg); color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--link); }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 14px; margin: 0 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--border); }
+h3 { font-size: 13px; margin: 6px 0 4px; }
+p { margin: 4px 0; }
+ul { margin: 4px 0; padding-left: 18px; }
+code, pre { font-family: var(--mono); font-size: 12px; }
+code { background: var(--surface); padding: 0 3px; border-radius: 3px; }
+pre { margin: 4px 0; padding: var(--pad); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding-bottom: 6px; border-bottom: 2px solid var(--border); }
+header .meta { color: var(--muted); }
+nav { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 6px 0; border-bottom: 1px solid var(--border); margin-bottom: var(--gap); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: var(--gap); }
+section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--pad); margin-bottom: var(--gap); min-width: 0; }
+.grid > section { margin-bottom: 0; }
+.wide { grid-column: 1 / -1; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: var(--bg); }
+th, td { text-align: left; vertical-align: top; padding: 3px 6px; border: 1px solid var(--border); }
+th { background: var(--surface); font-weight: 600; white-space: nowrap; }
+.chip { display: inline-block; padding: 0 6px; border-radius: 9px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.bad { color: var(--bad); background: var(--bad-bg); }
+.ok { color: var(--ok); background: var(--ok-bg); }
+.warn { color: var(--warn); background: var(--warn-bg); }
+.info { color: var(--info); background: var(--info-bg); }
+.callout { border-left: 4px solid var(--bad); background: var(--bg); padding: 6px var(--pad); border-radius: var(--radius); }
+.kpis { display: flex; flex-wrap: wrap; gap: var(--gap); }
+.kpi { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px var(--pad); }
+.kpi b { display: block; font-size: 18px; }
+.cols3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--gap); }
+.cols3 > div { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--pad); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>rtk làm mất output — nó cắt gì, upstream và người dùng nghĩ sao, và cách cấu hình để chính xác trước</h1>
+  <span class="meta">Bản trình bày tiếng Việt của <a href="rtk-output-loss-oct19.md">rtk-output-loss-oct19.md</a> (bản gốc, tiếng Anh) · bản HTML tiếng Anh <a href="rtk-output-loss-oct19.html">rtk-output-loss-oct19.html</a> · plan <a href="../plan/rtk-accuracy-first.md">rtk-accuracy-first.md</a> · rtk 0.50.0 (tag v0.50.0, commit 1d87b8e7) · máy dev Linux · tạo lúc <time id="gen" data-utc="2026-10-19T05:36:27Z">2026-10-19T05:36:27Z</time></span>
+</header>
+
+<nav>
+  <a href="#bottom">Kết luận</a><a href="#why">Vì sao nghiên cứu</a><a href="#engines">Hai bộ lọc</a><a href="#loss">Những gì bị mất</a><a href="#knobs">Các tuỳ chọn</a><a href="#recall">Recall thực tế</a><a href="#world">Upstream &amp; người dùng</a><a href="#savings">Cách tính "tiết kiệm"</a><a href="#native">Giới hạn sẵn có của Claude Code</a><a href="#risk">Bản đồ rủi ro</a><a href="#setup">Cấu hình đề xuất</a><a href="#open">Việc còn mở</a><a href="#summary">Tóm lại</a><a href="#glossary">Thuật ngữ</a>
+</nav>
+
+<section id="bottom">
+  <h2>Kết luận</h2>
+  <div class="callout">rtk vi phạm nguyên tắc "chính xác hơn tiết kiệm" ở mọi lệnh mà output được dùng để đếm, trích dẫn, so diff hay khẳng định "không có", và upstream không có chế độ nào giữ nguyên nội dung. Quyết định: <b>giữ rtk nhưng cấu hình theo hướng chính xác trước, không bỏ hẳn</b> — loại các lệnh mang bằng chứng ra khỏi việc hook viết lại lệnh (cách duy nhất giữ trọn output với bộ lọc dựng sẵn), giữ recall và tăng dung lượng lưu, không đụng <code>filters.toml</code>, thêm một dòng luật kiểm chứng cho những lệnh vẫn bị nén.</div>
+  <div class="kpis" style="margin-top:6px">
+    <div class="kpi"><b>211 / 480</b>dòng còn lại của <code>grep -rn</code></div>
+    <div class="kpi"><b>7.541 → 610</b>dòng của <code>git diff</code></div>
+    <div class="kpi"><b>480 : 3</b>lần cắt so với lần recall, từ trước tới nay trên máy này</div>
+    <div class="kpi"><b>2,6M</b>token "tiết kiệm" (50,4%), phần lớn từ các lệnh mang bằng chứng</div>
+    <div class="kpi"><b>0</b>chế độ không mất nội dung ở upstream (#1313 mở từ 2026-04-14)</div>
+  </div>
+</section>
+
+<div class="grid">
+<section id="why">
+  <h2>Vì sao nghiên cứu</h2>
+  <ul>
+    <li>rtk 0.50.0 chạy dưới dạng hook <code>PreToolUse</code> cho Bash của Claude Code (<code>rtk hook claude</code>).</li>
+    <li>Quan sát 1: <code>ls ~/.claude/agents ~/.claude/skills</code> in ra <code>(2 filtered)</code> / <code>[+2 hidden: rtk recall 9393053346b8]</code>. Bản gốc: 20 dòng chia hai nhóm có tiêu đề; bản lọc: 19 dòng, hai thư mục bị gộp, thư mục xếp trước, thêm kích thước. Recall chỉ giữ hai dòng tiêu đề — <b>không thể biết lại</b> file nào nằm ở thư mục nào. Nguyên nhân: nhánh "dòng không phân tích được" trong <code>compact_ls</code> (<code>ls.rs:302-307</code>) cộng <code>hidden_hint</code> (<code>ls.rs:147-165</code>).</li>
+    <li>Quan sát 2: mỗi dòng của <code>jq -c</code> bị cắt ở 120 ký tự kèm <code>...</code> và <code>[full output: rtk recall 4cb2107f636c]</code>. Nguyên nhân: bộ lọc dựng sẵn <code>src/filters/jq.toml</code> — <code>truncate_lines_at = 120</code>, <code>max_lines = 40</code>. Dòng gốc dài 223/217 ký tự.</li>
+    <li>Nguyên tắc thường trực của chủ dự án: chính xác hơn tiết kiệm. Trước nghiên cứu này, bộ luật không nhắc tới rtk ở đâu cả.</li>
+    <li>Cách làm: đọc mã nguồn tag v0.50.0, chạy so sánh bản gốc (<code>rtk run</code>) với bản qua hook trong thư mục cấu hình/dữ liệu cô lập, stdout bị bắt lại chứ không phải terminal (đúng như Bash tool của Claude Code), đọc issue/tài liệu upstream, tìm trên HN qua Algolia.</li>
+  </ul>
+</section>
+
+<section id="engines">
+  <h2>Hai bộ lọc, hai đường thoát khác nhau</h2>
+  <div class="scroll"><table>
+    <tr><th>Bộ lọc</th><th>Lệnh</th><th><code>filters.toml</code> có sửa được không?</th><th>Nguồn</th></tr>
+    <tr><td>Dựng sẵn bằng Rust</td><td><code>ls</code> <code>grep</code> <code>rg</code> <code>find</code> <code>tree</code> <code>wc</code> <code>diff</code> <code>git</code> <code>curl</code> <code>cat|head|tail</code> → <code>rtk read</code></td><td><span class="chip bad">không</span> được xử lý trước khi tra TOML</td><td><code>toml_filter.rs:259-311</code></td></tr>
+    <tr><td>TOML</td><td><code>jq</code> <code>stat</code> <code>du</code> <code>df</code> <code>ps</code> <code>ssh</code> …</td><td><span class="chip warn">được, nhưng mong manh</span> thứ tự: <code>.rtk/filters.toml</code> của dự án → bản toàn cục → bản dựng sẵn, khớp đầu tiên thắng; chỉ nạp sau <code>rtk trust</code>; <b>sửa file bất kỳ lúc nào là âm thầm mất trust</b> và bộ lọc cắt dựng sẵn quay lại</td><td><code>toml_filter.rs:188-223</code>, <code>hooks/trust.rs:199-216</code></td></tr>
+  </table></div>
+  <h3>Quy tắc viết lại lệnh (<code>src/discover/rules.rs:59+</code>, kiểm bằng <code>rtk rewrite</code>)</h3>
+  <div class="scroll"><table>
+    <tr><th>Lệnh</th><th>Thành</th></tr>
+    <tr><td><code>ls x</code> · <code>cat f</code> · <code>head -5 f</code></td><td><code>rtk ls x</code> · <code>rtk read f</code> · <code>rtk read f --head-lines 5</code></td></tr>
+    <tr><td><code>jq …</code> · <code>stat f</code> · <code>ssh h …</code></td><td><code>rtk jq …</code> · <code>rtk stat f</code> · <code>rtk ssh …</code> (khớp bộ lọc TOML, chỉ khi đứng một mình, <code>registry.rs:1730-1749</code>)</td></tr>
+    <tr><td><code>cd /tmp &amp;&amp; ls -la</code> · <code>git log -3 | grep fix</code></td><td><code>cd /tmp &amp;&amp; rtk ls -la</code> · <code>git log -3 | rtk grep fix</code></td></tr>
+    <tr><td><code>sed</code> <code>awk</code> <code>echo</code> <code>env</code> <code>sort</code> <code>python3</code> · <code>ls | wc -l</code> · <code>cat f | jq .</code> · <code>ls &gt; out.txt</code></td><td>không viết lại</td></tr>
+  </table></div>
+  <p>Pipe (<code>registry.rs:1087-1224, 1451-1468</code>): lệnh đầu pipe chỉ bị viết lại khi mọi lệnh phía sau là <code>cat</code>/<code>head</code>/<code>tail</code> (trừ <code>tail -f</code>); lệnh cuối chỉ khi quy tắc của nó cho phép (<code>grep</code>/<code>rg</code>). Thứ tự xử lý TOML: strip_ansi → replace → match_output → strip/keep lines → truncate_lines_at → head/tail_lines → max_lines → on_empty; dấu báo <code>... (N lines omitted)</code>, <code>... (N lines truncated)</code>, dòng bị cắt kết thúc bằng <code>...</code>.</p>
+</section>
+
+<section id="loss" class="wide">
+  <h2>Những gì bị mất (đã test bản gốc so với bản lọc, trừ chỗ có ghi chú)</h2>
+  <div class="scroll"><table>
+    <tr><th>Lệnh</th><th>Trạng thái</th><th>Mất gì</th><th>Bằng chứng</th></tr>
+    <tr><td><code>ls</code></td><td><span class="chip bad">mất</span></td><td>luôn chạy <code>ls -l</code> rồi định dạng lại; giấu thư mục "nhiễu" (<code>node_modules</code>, <code>dist</code>, <code>build</code>, <code>env</code>, <code>coverage</code>, … — <code>cmds/system/constants.rs</code>); tối đa 50 mục; mất tiêu đề khi liệt kê nhiều thư mục; <code>-la</code> mất owner/group/ngày mà không báo. <b>Lỗi âm thầm:</b> tên kết thúc bằng dấu <code>.</code> bị bỏ, không có dấu báo, không recall được (gốc <code>a b. c</code> → <code>a c</code>), vẫn còn trên nhánh <code>develop</code> ngày 2026-10-19</td><td><code>ls.rs:226-228</code> <code>is_dotdir</code>; đã test</td></tr>
+    <tr><td><code>grep</code> / <code>rg</code></td><td><span class="chip bad">mất</span></td><td>cắt dòng ở 80 ký tự (<code>--max-len 80</code>), tối đa 200 kết quả, 25 kết quả mỗi file, bỏ thụt lề, gom lại theo file; khi đọc từ pipe thì phần thừa bị bỏ, chỉ còn <code>[rtk] output capped at 200 results</code>, không recall được</td><td><code>-rn</code>: 211/480 dòng; #4107 đang mở; #2436 đang mở (tiêu đề vẫn ghi số đếm gốc)</td></tr>
+    <tr><td><code>find</code></td><td><span class="chip bad">mất</span></td><td>giấu dotfile và đường dẫn bị gitignore; thiếu <code>target/dbg/zq.marker</code>, recall chỉ trả về <code>target/</code></td><td>đã test</td></tr>
+    <tr><td><code>git log</code></td><td><span class="chip bad">mất</span></td><td>không có <code>-n</code> thì chỉ 10 commit (50 với <code>--oneline</code>), không báo còn nữa — 50/2.426 trên bản clone; nội dung commit cắt còn 3 dòng <code>[+N lines omitted]</code></td><td>đã test</td></tr>
+    <tr><td><code>git diff</code></td><td><span class="chip bad">mất</span></td><td>100 dòng thay đổi mỗi hunk, tổng 500, bỏ phần lớn dòng ngữ cảnh; dấu báo <code>[full diff: rtk git diff --no-compact]</code></td><td><code>git_cmd.rs:1384-1543</code>; 7.541 → 610 dòng</td></tr>
+    <tr><td><code>git branch</code></td><td><span class="chip bad">mất</span></td><td>branch remote tối đa 10</td><td>mã nguồn</td></tr>
+    <tr><td><code>jq</code> (TOML)</td><td><span class="chip bad">mất</span></td><td><code>truncate_lines_at = 120</code>, <code>max_lines = 40</code></td><td>đã test: hash <code>702083cd13b3</code></td></tr>
+    <tr><td><code>ps</code>, <code>ssh</code> (TOML)</td><td><span class="chip bad">mất</span></td><td>30 / 200 dòng, 120 ký tự — <code>cat</code> file trên máy khác qua <code>ssh</code> sẽ bị cắt</td><td>bộ lọc dựng sẵn</td></tr>
+    <tr><td><code>wc</code></td><td><span class="chip bad">mất</span></td><td>bỏ đường dẫn khi đếm một file</td><td>đã test</td></tr>
+    <tr><td>test / build runner</td><td><span class="chip warn">giới hạn, mới đọc code</span></td><td>danh sách lỗi bị chặn: <code>CAP_WARNINGS</code> = 10 test lỗi, <code>CAP_ERRORS</code> = 20, cứng trong code, không cấu hình được</td><td><code>core/truncate.rs</code>, <code>cargo_cmd.rs:1227</code>; chưa chạy (máy này cấm cargo)</td></tr>
+    <tr><td>lệnh bị lọc nói chung</td><td><span class="chip warn">đảo thứ tự</span></td><td>stdout bị bắt lại, stderr đi thẳng: thứ tự thay đổi (lỗi của <code>make</code> in ra trước các dòng build); stdout của <code>make</code> tối đa 50 dòng</td><td>đã test</td></tr>
+    <tr><td><code>cat</code>, <code>head -N</code>, <code>tail -n N</code></td><td><span class="chip ok">không mất ở 0.50.0</span></td><td>giống từng byte (900 dòng, 57.379 byte); <code>rtk read</code> mặc định <code>--level none</code>. Bản cũ hơn từng cắt (một người dùng đo được 203/1.573 lần <code>rtk read</code> bị mất nội dung, #1313)</td><td>đã test</td></tr>
+    <tr><td><code>git status</code></td><td><span class="chip ok">không mất</span></td><td>giữ đủ 20 file sửa + 25 file chưa track; chỉ đổi chữ ở dòng tiêu đề</td><td>đã test</td></tr>
+    <tr><td><code>git log --stat</code>, <code>git diff --stat</code>, <code>grep -c</code>/<code>-l</code>, <code>curl</code> trả JSON không qua terminal</td><td><span class="chip ok">không mất</span></td><td>giống hệt</td><td>đã test</td></tr>
+    <tr><td><code>diff</code></td><td><span class="chip warn">giống hệt, từng có lỗi</span></td><td>giống hệt trong lần test; từng có lỗi #3268, #2627</td><td>đã test</td></tr>
+    <tr><td><code>gh</code> <code>glab</code> <code>psql</code> <code>aws</code> <code>kubectl</code> <code>docker logs</code></td><td><span class="chip info">chưa test</span></td><td>diff, nội dung PR, log CI, log bị gộp trùng — dự đoán là mất</td><td>chưa kiểm chứng</td></tr>
+  </table></div>
+</section>
+
+<section id="knobs" class="wide">
+  <h2>Các tuỳ chọn</h2>
+  <div class="scroll"><table>
+    <tr><th>Tuỳ chọn</th><th>Tác dụng</th><th>Giữ trọn nội dung?</th><th>Đã test</th></tr>
+    <tr><td><code>[hooks] exclude_commands</code> trong <code>config.toml</code> của rtk</td><td>hook thôi viết lại các lệnh khớp; một từ thường → <code>^word($|\s)</code>, bắt đầu bằng <code>^</code> → regex (<code>registry.rs:1540-1569</code>); khớp theo từng đoạn, kể cả trong chuỗi <code>&amp;&amp;</code>, pipe, lệnh bọc <code>timeout</code>; không cần trust</td><td><span class="chip ok">có</span></td><td>môi trường cô lập, cả <code>rtk rewrite</code> lẫn JSON của <code>rtk hook claude</code>; <code>git -C /x log</code> lọt qua mẫu <code>^git\s+log</code> đơn giản — regex bên dưới đã sửa</td></tr>
+    <tr><td><code>RTK_DISABLED=1 &lt;lệnh&gt;</code></td><td>bỏ qua một lệnh (in nhắc nhở ra stderr, <code>registry.rs:1622-1632</code>)</td><td><span class="chip ok">có</span></td><td>có</td></tr>
+    <tr><td><code>rtk run '&lt;lệnh&gt;'</code> / <code>rtk proxy &lt;lệnh&gt;</code></td><td>chạy không lọc (proxy vẫn ghi thống kê)</td><td><span class="chip ok">có</span></td><td><code>run</code>: có</td></tr>
+    <tr><td><code>RTK_NO_TOML=1</code></td><td>tắt toàn bộ bộ lọc TOML, cả viết lại lẫn lọc</td><td><span class="chip ok">chỉ với TOML</span></td><td><code>jq .</code> 2.882 dòng = bản gốc</td></tr>
+    <tr><td><code>[retriever] mode="disabled"</code> / <code>RTK_RECALL=0</code></td><td>không lưu recall; bộ lọc TOML quay về in bản gốc (<code>main.rs:1639-1644</code>)</td><td><span class="chip bad">tệ hơn</span> bộ lọc Rust vẫn cắt, giờ còn không có hash</td><td><code>ls</code> 51 so với 77 dòng gốc; <code>grep -rn</code> 211 so với 480</td></tr>
+    <tr><td><code>[retriever] max_entries</code>, <code>retention_days</code></td><td>giữ được dấu báo để lấy lại lâu hơn (mặc định 200 mục / 30 ngày / 10 MB mỗi mục)</td><td>không áp dụng</td><td>đọc code</td></tr>
+    <tr><td><code>filters.toml</code> toàn cục/dự án, cùng <code>match_command</code></td><td>đè lên một bộ lọc TOML dựng sẵn</td><td><span class="chip warn">có, nhưng mong manh</span> chỉ khi để mỗi <code>strip_ansi</code>; sửa file là âm thầm mất trust, phải chạy lại <code>rtk trust --yes</code></td><td><code>jq -c</code> 80/80 dòng, 24.710/24.710 byte</td></tr>
+    <tr><td><code>[limits] grep_max_results</code>, <code>grep_max_per_file</code></td><td>nâng giới hạn của grep</td><td><span class="chip bad">không</span> mặc định CLI <code>--max 200</code> vẫn áp, vẫn bỏ thụt lề, vẫn gom lại</td><td>203 so với 480</td></tr>
+    <tr><td><code>rtk grep --max-len N --max N</code></td><td>cờ grep cho từng lần gọi</td><td><span class="chip bad">không</span> số dòng khớp (480) nhưng mất thụt lề, đổi thứ tự</td><td>có</td></tr>
+    <tr><td><code>git diff --no-compact</code></td><td>diff đầy đủ</td><td><span class="chip ok">theo code</span></td><td>chưa chạy</td></tr>
+    <tr><td><code>[limits] status_max_*</code></td><td>chưa được nối vào code ở 0.50.0 (PR #2579 đang mở)</td><td>không áp dụng</td><td>status không bị giới hạn khi test</td></tr>
+    <tr><td>danh sách lệnh được phép viết lại</td><td><b>không có</b> — <code>rtk hook claude</code> không có cờ nào, chỉ có danh sách loại trừ</td><td>không áp dụng</td><td><code>--help</code></td></tr>
+    <tr><td>chế độ không mất nội dung</td><td><b>không có</b>; được yêu cầu ở #1313; một bản fork có (RKelln/rtk nhánh <code>feature/no-truncation</code>)</td><td>không áp dụng</td><td>mã nguồn + issue</td></tr>
+  </table></div>
+</section>
+
+<section id="recall">
+  <h2>Recall trong thực tế</h2>
+  <ul>
+    <li>Hai kiểu dấu báo: <code>[full output: rtk recall &lt;hash&gt;]</code> (lưu cả output) và <code>[+N hidden: rtk recall &lt;hash&gt;]</code> (chỉ lưu phần bị bỏ). Kho lưu: <code>~/.local/share/rtk/recall.db</code>, sqlite nén gzip (<code>src/core/tee.rs</code>, <code>src/core/retriever.rs</code>).</li>
+    <li>Lệnh chạy thành công chỉ được lưu khi có cắt; lệnh lỗi được lưu khi output từ 500 byte trở lên.</li>
+    <li>Trên máy này: kho đã đầy 200 mục, chỉ trải từ 2026-10-07 tới 19 (khoảng 285 giờ).</li>
+    <li><b>Từ trước tới nay: 480 lần cắt, 3 lần recall</b> — cả 3 đều do chính lượt nghiên cứu này (<code>mark_recalled</code>, <code>retriever.rs:394</code>). Agent không làm theo dấu báo.</li>
+  </ul>
+</section>
+
+<section id="world">
+  <h2>Upstream &amp; người dùng (đọc ngày 2026-10-19)</h2>
+  <ul>
+    <li><a href="https://github.com/rtk-ai/rtk/issues/1313">#1313</a> "chế độ chỉ lọc không mất nội dung", đang mở, 18 bình luận: grep bị chặn nên sót chỗ gọi hàm, hunk diff bị giấu, nội dung commit bị cắt. Phía maintainer chỉ có một nhãn phân loại tự động ("priority high"). Người mở issue viết ngày 2026-09-05: <i>"I stopped using RTK because of this… We asked everyone in our company to cease using it."</i> (Tôi đã ngừng dùng RTK vì chuyện này… Chúng tôi yêu cầu cả công ty ngừng dùng.)</li>
+    <li>KuSh, 2026-05-31 (#2176): <i>"RTK_DISABLED env variable is the master 'filter off'"</i> (biến môi trường RTK_DISABLED là công tắc tắt lọc chính). Việc cắt diff ở #3022 (đóng 2026-09-13): trả lời bằng dấu báo + <code>--no-compact</code>, không bỏ giới hạn.</li>
+    <li>Chính sách: "Any truncated list has a recovery hint" — danh sách nào bị cắt cũng có gợi ý lấy lại (CONTRIBUTING.md:276); giới hạn cấu hình được thì "planned, not yet implemented" — đã lên kế hoạch, chưa làm (<code>src/core/README.md:154</code>). → <span class="chip warn">đánh đổi được chấp nhận, không cấu hình được</span></li>
+    <li>Liên quan: #1566 (đã đóng, <code>rtk ls</code> trả về rỗng), #1282 (đóng ở v0.44, output hỏng khi qua pipe), #3262 (đang mở, hook viết lại cả chữ nằm trong chuỗi có ngoặc kép — chưa tái hiện được ở đây).</li>
+    <li>HN <a href="https://news.ycombinator.com/item?id=46974740">46974740</a> (2026-02-11): người dùng khoe mức tiết kiệm 79–84%. <a href="https://news.ycombinator.com/item?id=47081527">47081527</a> (2026-03-03): <i>"the only times I run into challenges is when I need an output to debug/troubleshoot something and it's suppressed by RTK."</i> (lúc duy nhất tôi gặp khó là khi cần output để debug mà RTK lại giấu đi.) Không tìm thấy thảo luận trên Reddit (không có nghĩa là không tồn tại).</li>
+    <li>Công cụ thay thế (theo lời nhà phát triển, chưa kiểm chứng): tokf (cố ý cắt), sqz (tuyên bố lấy lại được từng byte), squeez, squoze (tuyên bố không bao giờ cắt phần lỗi).</li>
+  </ul>
+</section>
+
+<section id="savings">
+  <h2>"Tiết kiệm" được tính thế nào</h2>
+  <ul>
+    <li>README: "up to 90% of the bash output" (tới 90% output bash). Token = số byte ÷ 4 của bản gốc trừ bản lọc (<code>docs/guide/resources/savings-explained.md</code>).</li>
+    <li><span class="chip bad">nội dung bị cắt được tính là tiết kiệm</span>; chi phí chạy lại, recall hay kết luận sai thì không được tính.</li>
+    <li><span class="chip warn">tiết kiệm ảo</span> một lần đọc <code>head -n N</code> được ghi nhận theo kích thước cả file (<code>read.rs</code> <code>track_bytes(... regular_file_len ...)</code>), trong khi <code>head</code> thường cũng chỉ in đúng N dòng đó.</li>
+    <li>Máy này, <code>rtk gain</code>: 2,6M token (50,4%) — <code>rtk read</code> 1,6M, <code>rtk grep</code> 516K, <code>rtk find</code> 66K, rồi tới <code>rtk ls</code>: đều là nhóm lệnh mang bằng chứng. Trong 1,6M đó bao nhiêu là ảo, bao nhiêu là mất thật: chưa kiểm chứng.</li>
+  </ul>
+</section>
+
+<section id="native">
+  <h2>Giới hạn sẵn có của Claude Code (theo tài liệu hãng, chưa đo)</h2>
+  <ul>
+    <li>Output Bash thành công trên khoảng 30.000 ký tự được lưu ra file trong thư mục phiên; model nhận đường dẫn và 2.000 ký tự xem trước → <span class="chip ok">tiết kiệm token mà không mất gì</span></li>
+    <li>Lệnh lỗi: chỉ nhận khoảng 10.000 ký tự đầu và cuối, không có đường dẫn → <span class="chip warn">có mất</span></li>
+    <li><code>BASH_MAX_OUTPUT_LENGTH</code> đặt giới hạn này (mặc định 30.000, tối đa 150.000). Các tool <code>Read</code>/<code>Grep</code>/<code>Glob</code> của Claude Code không bao giờ đi qua rtk.</li>
+    <li>Nguồn: <a href="https://code.claude.com/docs/en/tools-reference">code.claude.com/docs/en/tools-reference</a> mục "Output limits".</li>
+  </ul>
+</section>
+</div>
+
+<section id="risk">
+  <h2>Bản đồ rủi ro</h2>
+  <div class="cols3">
+    <div><span class="chip bad">không an toàn — output là bằng chứng</span><p><code>ls</code> (mọi dạng), <code>find</code>, <code>tree</code>, <code>grep</code>, <code>rg</code>, <code>ast-grep</code>, <code>wc</code>; <code>git diff/log/show/stash show/branch</code>; <code>diff</code>; <code>jq</code>, <code>stat</code>, <code>du</code>, <code>df</code>, <code>ps</code>, <code>ssh</code>; <code>curl</code>/<code>wget</code> ngoài trường hợp đã test; <code>gh</code>, <code>glab</code>, <code>psql</code>, <code>aws</code>, <code>kubectl</code>/<code>docker logs</code> (chưa test).</p></div>
+    <div><span class="chip warn">an toàn có điều kiện</span><p>Test và lint runner (<code>cargo test</code>, <code>pytest</code>, <code>vitest</code>, <code>tsc</code>, <code>eslint</code>): danh sách lỗi chỉ hiện 10–20 mục, phần còn lại chỉ có dấu báo recall. Khi cần đúng số lượng hay đủ danh sách: <code>RTK_DISABLED=1 &lt;lệnh&gt;</code>. Hiện không mất nhưng dễ vỡ: <code>cat</code>/<code>head</code>/<code>tail</code> → loại trừ chẳng tốn gì.</p></div>
+    <div><span class="chip ok">nén thoải mái</span><p><code>git status/add/commit/push/pull/fetch</code>; cài package (<code>npm</code>/<code>pnpm</code>/<code>pip</code>/<code>uv</code>/<code>bundle</code>/<code>brew</code> install); <code>make</code> (stdout tối đa 50 dòng, lỗi ở stderr vẫn còn nhưng sai thứ tự).</p></div>
+  </div>
+</section>
+
+<section id="setup">
+  <h2>Cấu hình đề xuất (plan G1–G3, đang chờ chủ dự án duyệt)</h2>
+  <div class="grid">
+    <div>
+      <h3>G1 · <code>config.toml</code> của rtk, installer chỉ ghi khi máy có rtk</h3>
+<pre>
+# akidevrule: accuracy-first rtk — commands whose output is evidence run unfiltered (docs: README § rtk)
+[hooks]
+exclude_commands = [
+  "ls", "tree", "find", "grep", "rg", "ast-grep", "wc", "diff",
+  "cat", "head", "tail",
+  "jq", "stat", "du", "df", "ps", "ssh", "rsync", "curl", "wget",
+  "gh", "glab", "psql", "aws", "kubectl", "oc", "docker",
+  "^git(\\s+-[Cc]\\s+\\S+)*\\s+(diff|log|show|stash|branch)\\b",
+]
+
+[retriever]
+mode = "sqlite"
+max_entries = 2000
+retention_days = 30
+</pre>
+      <h3>G2 · một dòng trong <code>coding.B3</code> cho những gì vẫn bị nén (bản nháp, giữ tiếng Anh vì luật là public)</h3>
+<pre>
+Output carrying a filter's elision marker (`omitted`, `hidden`, `truncated`, `filtered`, `capped`, `recall`) is a sample: a count, a quote, a failure list or an absence claim taken from it is rerun raw first (rtk: `RTK_DISABLED=1 &lt;cmd&gt;`).
+</pre>
+      <p>Nghĩa: output có dấu hiệu bị cắt chỉ là một phần; muốn đếm, trích, liệt kê lỗi hay kết luận "không có" từ nó thì phải chạy lại bản gốc trước.</p>
+      <h3>G3 · lời đề xuất</h3>
+      <p>README thêm mục "Optional: rtk": rtk tiết kiệm được gì, cắt mất gì, G1 ghi gì, cách tắt, và cơ chế lưu ra file ~30.000 ký tự sẵn có của Claude Code. Installer in một dòng trong cả hai trường hợp. Sau hai tuần: xem <code>rtk gain</code> theo từng lệnh; nếu phần tiết kiệm còn lại không đáng kể so với cơ chế sẵn có thì hạ từ "khuyên dùng" xuống "tuỳ chọn".</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <tr><th>Phần</th><th>Lý do</th><th>Tác dụng phụ / trường hợp biên</th></tr>
+        <tr><td>danh sách loại trừ</td><td>cách duy nhất giữ trọn output với bộ lọc Rust; đã test qua JSON của hook, trong <code>cd … &amp;&amp;</code>, pipe (<code>git log -3 | grep fix</code>), <code>timeout 9 grep</code>, <code>git -C /r diff</code></td><td><code>git status</code>/<code>add</code>/<code>commit</code>/<code>push</code>, <code>npm run</code>, <code>npx tsc</code>, <code>pytest</code>, <code>make</code> vẫn được viết lại — đúng ý</td></tr>
+        <tr><td><code>cat|head|tail</code></td><td>không mất là nhờ phiên bản hiện tại, không phải cam kết</td><td>loại trừ chẳng tốn gì</td></tr>
+        <tr><td><code>gh</code> … <code>docker</code></td><td>phòng xa</td><td><span class="chip info">chưa test</span></td></tr>
+        <tr><td>giữ recall, 2.000 mục</td><td>tắt recall thì bộ lọc Rust cắt mà không để lại dấu; mặc định 200 mục đầy sau 12 ngày</td><td>con số 2.000 là suy luận, chưa test như một cấu hình</td></tr>
+        <tr><td>không sửa <code>filters.toml</code></td><td>bẫy trust: sửa là bộ lọc cắt dựng sẵn âm thầm quay lại</td><td>mọi lệnh TOML mang nội dung đã nằm trong danh sách loại trừ</td></tr>
+        <tr><td>phần nhiễu mất đi</td><td>các lệnh mang nội dung hầu như không in màu ANSI hay thanh tiến trình khi stdout không phải terminal</td><td>suy luận từ test (bản gốc không có mã ANSI)</td></tr>
+        <tr><td>cách gộp vào file</td><td>chưa có file → ghi mới; chưa có bảng → thêm vào cuối; người dùng đã có bảng → giữ nguyên, in ra các mục còn thiếu; backup trước; chạy lại không đổi gì; tắt bằng dòng <code># akidevrule: rtk off</code></td><td>chưa biết đường dẫn cấu hình trên macOS/Windows → ghi sai chỗ thì rtk không đọc, và không có lỗi nào báo</td></tr>
+      </table>
+      <h3>Phương án bị loại</h3>
+      <table>
+        <tr><th>Phương án</th><th>Vì sao không</th></tr>
+        <tr><td>khuyên không dùng rtk</td><td>nhóm lệnh nhiễu vẫn tiết kiệm thật mà không mất bằng chứng</td></tr>
+        <tr><td>dùng <code>filters.toml</code> để đè cho không mất</td><td>chỉ với tới lệnh TOML; sửa về sau là âm thầm quay lại bộ lọc cắt</td></tr>
+        <tr><td><code>RTK_RECALL=0</code></td><td>bộ lọc Rust vẫn cắt, mà không còn hash</td></tr>
+        <tr><td>chỉ viết luật</td><td>480 lần cắt, 3 lần recall; luật không lấy lại được dòng mà model chưa từng thấy</td></tr>
+        <tr><td>chờ #1313</td><td>mở từ 2026-04-14, maintainer chưa trả lời — mở lại khi có bản phát hành có chế độ không mất nội dung</td></tr>
+        <tr><td>installer tự cài rtk</td><td>làm trình quản lý package nằm ngoài phạm vi repo (Non-goals)</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="open">
+  <h2>Việc còn mở (plan <code>rtk-accuracy-first.md</code>)</h2>
+  <div class="scroll"><table>
+    <tr><th>Mã</th><th>Nội dung</th><th>Bỏ qua thì sao</th></tr>
+    <tr><td>D1</td><td>Chủ dự án duyệt G1–G3, kể cả việc installer ghi cấu hình của rtk (cấu hình dùng chung, đụng Non-goals)</td><td><span class="chip bad">chặn</span> chưa duyệt thì chưa làm gì</td></tr>
+    <tr><td>V1</td><td>Đường dẫn <code>config.toml</code> của rtk trên macOS và Windows (Linux <code>~/.config/rtk/</code> đã xác nhận)</td><td><span class="chip bad">cao</span> với bản cài trên Mac: sai đường dẫn = không có tác dụng mà không báo</td></tr>
+    <tr><td>V2</td><td>Giới hạn danh sách lỗi khi chạy thật của <code>pytest</code>, <code>vitest</code>, <code>cargo test</code> (mới đọc code)</td><td><span class="chip warn">trung bình</span> quyết định G2 đã đủ hay phải đưa runner vào danh sách loại trừ</td></tr>
+    <tr><td>V3</td><td>Bộ lọc <code>gh</code>, <code>glab</code>, <code>psql</code>, <code>aws</code>, <code>kubectl</code>, <code>docker</code> chưa test</td><td><span class="chip ok">thấp</span> đằng nào cũng đã loại trừ</td></tr>
+    <tr><td>V4</td><td>Lỗi hỏng chuỗi có ngoặc kép #3262 chưa tái hiện; lệnh nhiều dòng/heredoc chưa thử</td><td><span class="chip ok">thấp</span> loại trừ đã giảm bớt rủi ro</td></tr>
+    <tr><td>—</td><td>Giả định stdout của Bash trong Claude Code không phải terminal (khớp quan sát, chưa xác nhận trong tài liệu); ảnh hưởng tới <code>curl</code>, vì nó lọc khác khi chạy trên terminal</td><td><span class="chip ok">thấp</span></td></tr>
+  </table></div>
+</section>
+
+<section id="summary">
+  <h2>Tóm lại</h2>
+  <p><b>Giữ rtk, nhưng không bao giờ để nó đụng vào bằng chứng.</b> Upstream chấp nhận mất nội dung để đổi lấy tiết kiệm, và còn tính dòng bị cắt là "tiết kiệm"; agent trên máy này chỉ làm theo 3 trong 480 gợi ý lấy lại. Cách duy nhất giữ trọn output là loại các lệnh mang bằng chứng ra khỏi việc viết lại, vẫn giữ được phần tiết kiệm thật ở status, cài đặt và log build. Output lớn thì Claude Code đã tự xử lý mà không mất gì. Liên quan: <a href="../plan/full-file-reads.md">full-file-reads.md</a> — <code>cat</code> một file luật qua rtk 0.50.0 không bị mất, và danh sách loại trừ giúp điều đó không còn phụ thuộc vào phiên bản rtk.</p>
+</section>
+
+<section id="glossary">
+  <h2>Thuật ngữ</h2>
+  <div class="scroll"><table>
+    <tr><th>Thuật ngữ</th><th>Nghĩa</th></tr>
+    <tr><td>hook viết lại lệnh</td><td>hook <code>PreToolUse</code> của rtk thay lệnh Bash của agent bằng một lệnh <code>rtk …</code> trước khi chạy (<code>updatedInput.command</code>, <code>hook_cmd.rs:568-641</code>)</td></tr>
+    <tr><td>cắt (elision)</td><td>nội dung bị bỏ khỏi output, có hoặc không có dấu báo</td></tr>
+    <tr><td>recall</td><td><code>rtk recall &lt;hash&gt;</code> in lại output đầy đủ đã lưu, hoặc phần đã bị bỏ</td></tr>
+    <tr><td>bộ lọc Rust / TOML</td><td>bộ lọc biên dịch sẵn trong rtk so với bộ lọc khai báo trong file; chỉ loại TOML là đè được</td></tr>
+    <tr><td>trust</td><td><code>rtk trust</code> chấp thuận một file bộ lọc của người dùng; sửa file là mất chấp thuận mà không báo</td></tr>
+    <tr><td>không phải terminal (non-TTY)</td><td>stdout bị một chương trình bắt lại thay vì in ra terminal — đúng cách Bash tool của Claude Code chạy</td></tr>
+    <tr><td>mang bằng chứng</td><td>output được dùng để đếm, trích dẫn, so diff, hoặc để khẳng định một thứ không tồn tại</td></tr>
+    <tr><td>upstream / maintainer</td><td>dự án rtk gốc trên GitHub / người duy trì dự án đó</td></tr>
+  </table></div>
+</section>
+
+<script>
+const gen = document.getElementById("gen");
+gen.textContent = new Date(gen.dataset.utc).toLocaleString("vi-VN", { dateStyle: "medium", timeStyle: "medium", timeZoneName: "short" });
+</script>
+</body>
+</html>

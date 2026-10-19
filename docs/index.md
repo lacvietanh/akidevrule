@@ -23,7 +23,11 @@ Topic folders follow `RULE-docs.A2`. Only the folders that currently hold conten
 
 ## `plan/` — active plans
 
-None.
+| Doc | Purpose |
+|-----|---------|
+| [route-map-json.md](plan/route-map-json.md) | Proposed, not started: the path → rule map moves out of `aki-route-guard.mjs` code into one data file, `payload/route-map.json`, read by the hook, `second_hop_audit.py` (whose hand copy has drifted), `test_lint.py` and AkiMCP's rule gate; waits on the owner's go. |
+| [full-file-reads.md](plan/full-file-reads.md) | Proposed, not started: a rule file counts as read only when read whole — the route gate stops counting `limit`/`offset`/`head` reads, a `Read` branch refuses partial reads of rule files (covers read-only workers), an `agent.B7` row for the `Read` tool's "only read that part" line, and `agent.A5` worker receipts proving each read with line count and last line. Evidence: 64 of 1,345 rule reads partial on the dev box (5.2% in subagents), one worker receipt naming two files it had read a fifth of. |
+| [rtk-accuracy-first.md](plan/rtk-accuracy-first.md) | Executed 2026-10-19: when rtk is on `PATH` the installer asks (terminal only, default no, `--rtk` for a silent yes) before writing `[hooks] exclude_commands` for every command whose output is evidence (`ls`, `grep`, `find`, `git diff/log/show`, `jq`, …; the only lossless knob for rtk's built-in filters), never touches `filters.toml`, prints one rtk line in every summary; one `coding.B3` bullet for what stays compressed; README § Optional: rtk. Re-read against rtk 1.0.1 the same day (still no lossless mode, caps still constants, #3262 still open, config path by source); every V item closed. Open: P4 re-measure `rtk gain` on the dev box from 2026-11-02 against the post-upgrade baseline. |
 
 ## `plan/done/` — completed plans
 
@@ -70,6 +74,7 @@ None.
 
 | Doc | Purpose |
 |-----|---------|
+| [rtk-output-loss-oct19.md](research/rtk-output-loss-oct19.md) | What rtk 0.50.0 drops (tested raw vs filtered: `ls` merges dirs and silently drops names ending in `.`, `grep` 211 of 480 lines, `git diff` 7,541 → 610, `jq` lines cut at 120), why only `exclude_commands` makes built-in filters lossless, how upstream treats it (accepted trade-off, no lossless mode, #1313 open), why savings figures count dropped content, 480 elisions vs 3 recalls. Decision: accuracy-first config, not abandonment. Amended 2026-10-19: macOS/Windows paths by source, 0.47.0 honours the exclusions, re-read against 1.0.1 (no lossless mode, caps constant, `bypass`, licence split, #3262 open), caps and filters confirmed in `truncate.rs`. Visual view (as of the original finding, not amended): [rtk-output-loss-oct19.html](research/rtk-output-loss-oct19.html), Vietnamese [rtk-output-loss-oct19-vi.html](research/rtk-output-loss-oct19-vi.html). |
 | [codex-instruction-delivery.md](research/codex-instruction-delivery.md) | Codex's documented global/project discovery compared with the skills-only installer; fallback does not deliver Claude global imports. Amended 2026-10-07: the 32 KiB limit binds the combined global + project chain, which the floor + router already exceed. Runtime behavior unmeasured; led to the delivery plan, now implemented. |
 | [release-changelog-shape-highlight-sep26.md](research/release-changelog-shape-highlight-sep26.md) | Why 21 of 25 ecosystem CHANGELOGs disagreed on section order and 13 invented headings, and why the `releases.json` `highlight` flag was never set: the rule named a vocabulary but no order, and `highlight` lived only in a private doc. Decision: `release.C1` fixes Keep a Changelog order, `release.C2` defines the highlight tier as judgment, `release_lint.py` checks the shape and surfaces highlight candidates as review lines. |
 | [release-copy-tiers-sep26.md](research/release-copy-tiers-sep26.md) | Where user-facing release wording lives so every project type gets it: `release.B6` owns one text in three lengths plus an announce verdict, B4 and C2 point at it, `/akiship` prints it as the last block without composing a third variant. |

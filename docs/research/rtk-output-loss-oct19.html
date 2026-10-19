@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rtk output loss — accuracy-first report</title>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f5f6f8; --border: #d9dce1; --text: #1b1f24; --muted: #5d6673; --link: #0b5cad;
+  --bad: #b42318; --bad-bg: #fde8e7; --ok: #1a7f37; --ok-bg: #e3f5e8; --warn: #9a6700; --warn-bg: #fff4d6; --info: #3b4ea8; --info-bg: #e8ecfb;
+  --gap: 10px; --pad: 8px; --radius: 6px; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216; --surface: #171b21; --border: #2b313a; --text: #e3e7ec; --muted: #9aa4b1; --link: #6cb6ff;
+    --bad: #ff8b80; --bad-bg: #3a1714; --ok: #6fdd8b; --ok-bg: #12301b; --warn: #f2c94c; --warn-bg: #352a0b; --info: #a5b4fc; --info-bg: #1c2240;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: var(--pad) calc(var(--pad) * 2); background: var(--bg); color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--link); }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 14px; margin: 0 0 6px; padding-bottom: 3px; border-bottom: 1px solid var(--border); }
+h3 { font-size: 13px; margin: 6px 0 4px; }
+p { margin: 4px 0; }
+ul { margin: 4px 0; padding-left: 18px; }
+code, pre { font-family: var(--mono); font-size: 12px; }
+code { background: var(--surface); padding: 0 3px; border-radius: 3px; }
+pre { margin: 4px 0; padding: var(--pad); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding-bottom: 6px; border-bottom: 2px solid var(--border); }
+header .meta { color: var(--muted); }
+nav { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 6px 0; border-bottom: 1px solid var(--border); margin-bottom: var(--gap); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: var(--gap); }
+section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--pad); margin-bottom: var(--gap); min-width: 0; }
+.grid > section { margin-bottom: 0; }
+.wide { grid-column: 1 / -1; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: var(--bg); }
+th, td { text-align: left; vertical-align: top; padding: 3px 6px; border: 1px solid var(--border); }
+th { background: var(--surface); font-weight: 600; white-space: nowrap; }
+.chip { display: inline-block; padding: 0 6px; border-radius: 9px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.bad { color: var(--bad); background: var(--bad-bg); }
+.ok { color: var(--ok); background: var(--ok-bg); }
+.warn { color: var(--warn); background: var(--warn-bg); }
+.info { color: var(--info); background: var(--info-bg); }
+.callout { border-left: 4px solid var(--bad); background: var(--bg); padding: 6px var(--pad); border-radius: var(--radius); }
+.kpis { display: flex; flex-wrap: wrap; gap: var(--gap); }
+.kpi { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px var(--pad); }
+.kpi b { display: block; font-size: 18px; }
+.cols3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--gap); }
+.cols3 > div { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--pad); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>rtk output loss — what it drops, how the world treats it, an accuracy-first setup</h1>
+  <span class="meta">Visual view of <a href="rtk-output-loss-oct19.md">rtk-output-loss-oct19.md</a> (source of truth) · plan <a href="../plan/rtk-accuracy-first.md">rtk-accuracy-first.md</a> · rtk 0.50.0 (tag v0.50.0, commit 1d87b8e7) · Linux dev box · generated <time id="gen" data-utc="2026-10-19T05:27:40Z">2026-10-19T05:27:40Z</time></span>
+</header>
+
+<nav>
+  <a href="#bottom">Bottom line</a><a href="#why">Why this was researched</a><a href="#engines">Two filter engines</a><a href="#loss">What is dropped</a><a href="#knobs">Knobs</a><a href="#recall">Recall in practice</a><a href="#world">Upstream &amp; users</a><a href="#savings">How savings are counted</a><a href="#native">Claude Code native limit</a><a href="#risk">Risk map</a><a href="#setup">Accuracy-first setup</a><a href="#open">Open items</a><a href="#summary">Summary</a><a href="#glossary">Glossary</a>
+</nav>
+
+<section id="bottom">
+  <h2>Bottom line</h2>
+  <div class="callout">rtk violates "accuracy over savings" for every command whose output is counted, quoted, diffed or used to claim absence, and upstream offers no lossless mode. Decision: <b>accuracy-first, not abandonment</b> — exclude evidence-bearing commands from the hook rewrite (the only lossless knob for built-in filters), keep recall on with a larger store, never touch <code>filters.toml</code>, and add one verification line for what stays compressed.</div>
+  <div class="kpis" style="margin-top:6px">
+    <div class="kpi"><b>211 / 480</b>lines kept by <code>grep -rn</code></div>
+    <div class="kpi"><b>7,541 → 610</b>lines of <code>git diff</code></div>
+    <div class="kpi"><b>480 : 3</b>elisions vs recalls, lifetime on this box</div>
+    <div class="kpi"><b>2.6M</b>tokens "saved" (50.4%), mostly from evidence commands</div>
+    <div class="kpi"><b>0</b>lossless modes upstream (#1313 open since 2026-04-14)</div>
+  </div>
+</section>
+
+<div class="grid">
+<section id="why">
+  <h2>Why this was researched</h2>
+  <ul>
+    <li>rtk 0.50.0 runs as Claude Code's <code>PreToolUse</code> Bash hook (<code>rtk hook claude</code>).</li>
+    <li>Observed 1: <code>ls ~/.claude/agents ~/.claude/skills</code> printed <code>(2 filtered)</code> / <code>[+2 hidden: rtk recall 9393053346b8]</code>. Raw: 20 lines in two labelled groups; filtered: 19 lines, dirs merged, folders first, sizes added. Recall holds only the two header lines — which file is in which dir is <b>unrecoverable</b>. Cause: "unparseable line" path in <code>compact_ls</code> (<code>ls.rs:302-307</code>) + <code>hidden_hint</code> (<code>ls.rs:147-165</code>).</li>
+    <li>Observed 2: <code>jq -c</code> lines cut to 120 chars with <code>...</code> and <code>[full output: rtk recall 4cb2107f636c]</code>. Cause: built-in <code>src/filters/jq.toml</code> — <code>truncate_lines_at = 120</code>, <code>max_lines = 40</code>. Raw lines 223/217 chars.</li>
+    <li>Owner's standing priority: accuracy over savings. The corpus mentioned rtk nowhere before this research.</li>
+    <li>Method: source of tag v0.50.0, raw (<code>rtk run</code>) vs filtered (hook) runs in a sandbox config/data dir with stdout captured (not a TTY — the shape of Claude Code's Bash tool), upstream issues/docs, HN via Algolia.</li>
+  </ul>
+</section>
+
+<section id="engines">
+  <h2>Two filter engines, different escape routes</h2>
+  <div class="scroll"><table>
+    <tr><th>Engine</th><th>Commands</th><th>Can a <code>filters.toml</code> change it?</th><th>Source</th></tr>
+    <tr><td>Built-in Rust</td><td><code>ls</code> <code>grep</code> <code>rg</code> <code>find</code> <code>tree</code> <code>wc</code> <code>diff</code> <code>git</code> <code>curl</code> <code>cat|head|tail</code> → <code>rtk read</code></td><td><span class="chip bad">no</span> handled before any TOML lookup</td><td><code>toml_filter.rs:259-311</code></td></tr>
+    <tr><td>TOML</td><td><code>jq</code> <code>stat</code> <code>du</code> <code>df</code> <code>ps</code> <code>ssh</code> …</td><td><span class="chip warn">yes, fragile</span> project <code>.rtk/filters.toml</code> → global → built-in, first match wins; loads only after <code>rtk trust</code>; <b>any edit silently cancels trust</b> and the lossy built-in returns</td><td><code>toml_filter.rs:188-223</code>, <code>hooks/trust.rs:199-216</code></td></tr>
+  </table></div>
+  <h3>Rewrite rules (<code>src/discover/rules.rs:59+</code>, checked with <code>rtk rewrite</code>)</h3>
+  <div class="scroll"><table>
+    <tr><th>Command</th><th>Becomes</th></tr>
+    <tr><td><code>ls x</code> · <code>cat f</code> · <code>head -5 f</code></td><td><code>rtk ls x</code> · <code>rtk read f</code> · <code>rtk read f --head-lines 5</code></td></tr>
+    <tr><td><code>jq …</code> · <code>stat f</code> · <code>ssh h …</code></td><td><code>rtk jq …</code> · <code>rtk stat f</code> · <code>rtk ssh …</code> (TOML match, standalone only, <code>registry.rs:1730-1749</code>)</td></tr>
+    <tr><td><code>cd /tmp &amp;&amp; ls -la</code> · <code>git log -3 | grep fix</code></td><td><code>cd /tmp &amp;&amp; rtk ls -la</code> · <code>git log -3 | rtk grep fix</code></td></tr>
+    <tr><td><code>sed</code> <code>awk</code> <code>echo</code> <code>env</code> <code>sort</code> <code>python3</code> · <code>ls | wc -l</code> · <code>cat f | jq .</code> · <code>ls &gt; out.txt</code></td><td>not rewritten</td></tr>
+  </table></div>
+  <p>Pipes (<code>registry.rs:1087-1224, 1451-1468</code>): the producer is rewritten only if every downstream command is <code>cat</code>/<code>head</code>/<code>tail</code> (not <code>tail -f</code>); the last command only when its rule allows (<code>grep</code>/<code>rg</code>). TOML pipeline order: strip_ansi → replace → match_output → strip/keep lines → truncate_lines_at → head/tail_lines → max_lines → on_empty; markers <code>... (N lines omitted)</code>, <code>... (N lines truncated)</code>, trailing <code>...</code>.</p>
+</section>
+
+<section id="loss" class="wide">
+  <h2>What is dropped (tested raw vs filtered unless marked)</h2>
+  <div class="scroll"><table>
+    <tr><th>Command</th><th>Status</th><th>Loss</th><th>Evidence</th></tr>
+    <tr><td><code>ls</code></td><td><span class="chip bad">lossy</span></td><td>always reformatted from <code>ls -l</code>; noise dirs hidden (<code>node_modules</code>, <code>dist</code>, <code>build</code>, <code>env</code>, <code>coverage</code>, … — <code>cmds/system/constants.rs</code>); ≤ 50 entries; multi-dir headers lost; owner/group/date lost from <code>-la</code> with no marker. <b>Silent bug:</b> names ending in <code>.</code> dropped with no marker and no recall (raw <code>a b. c</code> → <code>a c</code>), still on <code>develop</code> 2026-10-19</td><td><code>ls.rs:226-228</code> <code>is_dotdir</code>; tested</td></tr>
+    <tr><td><code>grep</code> / <code>rg</code></td><td><span class="chip bad">lossy</span></td><td>lines cut at 80 chars (<code>--max-len 80</code>), ≤ 200 results, 25 per file, indentation stripped, regrouped by file; from a pipe the overflow is dropped with only <code>[rtk] output capped at 200 results</code> and no recall</td><td><code>-rn</code>: 211 of 480 lines; #4107 open; #2436 open (header shows raw counts)</td></tr>
+    <tr><td><code>find</code></td><td><span class="chip bad">lossy</span></td><td>dotfiles and gitignored paths hidden; <code>target/dbg/zq.marker</code> missing, recall returned only <code>target/</code></td><td>tested</td></tr>
+    <tr><td><code>git log</code></td><td><span class="chip bad">lossy</span></td><td>10 commits without <code>-n</code> (50 with <code>--oneline</code>), no "more" marker — 50 of 2,426 on the clone; bodies cut to 3 lines <code>[+N lines omitted]</code></td><td>tested</td></tr>
+    <tr><td><code>git diff</code></td><td><span class="chip bad">lossy</span></td><td>100 changed lines per hunk, 500 total, most context dropped; marker <code>[full diff: rtk git diff --no-compact]</code></td><td><code>git_cmd.rs:1384-1543</code>; 7,541 → 610 lines</td></tr>
+    <tr><td><code>git branch</code></td><td><span class="chip bad">lossy</span></td><td>remote branches capped at 10</td><td>source</td></tr>
+    <tr><td><code>jq</code> (TOML)</td><td><span class="chip bad">lossy</span></td><td><code>truncate_lines_at = 120</code>, <code>max_lines = 40</code></td><td>tested: hash <code>702083cd13b3</code></td></tr>
+    <tr><td><code>ps</code>, <code>ssh</code> (TOML)</td><td><span class="chip bad">lossy</span></td><td>30 / 200 lines, 120 chars — a remote <code>cat</code> over <code>ssh</code> is cut</td><td>built-in filters</td></tr>
+    <tr><td><code>wc</code></td><td><span class="chip bad">lossy</span></td><td>drops the path for a single file</td><td>tested</td></tr>
+    <tr><td>test / build runners</td><td><span class="chip warn">capped, read only</span></td><td>listed failures capped: <code>CAP_WARNINGS</code> = 10 test failures, <code>CAP_ERRORS</code> = 20, fixed in code, not configurable</td><td><code>core/truncate.rs</code>, <code>cargo_cmd.rs:1227</code>; not run (cargo banned on this box)</td></tr>
+    <tr><td>filtered commands generally</td><td><span class="chip warn">reordered</span></td><td>stdout captured, stderr passed through: order changes (<code>make</code> errors printed before build lines); <code>make</code> stdout capped at 50 lines</td><td>tested</td></tr>
+    <tr><td><code>cat</code>, <code>head -N</code>, <code>tail -n N</code></td><td><span class="chip ok">lossless 0.50.0</span></td><td>byte-identical (900 lines, 57,379 bytes); <code>rtk read</code> defaults to <code>--level none</code>. Older versions dropped content (a user measured 203 of 1,573 <code>rtk read</code> calls, #1313)</td><td>tested</td></tr>
+    <tr><td><code>git status</code></td><td><span class="chip ok">lossless</span></td><td>20 modified + 25 untracked all kept; only the header reworded</td><td>tested</td></tr>
+    <tr><td><code>git log --stat</code>, <code>git diff --stat</code>, <code>grep -c</code>/<code>-l</code>, <code>curl</code> JSON to non-TTY</td><td><span class="chip ok">lossless</span></td><td>identical</td><td>tested</td></tr>
+    <tr><td><code>diff</code></td><td><span class="chip warn">identical, bug history</span></td><td>identical in the test; past bugs #3268, #2627</td><td>tested</td></tr>
+    <tr><td><code>gh</code> <code>glab</code> <code>psql</code> <code>aws</code> <code>kubectl</code> <code>docker logs</code></td><td><span class="chip info">untested</span></td><td>diffs, PR bodies, CI logs, deduplicated logs — expected lossy</td><td>unverified</td></tr>
+  </table></div>
+</section>
+
+<section id="knobs" class="wide">
+  <h2>Knobs</h2>
+  <div class="scroll"><table>
+    <tr><th>Option</th><th>What it does</th><th>Lossless?</th><th>Tested</th></tr>
+    <tr><td><code>[hooks] exclude_commands</code> in rtk <code>config.toml</code></td><td>hook stops rewriting matching commands; plain word → <code>^word($|\s)</code>, <code>^…</code> → regex (<code>registry.rs:1540-1569</code>); matched per segment inside <code>&amp;&amp;</code> chains, pipes, <code>timeout</code> wrappers; no trust step</td><td><span class="chip ok">yes</span></td><td>sandbox, <code>rtk rewrite</code> + <code>rtk hook claude</code> JSON; <code>git -C /x log</code> slipped past plain <code>^git\s+log</code> — regex below fixes it</td></tr>
+    <tr><td><code>RTK_DISABLED=1 &lt;cmd&gt;</code></td><td>skip one command (nag on stderr, <code>registry.rs:1622-1632</code>)</td><td><span class="chip ok">yes</span></td><td>yes</td></tr>
+    <tr><td><code>rtk run '&lt;cmd&gt;'</code> / <code>rtk proxy &lt;cmd&gt;</code></td><td>run unfiltered (proxy still records usage)</td><td><span class="chip ok">yes</span></td><td><code>run</code>: yes</td></tr>
+    <tr><td><code>RTK_NO_TOML=1</code></td><td>disables every TOML filter, rewrite and filtering</td><td><span class="chip ok">TOML only</span></td><td><code>jq .</code> 2,882 lines = raw</td></tr>
+    <tr><td><code>[retriever] mode="disabled"</code> / <code>RTK_RECALL=0</code></td><td>no recall store; TOML filters fall back to raw (<code>main.rs:1639-1644</code>)</td><td><span class="chip bad">worse</span> Rust filters still drop, now without a hash</td><td><code>ls</code> 51 vs 77 raw; <code>grep -rn</code> 211 vs 480</td></tr>
+    <tr><td><code>[retriever] max_entries</code>, <code>retention_days</code></td><td>keeps hints recoverable longer (defaults 200 / 30 days / 10 MB per entry)</td><td>n/a</td><td>code</td></tr>
+    <tr><td>global/project <code>filters.toml</code>, same <code>match_command</code></td><td>overrides a built-in TOML filter</td><td><span class="chip warn">yes, fragile</span> only with <code>strip_ansi</code> alone; edit cancels trust silently, re-run <code>rtk trust --yes</code></td><td><code>jq -c</code> 80/80 lines, 24,710/24,710 bytes</td></tr>
+    <tr><td><code>[limits] grep_max_results</code>, <code>grep_max_per_file</code></td><td>raise grep caps</td><td><span class="chip bad">no</span> CLI <code>--max 200</code> still applies, whitespace stripped, regrouped</td><td>203 vs 480</td></tr>
+    <tr><td><code>rtk grep --max-len N --max N</code></td><td>per-call grep flags</td><td><span class="chip bad">no</span> count matched (480) but indentation stripped, order changed</td><td>yes</td></tr>
+    <tr><td><code>git diff --no-compact</code></td><td>full diff</td><td><span class="chip ok">per code</span></td><td>not run</td></tr>
+    <tr><td><code>[limits] status_max_*</code></td><td>not wired in 0.50.0 (PR #2579 open)</td><td>n/a</td><td>status uncapped in test</td></tr>
+    <tr><td>hook allowlist</td><td><b>does not exist</b> — <code>rtk hook claude</code> has no flags, only the exclude list</td><td>n/a</td><td><code>--help</code></td></tr>
+    <tr><td>lossless mode</td><td><b>does not exist</b>; requested in #1313; a fork has it (RKelln/rtk <code>feature/no-truncation</code>)</td><td>n/a</td><td>source + issues</td></tr>
+  </table></div>
+</section>
+
+<section id="recall">
+  <h2>Recall in practice</h2>
+  <ul>
+    <li>Hints: <code>[full output: rtk recall &lt;hash&gt;]</code> (whole output stored) and <code>[+N hidden: rtk recall &lt;hash&gt;]</code> (dropped part only). Store <code>~/.local/share/rtk/recall.db</code>, gzip sqlite (<code>src/core/tee.rs</code>, <code>src/core/retriever.rs</code>).</li>
+    <li>Stored on success only when something was cut; failures stored when output ≥ 500 bytes.</li>
+    <li>This box: store full at 200 entries, spanning only 2026-10-07..19 (~285 h).</li>
+    <li><b>Lifetime: 480 elisions, 3 recalls</b> — all 3 made during this research (<code>mark_recalled</code>, <code>retriever.rs:394</code>). Agents do not follow the markers.</li>
+  </ul>
+</section>
+
+<section id="world">
+  <h2>Upstream &amp; users (read 2026-10-19)</h2>
+  <ul>
+    <li><a href="https://github.com/rtk-ai/rtk/issues/1313">#1313</a> "lossless-only mode", open, 18 comments: grep caps missing call sites, hidden diff hunks, cut commit bodies. Only maintainer-side post: automated triage label ("priority high"). Reporter, 2026-09-05: <i>"I stopped using RTK because of this… We asked everyone in our company to cease using it."</i></li>
+    <li>KuSh, 2026-05-31 (#2176): <i>"RTK_DISABLED env variable is the master 'filter off'"</i>. Diff truncation #3022 (closed 2026-09-13): answered with markers + <code>--no-compact</code>, not removal.</li>
+    <li>Policy: "Any truncated list has a recovery hint" (CONTRIBUTING.md:276); configurable caps "planned, not yet implemented" (<code>src/core/README.md:154</code>). → <span class="chip warn">accepted trade-off, not configurable</span></li>
+    <li>Related: #1566 (closed, <code>rtk ls</code> empty), #1282 (closed v0.44, piped corruption), #3262 (open, hook rewrote text inside quoted strings — not reproduced here).</li>
+    <li>HN <a href="https://news.ycombinator.com/item?id=46974740">46974740</a> (2026-02-11): users post 79–84% savings. <a href="https://news.ycombinator.com/item?id=47081527">47081527</a> (2026-03-03): <i>"the only times I run into challenges is when I need an output to debug/troubleshoot something and it's suppressed by RTK."</i> No Reddit thread found (not proof of absence).</li>
+    <li>Alternatives (vendor claims, unverified): tokf (lossy by design), sqz (claims byte-exact recoverability), squeez, squoze (claims never-elide for errors).</li>
+  </ul>
+</section>
+
+<section id="savings">
+  <h2>How savings are counted</h2>
+  <ul>
+    <li>README: "up to 90% of the bash output". Tokens = bytes/4 of raw minus filtered (<code>docs/guide/resources/savings-explained.md</code>).</li>
+    <li><span class="chip bad">dropped content counts as saving</span>; the cost of a re-run, a recall or a wrong conclusion is not counted.</li>
+    <li><span class="chip warn">phantom saving</span> a <code>head -n N</code> read is booked against the whole file size (<code>read.rs</code> <code>track_bytes(... regular_file_len ...)</code>), though plain <code>head</code> prints the same N lines.</li>
+    <li>This box, <code>rtk gain</code>: 2.6M tokens (50.4%) — <code>rtk read</code> 1.6M, <code>rtk grep</code> 516K, <code>rtk find</code> 66K, then <code>rtk ls</code>: the evidence-bearing families. Phantom vs real split of the 1.6M: unverified.</li>
+  </ul>
+</section>
+
+<section id="native">
+  <h2>Claude Code's own limit (vendor docs, not measured)</h2>
+  <ul>
+    <li>Successful Bash output over ~30,000 chars is saved to a file in the session folder; the model gets the path plus a 2,000-char preview → <span class="chip ok">saves tokens, loses nothing</span></li>
+    <li>Failed command: only a ~10,000-char head-and-tail excerpt, no path → <span class="chip warn">lossy</span></li>
+    <li><code>BASH_MAX_OUTPUT_LENGTH</code> sets the limit (default 30,000, max 150,000). Claude Code's <code>Read</code>/<code>Grep</code>/<code>Glob</code> never pass through rtk.</li>
+    <li>Source: <a href="https://code.claude.com/docs/en/tools-reference">code.claude.com/docs/en/tools-reference</a> "Output limits".</li>
+  </ul>
+</section>
+</div>
+
+<section id="risk">
+  <h2>Risk map</h2>
+  <div class="cols3">
+    <div><span class="chip bad">unsafe — output is evidence</span><p><code>ls</code> (all forms), <code>find</code>, <code>tree</code>, <code>grep</code>, <code>rg</code>, <code>ast-grep</code>, <code>wc</code>; <code>git diff/log/show/stash show/branch</code>; <code>diff</code>; <code>jq</code>, <code>stat</code>, <code>du</code>, <code>df</code>, <code>ps</code>, <code>ssh</code>; <code>curl</code>/<code>wget</code> beyond the tested case; <code>gh</code>, <code>glab</code>, <code>psql</code>, <code>aws</code>, <code>kubectl</code>/<code>docker logs</code> (untested).</p></div>
+    <div><span class="chip warn">conditionally safe</span><p>Test and lint runners (<code>cargo test</code>, <code>pytest</code>, <code>vitest</code>, <code>tsc</code>, <code>eslint</code>): failure list capped at 10–20, only a recall hint marks the rest. When an exact count or the full list matters: <code>RTK_DISABLED=1 &lt;cmd&gt;</code>. Lossless today but brittle: <code>cat</code>/<code>head</code>/<code>tail</code> → excluding costs nothing.</p></div>
+    <div><span class="chip ok">safe to compress</span><p><code>git status/add/commit/push/pull/fetch</code>; package installs (<code>npm</code>/<code>pnpm</code>/<code>pip</code>/<code>uv</code>/<code>bundle</code>/<code>brew</code> install); <code>make</code> (stdout capped at 50, errors on stderr survive but out of order).</p></div>
+  </div>
+</section>
+
+<section id="setup">
+  <h2>Accuracy-first setup (proposed — plan G1–G3, awaiting the owner)</h2>
+  <div class="grid">
+    <div>
+      <h3>G1 · rtk <code>config.toml</code>, written by the installer only when rtk is present</h3>
+<pre>
+# akidevrule: accuracy-first rtk — commands whose output is evidence run unfiltered (docs: README § rtk)
+[hooks]
+exclude_commands = [
+  "ls", "tree", "find", "grep", "rg", "ast-grep", "wc", "diff",
+  "cat", "head", "tail",
+  "jq", "stat", "du", "df", "ps", "ssh", "rsync", "curl", "wget",
+  "gh", "glab", "psql", "aws", "kubectl", "oc", "docker",
+  "^git(\\s+-[Cc]\\s+\\S+)*\\s+(diff|log|show|stash|branch)\\b",
+]
+
+[retriever]
+mode = "sqlite"
+max_entries = 2000
+retention_days = 30
+</pre>
+      <h3>G2 · one <code>coding.B3</code> line for what stays compressed (draft)</h3>
+<pre>
+Output carrying a filter's elision marker (`omitted`, `hidden`, `truncated`, `filtered`, `capped`, `recall`) is a sample: a count, a quote, a failure list or an absence claim taken from it is rerun raw first (rtk: `RTK_DISABLED=1 &lt;cmd&gt;`).
+</pre>
+      <h3>G3 · the offer</h3>
+      <p>README "Optional: rtk" section: what it saves, what it drops, what G1 writes, how to opt out, and the native ~30,000-char offload. Installer prints one line either way. After two weeks: <code>rtk gain</code> by command; if the remaining saving is negligible next to the native offload, downgrade "recommended" to "optional".</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <tr><th>Part</th><th>Why</th><th>Side effects / edge cases</th></tr>
+        <tr><td>exclude list</td><td>only lossless knob for Rust filters; tested through the hook JSON inside <code>cd … &amp;&amp;</code>, pipes (<code>git log -3 | grep fix</code>), <code>timeout 9 grep</code>, <code>git -C /r diff</code></td><td><code>git status</code>/<code>add</code>/<code>commit</code>/<code>push</code>, <code>npm run</code>, <code>npx tsc</code>, <code>pytest</code>, <code>make</code> still rewritten — intended</td></tr>
+        <tr><td><code>cat|head|tail</code></td><td>lossless by version, not by contract</td><td>excluding costs nothing</td></tr>
+        <tr><td><code>gh</code> … <code>docker</code></td><td>precautionary</td><td><span class="chip info">untested</span></td></tr>
+        <tr><td>recall on, 2,000 entries</td><td>off makes Rust filters cut silently; default 200 filled in 12 days</td><td>2,000 is inferred, not tested as a setting</td></tr>
+        <tr><td>no <code>filters.toml</code> edit</td><td>trust trap: any edit restores the lossy built-in silently</td><td>every content-type TOML command is already excluded</td></tr>
+        <tr><td>noise given up</td><td>content commands write almost no ANSI/progress bars to a non-TTY</td><td>inference from tests (raw had no ANSI)</td></tr>
+        <tr><td>merge policy</td><td>file absent → write; table absent → append; user table present → untouched, print missing entries; backup first; idempotent; opt-out line <code># akidevrule: rtk off</code></td><td>macOS/Windows config path unknown → a wrong path is a file rtk never reads, silently</td></tr>
+      </table>
+      <h3>Rejected</h3>
+      <table>
+        <tr><th>Option</th><th>Why not</th></tr>
+        <tr><td>recommend against rtk</td><td>the noise class saves real context and costs no evidence</td></tr>
+        <tr><td>lossless <code>filters.toml</code> overrides</td><td>reach only TOML commands; later edits silently restore lossy built-ins</td></tr>
+        <tr><td><code>RTK_RECALL=0</code></td><td>Rust filters keep cutting, without a hash</td></tr>
+        <tr><td>rule text only</td><td>480 elisions, 3 recalls; a rule cannot un-drop a line the model never saw</td></tr>
+        <tr><td>wait for #1313</td><td>open since 2026-04-14, no maintainer answer — reopen when a release ships a lossless mode</td></tr>
+        <tr><td>installer installs rtk</td><td>a package manager is a repo Non-goal</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="open">
+  <h2>Open items (plan <code>rtk-accuracy-first.md</code>)</h2>
+  <div class="scroll"><table>
+    <tr><th>Code</th><th>Item</th><th>Weight if ignored</th></tr>
+    <tr><td>D1</td><td>Owner approval of G1–G3, including the installer writing rtk's config (shared config, Non-goals)</td><td><span class="chip bad">blocking</span> nothing starts without it</td></tr>
+    <tr><td>V1</td><td>rtk <code>config.toml</code> path on macOS and Windows (Linux <code>~/.config/rtk/</code> verified)</td><td><span class="chip bad">high</span> for the Mac install: wrong path = silent no-op</td></tr>
+    <tr><td>V2</td><td>Runtime failure caps of <code>pytest</code>, <code>vitest</code>, <code>cargo test</code> (read in code only)</td><td><span class="chip warn">medium</span> decides whether G2 suffices or runners join the list</td></tr>
+    <tr><td>V3</td><td><code>gh</code>, <code>glab</code>, <code>psql</code>, <code>aws</code>, <code>kubectl</code>, <code>docker</code> filters untested</td><td><span class="chip ok">low</span> excluded anyway</td></tr>
+    <tr><td>V4</td><td>Quoted-string rewrite corruption #3262 not reproduced; heredoc/multi-line rewrites unprobed</td><td><span class="chip ok">low</span> exclusion lowers exposure</td></tr>
+    <tr><td>—</td><td>Claude Code Bash stdout assumed non-TTY (matches observations, not confirmed in docs); matters for <code>curl</code>, which filters differently on a TTY</td><td><span class="chip ok">low</span></td></tr>
+  </table></div>
+</section>
+
+<section id="summary">
+  <h2>Summary</h2>
+  <p><b>Keep rtk, but never let it touch evidence.</b> Upstream accepts content loss as the price of savings and counts dropped lines as "saved"; agents here followed 3 of 480 recovery hints. The only lossless control is to exclude evidence-bearing commands from the rewrite, which keeps the genuine savings on status, install and build noise. Large output is already handled losslessly by Claude Code itself. Cross-reference: <a href="../plan/full-file-reads.md">full-file-reads.md</a> — a <code>cat</code> of a rule file is lossless in 0.50.0, and the exclusion makes that independent of rtk's version.</p>
+</section>
+
+<section id="glossary">
+  <h2>Glossary</h2>
+  <div class="scroll"><table>
+    <tr><th>Term</th><th>Meaning</th></tr>
+    <tr><td>hook rewrite</td><td>rtk's <code>PreToolUse</code> hook replaces the agent's Bash command with an <code>rtk …</code> command before it runs (<code>updatedInput.command</code>, <code>hook_cmd.rs:568-641</code>)</td></tr>
+    <tr><td>elision</td><td>content removed from output, with or without a marker</td></tr>
+    <tr><td>recall</td><td><code>rtk recall &lt;hash&gt;</code> prints a stored full output or its dropped part</td></tr>
+    <tr><td>Rust / TOML filter</td><td>built-in compiled filter vs declarative filter file; only TOML ones can be overridden</td></tr>
+    <tr><td>trust</td><td><code>rtk trust</code> approves a user filter file; any edit revokes it silently</td></tr>
+    <tr><td>non-TTY</td><td>stdout captured by a program rather than a terminal — how Claude Code's Bash tool runs</td></tr>
+    <tr><td>evidence-bearing</td><td>output that is counted, quoted, diffed, or used to claim something is absent</td></tr>
+  </table></div>
+</section>
+
+<script>
+const gen = document.getElementById("gen");
+gen.textContent = new Date(gen.dataset.utc).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium", timeZoneName: "short" });
+</script>
+</body>
+</html>
