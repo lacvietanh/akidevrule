@@ -82,7 +82,7 @@ function transcriptFor(input) {
   return main;
 }
 
-/** Scan a transcript once: which rule files were Read (Read tool, or a Bash cat/sed/head/bat of the file) since the last compaction, and how many times this hook already denied for each in that segment. A compaction drops the rule text from the model's context, so reads and denials before it do not count (agent.B7 row 2). */
+/** Scan a transcript once: which rule files were Read (Read tool, or a Bash/Shell cat/sed/head/bat/less of the file) since the last compaction, and how many times this hook already denied for each in that segment. A compaction drops the rule text from the model's context, so reads and denials before it do not count (agent.B7 row 2). Claude Code stores the turn as type "assistant" and the Read target as file_path. Cursor stores role "assistant", the Read target as path, and the shell tool as Shell. */
 function scanTranscript(path, wanted) {
   const read = new Set();
   const denials = new Map();
@@ -100,17 +100,18 @@ function scanTranscript(path, wanted) {
     } catch {
       continue;
     }
+    const assistant = d.type === "assistant" || d.role === "assistant";
     if (d.type === "system" && d.subtype === COMPACT) {
       read.clear();
       denials.clear();
-    } else if (d.type === "assistant") {
+    } else if (assistant) {
       const content = d.message && Array.isArray(d.message.content) ? d.message.content : [];
       for (const c of content) {
         if (!c || c.type !== "tool_use" || !c.input) continue;
         if (c.name === "Read") {
-          const target = String(c.input.file_path || "");
+          const target = String(c.input.file_path || c.input.path || "");
           for (const r of wanted) if (target.endsWith(r)) read.add(r);
-        } else if (c.name === "Bash") {
+        } else if (c.name === "Bash" || c.name === "Shell") {
           const cmd = String(c.input.command || "");
           for (const r of wanted) if (new RegExp(`\\b(cat|sed|head|bat|less)\\b[^|;&\\n]*${r.replace(".", "\\.")}`).test(cmd)) read.add(r);
         }

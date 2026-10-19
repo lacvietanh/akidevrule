@@ -132,7 +132,17 @@
       "title": "docs/plan/resident-context-slim-sep28.md",
       "updated_at": 1790760336023,
       "wish": false
+    },
+    {
+      "created_at": 1791747655524,
+      "detail": "Cursor nạp hook từ ~/.claude (claudeUserHooks). Transcript Cursor ghi role \"assistant\", Read để path, shell là Shell. Hook chỉ nhận type \"assistant\" và file_path, nên lần đọc rule không được tính. Cầu chì 3 lần từ chối cũng không nổ vì Cursor không ghi attachment.stdout.\nĐã sửa claude/hooks/aki-route-guard.mjs: nhận cả role và type, path và file_path, Shell và Bash. Mốc compact_boundary giữ nguyên. Bản đang chạy ~/.claude/hooks/aki-route-guard.mjs đã chép theo. Kiểm tra 7 ca: Cursor read/shell và Claude read/bash cho sửa; không đọc, đọc file khác, đọc rồi compact thì vẫn chặn.\nĐã phát hành: CHANGELOG 3.8.0, Fixed — \"The route gate never counted a rule read made in Cursor\". Kiểm lại 7 ca ngày 2026-10-20.",
+      "done": true,
+      "id": "task-1791747655524",
+      "pin": false,
+      "title": "Route guard nhận transcript của Cursor",
+      "updated_at": 1792430493683,
+      "wish": false
     }
   ],
-  "updated_at": 1790760336023
+  "updated_at": 1792430493683
 }
