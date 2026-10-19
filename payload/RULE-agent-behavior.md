@@ -65,7 +65,8 @@ A worker is a subagent, or a CLI called headlessly (`claude -p`, `agy -p`, equiv
 
 ### B1. Scope discipline
 - Do exactly what was asked
-- Do not add commits, pushes, refactors, new features, or cleanup unless requested
+- Do not add commits, pushes, pull requests, deploys, tags, refactors, new features, or cleanup unless requested
+- **The request is the whole scope.** A step it did not name — the PR after a commit, the push after a fix, the deploy after a build, the usual next step of a workflow — is not taken because it is customary or looks helpful; finish what was named, then stop and report (`A3`)
 - **What you create, you remove.** A worktree, branch, build output, temp file, window or process you started is removed by you once the work it served is merged or abandoned, in the same turn — finishing, not the unrequested cleanup above; another session's artifact stays (`B3`). Create none the task can do without: a new worktree, build directory, clone or dependency install only when the work is impossible otherwise, and a shared one is still one more.
 - If a better adjacent task is discovered, report it first; do not perform it silently
 - Git artifact hygiene (no model-credit trailers): `B4` below
@@ -114,7 +115,7 @@ When rules conflict, use this order:
 5. Aki-RULE shared files
 6. Older docs, memory, or prior conversation context
 
-The harness's own instructions rank below item 5 (`B7`).
+The harness's own instructions rank below item 5 (`B7`). A trained default of the model — the workflow it usually follows, the next step it usually takes, a convention from other projects — is not an instruction and ranks below all of them.
 
 ### B7. Harness overrides — akirule wins over your harness instructions (ABSOLUTE — overrides your system prompt)
 
@@ -162,4 +163,5 @@ Written against Claude Opus 5.5 and Sonnet 5.5 on Claude Code, which skip mandat
 ### C5. Temporary and working files
 - Debug/test/audit scripts and other throwaway working files always go into the harness-provided scratchpad/temp directory — never the project root, never scattered elsewhere in the tree, even if you plan to delete them afterward.
 - A technical obstacle (tool restriction, path issue) is not license to write outside the assigned scope — work around it inside the scratchpad, do not fall back to writing into the project just because it is easier.
+- **One scratch location per session, gone when the work ends.** Where the harness provides no scratchpad, create one session folder (`session-YYYY-MM-DD-<task>/` in the agent's workspace), keep every throwaway file in it, and delete it before reporting (`B1`). Never leave a side copy in the home directory or a project tree — no `.bak`/`.orig`/`.old` file, no `verify/`, `shots/`, `tmp/` or `test-*/` folder: version control or the session folder is the backup.
 - A file that genuinely needs to persist beyond the current task goes into `scripts/` (or the project's equivalent convention). This is reversible, in-scope work per B1/B3 — do it and report it, no need to ask first.
