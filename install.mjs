@@ -203,21 +203,34 @@ const blueBold = (t) => c("1;34", t);
 // Backup / prune
 // ---------------------------------------------------------------------------
 
+// A backup is rollback material for this run only: removed once the run succeeds, kept when it fails. keepBackup() exempts one that holds content the install discarded.
+const runBackups = new Set();
+
 function backup(path) {
   if (!existsSync(path)) return;
   const dest = join(dirname(path), `${basename(path)}.akidevrule-backup-${STAMP}`);
   if (isDir(path)) copyTree(path, dest);
   else copyFileSync(path, dest);
+  runBackups.add(dest);
 }
 
-function pruneBackups(base) {
+function keepBackup(path) {
+  runBackups.delete(join(dirname(path), `${basename(path)}.akidevrule-backup-${STAMP}`));
+}
+
+function dropRunBackups() {
+  for (const dest of runBackups) rmrf(dest);
+  runBackups.clear();
+}
+
+function pruneBackups(base, keep = 1) {
   const parent = dirname(base);
   const prefix = `${basename(base)}.akidevrule-backup-`;
   const candidates = listDir(parent)
     .filter((n) => n.startsWith(prefix))
     .map((n) => join(parent, n))
     .sort((a, b) => statSync(a).mtimeMs - statSync(b).mtimeMs);
-  for (const old of candidates.slice(0, -2)) {
+  for (const old of candidates.slice(0, -keep)) {
     console.log(`  🗑️  Removing old backup: ${basename(old)}`);
     rmrf(old);
   }
@@ -453,6 +466,143 @@ function installCodexInstructions() {
   const shadowed = isFile(override) && readFileSync(override, "utf-8").trim() !== "";
   const bytes = Buffer.byteLength(block, "utf-8");
   return { file, bytes, changed, shadowed, budget: ensureCodexDocBudget(bytes) };
+}
+
+// ---------------------------------------------------------------------------
+// rtk — optional output compressor on Claude Code's Bash tool; opt-in accuracy-first config (README § Optional: rtk, docs/plan/rtk-accuracy-first.md)
+// ---------------------------------------------------------------------------
+
+const RTK_OPT_OUT = "# akidevrule: rtk off";
+const RTK_MANAGED_MARK = "# akidevrule: accuracy-first rtk";
+const RTK_EXCLUDE = [
+  ["ls", "tree", "find", "grep", "rg", "ast-grep", "wc", "diff"],
+  ["cat", "head", "tail"],
+  ["jq", "stat", "du", "df", "ps", "ssh", "rsync", "curl", "wget"],
+  ["gh", "glab", "psql", "aws", "kubectl", "oc", "docker"],
+  ["^git(\\s+-[Cc]\\s+\\S+)*\\s+(diff|log|show|stash|branch)\\b"],
+];
+const RTK_EVIDENCE_FAMILIES = "ls, grep, find, git diff/log/show, jq";
+const RTK_NOISE_FAMILIES = "git status, package installs and build logs";
+
+// TOML basic strings take JSON's escapes for backslash and quote, so JSON.stringify renders each entry.
+function rtkExcludeLines() {
+  return RTK_EXCLUDE.map((group) => `  ${group.map((s) => JSON.stringify(s)).join(", ")},`).join("\n");
+}
+
+function rtkHooksTable() {
+  return `${RTK_MANAGED_MARK} — commands whose output is evidence run unfiltered (akidevrule README § Optional: rtk)\n[hooks]\nexclude_commands = [\n${rtkExcludeLines()}\n]\n`;
+}
+
+// Fallback mirrors rtk's dirs::config_dir() layout (XDG, Application Support, RoamingAppData) when `rtk config` prints no path.
+function rtkDetect() {
+  let r;
+  try {
+    r = spawnSync("rtk", ["config"], { encoding: "utf-8", timeout: 5000, shell: IS_WIN });
+  } catch {
+    return null;
+  }
+  if (r.error || r.status !== 0) return null;
+  const m = (r.stdout || "").match(/^Config:\s*(.+?)\s*$/m);
+  if (m) return { path: expandTilde(m[1]) };
+  const base = process.platform === "darwin" ? join(HOME, "Library", "Application Support") : IS_WIN ? process.env.APPDATA || join(HOME, "AppData", "Roaming") : process.env.XDG_CONFIG_HOME || join(HOME, ".config");
+  return { path: join(base, "rtk", "config.toml") };
+}
+
+// The [name] table's body: from its header to the next table header. null when absent.
+function tomlTable(text, name) {
+  const header = new RegExp(`^[ \\t]*\\[${escapeRe(name)}\\][ \\t]*(#.*)?$`, "m");
+  const h = text.search(header);
+  if (h === -1) return null;
+  const bodyStart = text.indexOf("\n", h) + 1;
+  const rest = text.slice(bodyStart);
+  const next = rest.search(TOML_HEADER);
+  const end = next === -1 ? text.length : bodyStart + next;
+  return { start: h, bodyStart, end, body: text.slice(bodyStart, end) };
+}
+
+// String entries of the array that follows `key =`, read until the unquoted `]` (a quoted entry may itself contain one).
+function tomlStringArray(body, key) {
+  const k = body.match(new RegExp(`^[ \\t]*${escapeRe(key)}[ \\t]*=[ \\t]*\\[`, "m"));
+  if (!k) return null;
+  const out = [];
+  let i = k.index + k[0].length;
+  while (i < body.length) {
+    const ch = body[i];
+    if (ch === "]") break;
+    if (ch === '"' || ch === "'") {
+      const close = ch === '"' ? /(?:[^"\\]|\\.)*"/y : /[^']*'/y;
+      close.lastIndex = i + 1;
+      const m = close.exec(body);
+      if (!m) break;
+      const raw = m[0].slice(0, -1);
+      out.push(ch === '"' ? JSON.parse(`"${raw}"`) : raw);
+      i = close.lastIndex;
+      continue;
+    }
+    if (ch === "#") i = body.indexOf("\n", i) === -1 ? body.length : body.indexOf("\n", i);
+    else i++;
+  }
+  return out;
+}
+
+// Smallest safe change: no file → write; no [hooks] → append the table; [hooks] without exclude_commands → insert the key; the user's own exclude_commands → keep, report what is missing.
+function rtkConfigure(cfg) {
+  const text = isFile(cfg) ? readFileSync(cfg, "utf-8") : "";
+  if (text.includes(RTK_OPT_OUT)) return { path: cfg, state: "opt-out" };
+  const write = (after) => {
+    if (text) {
+      backup(cfg);
+      pruneBackups(cfg);
+    }
+    writeTextLf(cfg, after);
+  };
+  const hooks = tomlTable(text, "hooks");
+  if (!hooks) {
+    write((text ? text.replace(/\s*$/, "") + "\n\n" : "") + rtkHooksTable());
+    return { path: cfg, state: text ? "appended" : "written" };
+  }
+  const have = tomlStringArray(hooks.body, "exclude_commands");
+  if (!have) {
+    write(text.slice(0, hooks.bodyStart) + `exclude_commands = [ ${RTK_MANAGED_MARK}\n${rtkExcludeLines()}\n]\n` + text.slice(hooks.bodyStart));
+    return { path: cfg, state: "appended" };
+  }
+  const missing = RTK_EXCLUDE.flat().filter((s) => !have.includes(s));
+  return { path: cfg, state: missing.length ? "kept" : "unchanged", missing };
+}
+
+function rtkPrompt(cfg) {
+  console.log(`\n🔎 ${yellowBold("rtk found")} — an output compressor that hooks into Claude Code's Bash tool.`);
+  console.log(`   Its built-in filters save tokens by dropping lines — also from ${RTK_EVIDENCE_FAMILIES}, whose output an agent reads as evidence (a count, a quote, a "not found").`);
+  console.log(`   ${greenBold("y")} → write an accuracy-first rtk config at ${toTildePath(cfg)}: those commands run unfiltered; ${RTK_NOISE_FAMILIES} stay compressed. Existing file backed up; opt out later with a "${RTK_OPT_OUT}" line.`);
+  console.log(`   ${greenBold("N")} → leave rtk as it is (default). Details: README § Optional: rtk`);
+}
+
+function printRtkSummary(rtk) {
+  console.log();
+  console.log(cyanBold("rtk (optional output compressor):"));
+  if (!rtk) {
+    console.log("  ℹ️  rtk not found — nothing to configure. If you install it later, re-run with --rtk to run evidence commands unfiltered (README § Optional: rtk)");
+    return;
+  }
+  const p = toTildePath(rtk.path);
+  switch (rtk.state) {
+    case "declined":
+      console.log(`  ⚠️  rtk found, left as is — its default filters drop evidence lines from ${RTK_EVIDENCE_FAMILIES}. To run those unfiltered: re-run and answer y, or \`node install.mjs --rtk\` (README § Optional: rtk)`);
+      break;
+    case "written":
+    case "appended":
+      console.log(`  ✅ accuracy-first config ${rtk.state === "written" ? "written" : "added"}: ${p} — ${RTK_EVIDENCE_FAMILIES} … unfiltered; ${RTK_NOISE_FAMILIES} still compressed`);
+      break;
+    case "unchanged":
+      console.log(`  ✅ accuracy-first config already in place: ${p}`);
+      break;
+    case "kept":
+      console.log(`  ⚠️  ${p} has its own [hooks] exclude_commands — kept as yours; not in it yet: ${rtk.missing.join(", ")}`);
+      break;
+    case "opt-out":
+      console.log(`  ℹ️  ${p} carries "${RTK_OPT_OUT}" — skipped`);
+      break;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -849,7 +999,7 @@ async function inspectStatus(claudeDirs) {
 // print_summary (post-install)
 // ---------------------------------------------------------------------------
 
-function printSummary(claudeDirs, preAllow, codex) {
+function printSummary(claudeDirs, preAllow, codex, rtk) {
   console.log(`\n${greenBold("=== INSTALL SUCCEEDED ===")}`);
 
   const gitHash = gitShortHash(REPO_ROOT);
@@ -924,6 +1074,8 @@ function printSummary(claudeDirs, preAllow, codex) {
   console.log("  🔁 aki-compact-reread (SessionStart, compact only) — one notice after a compaction: routed rules left context, re-read before the next edit");
   console.log("  📢 aki-update-check (SessionStart, notify-only) — notifies when a new rule version is available");
 
+  printRtkSummary(rtk);
+
   console.log(`\n${greenBold("==============================")}`);
 }
 
@@ -945,7 +1097,7 @@ function ask(question) {
 // Main install logic
 // ---------------------------------------------------------------------------
 
-async function runInstall(claudeDirs) {
+async function runInstall(claudeDirs, { rtkFlag = false } = {}) {
   const sameCheckout = await inspectStatus(claudeDirs);
 
   // Skip the prompt only for a byte-identical overwrite (same commit, clean tree).
@@ -955,6 +1107,14 @@ async function runInstall(claudeDirs) {
       console.log("Install cancelled.");
       process.exit(1);
     }
+  }
+
+  // rtk: asked up front so the run has no mid-install question; default and non-interactive answer is "leave it".
+  const rtkFound = rtkDetect();
+  let rtkYes = rtkFlag;
+  if (rtkFound && !rtkFlag && process.stdin.isTTY) {
+    rtkPrompt(rtkFound.path);
+    rtkYes = (await ask("Configure rtk accuracy-first? [y/N]: ")).trim().toLowerCase() === "y";
   }
 
   // Legacy migration: ~/.aki/claudedoc -> ~/.aki/akidevrule
@@ -1040,8 +1200,8 @@ async function runInstall(claudeDirs) {
     }
 
     backup(geminiFile);
-    console.log("🧹 Pruning GEMINI.md backups (keeping the 2 most recent):");
-    pruneBackups(geminiFile);
+    if (hadUnmanaged) keepBackup(geminiFile);
+    pruneBackups(geminiFile, hadUnmanaged ? 2 : 1);
 
     const d = new Date();
     const geminiVersion = `V${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
@@ -1083,7 +1243,11 @@ async function runInstall(claudeDirs) {
   // --- 5. Script pre-allow for every other harness present ---
   const preAllow = preAllowHarnessScripts(claudeDirs);
 
-  printSummary(claudeDirs, preAllow, codex);
+  // --- 6. rtk accuracy-first config, only on an explicit yes ---
+  const rtk = rtkFound ? (rtkYes ? rtkConfigure(rtkFound.path) : { path: rtkFound.path, state: "declined" }) : null;
+
+  dropRunBackups();
+  printSummary(claudeDirs, preAllow, codex, rtk);
 }
 
 // ---------------------------------------------------------------------------
@@ -1095,9 +1259,10 @@ async function main() {
   if (argv.includes("-h") || argv.includes("--help")) {
     console.log("akidevrule installer — deploys shared rule corpus and skills.");
     console.log("");
-    console.log("Usage: node install.mjs [--check] [--claude-dir <path>]");
+    console.log("Usage: node install.mjs [--check] [--claude-dir <path>] [--rtk]");
     console.log("  --check              Print installed vs latest akidevrule version and exit. No install, no overwrite.");
     console.log("  --claude-dir <path>  Explicit Claude config directory to include (also auto-detects ~/.claude* and $CLAUDE_CONFIG_DIR).");
+    console.log("  --rtk                If rtk is installed, write its accuracy-first config without asking (evidence commands run unfiltered). Without this flag the installer asks in a terminal and otherwise leaves rtk untouched.");
     process.exit(0);
   }
   if (argv.includes("--check")) {
@@ -1106,7 +1271,7 @@ async function main() {
   }
   const claudeDirs = getClaudeDirs(argv);
   preflightInstallSettings(claudeDirs);
-  await runInstall(claudeDirs);
+  await runInstall(claudeDirs, { rtkFlag: argv.includes("--rtk") });
 }
 
 main().catch((err) => {

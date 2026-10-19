@@ -1,6 +1,6 @@
 # Architecture — how rules reach the two agents
 
-> updated 2026-10-07 · v3.6.0
+> updated 2026-10-19 · v3.7.0
 
 akidevrule is the single source of truth for a reusable rule baseline. That baseline has to reach two different agents that load context in fundamentally different ways: **Claude Code** and **Gemini / Antigravity**. This document describes how one source is installed onto a machine and consumed by each.
 
@@ -104,6 +104,8 @@ flowchart TD
 
 Before the confirmation prompt or any mutation, the installer validates every existing JSON file it may later update: each detected Claude `settings.json`, `~/.gemini/config/skills.json`, `~/.gemini/antigravity-cli/settings.json`, and `~/.gemini/settings.json`. Each must parse with an object root; a malformed file aborts the whole install with all originals untouched. Missing files are created only after preflight. Antigravity field-only differences (`allowNonWorkspaceAccess`, `agentMode`, or `trustedWorkspaces`) still write their settings file.
 
+**rtk, the one third-party config the installer may touch — opt-in only.** rtk is an output compressor hooked into Claude Code's Bash tool whose built-in filters drop lines from the commands an agent reads as evidence (`../research/rtk-output-loss-oct19.md`). When `rtk` is on `PATH` the installer asks once, before "Installing...", whether to write an accuracy-first `[hooks] exclude_commands` table into rtk's `config.toml` — the path read from `rtk config`'s first line, never guessed. The default, the Enter key and every non-interactive run answer no and leave rtk untouched; `--rtk` answers yes without a prompt; the summary prints one rtk line in every case so a human or an agent reading a CI log still sees the option. The write is the smallest change for the file's state (absent → write; no table → append; table without the key → insert; the user's own key → keep and report what is missing), backed up like `settings.json`, skipped for good on a `# akidevrule: rtk off` line. Decision trail: `../plan/rtk-accuracy-first.md`; the user-facing text: `README.md` § Optional: rtk.
+
 ## The managed / local split (both agents, same pattern)
 
 Each agent gets a **managed** file the installer owns and overwrites, plus a **`.local.md`** sibling the installer creates once and never touches again:
@@ -142,11 +144,11 @@ flowchart TD
     LOCAL -->|no| MKLOCAL["create empty local template"]
     LOCAL -->|yes| SKIPLOCAL["leave local untouched"]
 
-    MKLOCAL --> BK["backup GEMINI.md + prune to 2"]
+    MKLOCAL --> BK["backup GEMINI.md, older backups pruned"]
     SKIPLOCAL --> BK
     BK --> STMP["sed marker → write managed GEMINI.md"]
     STMP --> Q3{"had_unmanaged?"}
-    Q3 -->|no| DONE["done"]
+    Q3 -->|no| DONE["done — backup removed at run end"]
     Q3 -->|yes| DIR["print STRONG agent directive:<br/>read backup + managed file,<br/>append ONLY non-duplicate<br/>machine-local lines to GEMINI.local.md,<br/>do not edit managed, do not delete backup"]
     DIR --> DONE
 ```

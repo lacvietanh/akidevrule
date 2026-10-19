@@ -34,6 +34,7 @@ This Git repository is the source of truth; `dev.akitao.com` is the presentation
 - [Usage model](#usage-model)
 - [Repository layout](#repository-layout)
 - [What the installer does](#what-the-installer-does)
+- [Optional: rtk](#optional-rtk)
 - [Gemini / Antigravity model](#gemini--antigravity-model)
 - [What is excluded](#what-is-excluded)
 - [Why `~/.aki/akidevrule`](#why-akiakidevrule)
@@ -321,16 +322,44 @@ Targets 5-6 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`G
 2. Deploys to **all detected Claude config directories** — `~/.claude` (default primary), all existing `~/.claude*` profile variants (e.g. `~/.claude-9rt`, `~/.claude-prx`), plus `$CLAUDE_CONFIG_DIR` or `--claude-dir <path>` if provided:
    - Syncs every skill folder under `skills/*/` (whole directory, including any `references/` or `scripts/`) into `<target>/skills/`, one named folder at a time (copy + managed-names-only prune), removing only Aki's own old/renamed skill directories (`akidoc-*`, `akiadvise`) — any other skill you already have is never touched. `skills/` is a top-level, agent-neutral folder (siblings with `payload/`, not nested under `claude/`) because SKILL.md is a shared open standard both Claude Code and Antigravity/AGY consume identically — see [docs/ref/fact-agent-skills-standard.md](docs/ref/fact-agent-skills-standard.md).
    - Copies `claude/agents/*.md` into `<target>/agents/` **file by file, never a directory mirror with `--delete`** — that folder is a shared namespace where your own agent definitions sit beside Aki's, exactly like `<target>/skills/`, so nothing you did not install is ever removed.
-   - Replaces `<target>/CLAUDE.md` with the packaged guidance (timestamped backup first), appending this machine's source-repo path and an `@<target>/CLAUDE.local.md` import.
+   - Replaces `<target>/CLAUDE.md` with the packaged guidance (timestamped backup first, removed once the run succeeds), appending this machine's source-repo path and an `@<target>/CLAUDE.local.md` import.
    - Creates `<target>/CLAUDE.local.md` **only if missing** — never overwritten afterward. On profile variants (`~/.claude-*`), the template imports `@~/.claude/CLAUDE.local.md` by default so machine-wide facts are inherited. Put per-machine/per-profile rules there; they survive every reinstall.
-   - Before the confirmation prompt or any mutation, preflights every existing JSON file it may update: each detected profile's `settings.json`, `~/.gemini/config/skills.json`, `~/.gemini/antigravity-cli/settings.json`, and `~/.gemini/settings.json`. A malformed file or non-object root aborts the install with originals untouched. After preflight, updates `<target>/settings.json` with a timestamped backup: read permission for `~/.aki/akidevrule/**`, one `Bash(<launcher> <script>*)` rule per Aki skill script per rendering (absolute and `~/`-literal — Claude Code does not expand `~` before matching), `skillOverrides.akirule = "on"`, idempotent registration of the `SessionStart` update-check hook.
+   - Before the confirmation prompt or any mutation, preflights every existing JSON file it may update: each detected profile's `settings.json`, `~/.gemini/config/skills.json`, `~/.gemini/antigravity-cli/settings.json`, and `~/.gemini/settings.json`. A malformed file or non-object root aborts the install with originals untouched. After preflight, updates `<target>/settings.json` with a timestamped backup (removed once the run succeeds): read permission for `~/.aki/akidevrule/**`, one `Bash(<launcher> <script>*)` rule per Aki skill script per rendering (absolute and `~/`-literal — Claude Code does not expand `~` before matching), `skillOverrides.akirule = "on"`, idempotent registration of the `SessionStart` update-check hook.
    - Installs `<target>/hooks/aki-update-check.mjs` plus its shared parser `<target>/hooks/aki_version_check.mjs`, `<target>/hooks/aki-route-guard.mjs` registered as a `PreToolUse` hook on `Edit|MultiEdit|Write|NotebookEdit`, and `<target>/hooks/aki-compact-reread.mjs` registered as a `SessionStart` hook with matcher `compact` (all idempotent, same filter-then-push as the update check).
 3. Writes `~/.aki/akidevrule/.version` with `installed=`/`version=`/`commit=`/`branch=` and records the source-repo path in `~/.aki/akidevrule/.source-repo` — `version=` is the just-installed CHANGELOG's latest released semver, the same value `install.mjs --check` and the hook compare against remote.
 4. Installs `payload/GEMINI.md` to `~/.gemini/GEMINI.md` — Antigravity global behavior overrides, stamped with a version marker (`[AKIRULE-AG-OVERRIDES-…]`) on line 1. Generates one native rule file per `RULE-*`/`METHOD-*` under `~/.gemini/config/rules/` with YAML `trigger` frontmatter — `agent` `always_on`, the stacks `glob`, the rest `model_decision` — each description generated from its `akirule` route, so both harnesses route from one table. Deploys 11 skills directly to `~/.gemini/config/skills/` for native auto-discovery (synced per skill folder, same never-touch-the-rest guarantee as step 2), configures `~/.gemini/config/skills.json` with absolute paths as secondary, and merges skill execution permissions into `~/.gemini/antigravity-cli/settings.json` and `~/.gemini/settings.json` — a `command()` prefix rule for every `skills/*/scripts/*.py` per skill root, in both the expanded and the tilde-literal rendering (agy's matcher compares command strings literally — no glob expansion, and no tilde expansion in either direction — so a directory wildcard never matches and a rule only matches a command written the same way; see [docs/ref/fact-cli-permission-allowlist-standard.md](docs/ref/fact-cli-permission-allowlist-standard.md) §1.2) plus scoped `write_file`/`read_file` rules for the council workspace and rule corpus.
 5. Syncs the same skill folders to `~/.agents/skills/` (Codex CLI, Cursor), `~/.kiro/skills/` (Kiro CLI), and `~/.grok/skills/` (Grok CLI) — each a plain global skills root these CLIs read natively, synced per skill folder name exactly like step 2. Kiro and Grok are skills-only. Codex additionally gets the managed `AGENTS.md` block and the `project_doc_max_bytes` key described above, only when `$CODEX_HOME` (default `~/.codex`) exists; the summary names the block size, the budget written or found, and a non-empty `AGENTS.override.md` that would shadow it.
 6. Pre-allows every Aki skill script in each harness present on the machine, one adapter per rule dialect (`lib/permissions.mjs`): `~/.kiro/settings/permissions.yaml` (a marker-delimited managed block), `~/.codex/rules/akidevrule.rules` (a file akidevrule owns), `~/.cursor/cli-config.json` (`Shell(python3:<script>*)`, never a bare `Shell(python3)`), `~/.config/opencode/opencode.json` (`permission.bash`). Every rule names one exact script, in both path renderings; entries a previous install wrote are replaced, the user's own are kept. Grok CLI and Ollama have no file-based allowlist, so nothing is written for them — [docs/ref/fact-cli-permission-allowlist-standard.md](docs/ref/fact-cli-permission-allowlist-standard.md).
 
+7. If `rtk` is on `PATH`, asks once — in a terminal only — whether to write its accuracy-first config (next section). Default, and the only answer when there is no terminal, is to leave rtk alone; the summary then prints one line saying so, with the `--rtk` flag that opts in without a prompt.
+
 Re-running the installer updates the same managed files cleanly.
+
+## Optional: rtk
+
+[rtk](https://github.com/rtk-ai/rtk) is an output compressor that hooks into Claude Code's Bash tool and rewrites commands so their output comes back shorter. It is not required and the installer never installs it. What it saves is real on the noise class — `git status`, `git add/commit/push/pull`, package installs, build logs. What it costs is measured in `docs/research/rtk-output-loss-oct19.md`: its built-in filters also cut the commands an agent reads as evidence, and nothing in the shortened output says which lines are gone. Tested on rtk 0.50.0, raw against filtered: `ls` merges directories, caps at 50 entries and drops names ending in `.` with no marker; `grep` cuts lines at 80 characters and keeps 211 of 480; `find` hides dotfiles and gitignored paths; `git log` stops at 10 commits with no "more" line; `git diff` kept 610 of 7,541 lines; `jq` cuts every line at 120 characters. An agent that counts, quotes, diffs or claims "not found" from that output is wrong without knowing it, and the recovery hints rtk prints were followed 3 times in 480 elisions on the dev box. Large output needs no compressor to stay safe: Claude Code itself saves any Bash output past about 30,000 characters to a file and hands the model the path.
+
+rtk has no lossless mode (upstream issue #1313, open since 2026-04), and its built-in filters ignore `filters.toml`. The one knob that makes them lossless is `[hooks] exclude_commands` in rtk's `config.toml`: a listed command is not rewritten at all. The installer offers to write exactly that — **accuracy over savings** — and only on an explicit yes:
+
+| Answer | Effect |
+|---|---|
+| `y` in the terminal, or `--rtk` on the command line (`node install.mjs --rtk`, `npx @akinet/akidevrule@latest --rtk`) | writes the `[hooks]` table below into rtk's config (path taken from `rtk config`; `~/.config/rtk/config.toml` on Linux, `~/Library/Application Support/rtk/config.toml` on macOS, `%APPDATA%\rtk\config.toml` on Windows); an existing file is backed up first and other tables are kept; a `[hooks] exclude_commands` you wrote yourself is never touched — the summary lists what it still lacks |
+| `N`, Enter, or no terminal (CI, an agent running the installer) | rtk stays exactly as it is; the summary prints one line saying so |
+| a line `# akidevrule: rtk off` anywhere in the config | the installer skips rtk for good, even with `--rtk` |
+
+````toml
+# akidevrule: accuracy-first rtk — commands whose output is evidence run unfiltered (akidevrule README § Optional: rtk)
+[hooks]
+exclude_commands = [
+  "ls", "tree", "find", "grep", "rg", "ast-grep", "wc", "diff",
+  "cat", "head", "tail",
+  "jq", "stat", "du", "df", "ps", "ssh", "rsync", "curl", "wget",
+  "gh", "glab", "psql", "aws", "kubectl", "oc", "docker",
+  "^git(\\s+-[Cc]\\s+\\S+)*\\s+(diff|log|show|stash|branch)\\b",
+]
+````
+
+Everything not listed — `git status`/`commit`/`push`, `npm`, `cargo`, `pytest`, `make` — stays compressed, and the rule corpus covers that residue: `coding.B3` treats any output carrying an elision marker as a sample and reruns it raw (`RTK_DISABLED=1 <cmd>`) before counting or quoting from it. The exclusion list is honoured on every rtk from 0.47.0 to 1.0.1 (hook-tested on 0.47.0, 0.50.0 and 1.0.1); the 1.0 line adds pipelines, `rtk bypass`, and a licence split (Apache-2.0 CLI plus a BUSL-1.1 compression engine, free for production use; `rtk-oss` is Apache-only without the engine), none of which changes the config above. From 0.49.0 you may also enlarge the recall store, which fills in days at its default of 200 entries: `[retriever] mode = "sqlite"`, `max_entries = 2000`, `retention_days = 30` — not written by the installer, since older rtk versions have no sqlite store (they ignore the table). Decision trail: `docs/plan/rtk-accuracy-first.md`.
 
 ## Gemini / Antigravity model
 
@@ -361,6 +390,7 @@ rm -f  ~/.claude/hooks/aki-update-check.mjs ~/.claude/hooks/aki_version_check.mj
 # then delete the three entries whose command names those hooks from hooks.SessionStart and hooks.PreToolUse in ~/.claude/settings.json
 # Codex: delete the `>>> akidevrule managed` … `<<< akidevrule managed` block in ~/.codex/AGENTS.md (the rest is yours), and the project_doc_max_bytes line in ~/.codex/config.toml if unwanted
 rm -f  ~/.gemini/GEMINI.md          # restore from a *.akidevrule-backup-* if needed; GEMINI.local.md is left untouched
+# rtk, only if you answered y: remove the `# akidevrule: accuracy-first rtk` [hooks] table from rtk's config.toml (`rtk config` prints its path)
 ```
 
 On **Windows** the same targets live under `%USERPROFILE%` (e.g. `%USERPROFILE%\.aki\akidevrule`, `%USERPROFILE%\.claude\skills\...`); remove them with `Remove-Item -Recurse -Force`.
