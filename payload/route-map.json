@@ -1,0 +1,14 @@
+{
+  "routes": [
+    { "rules": ["RULE-test.md"], "nameRe": "\\.(test|spec)\\.[a-z]+$|_test\\.[a-z]+$|^test_.*\\.py$|^conftest\\.py$", "dirRe": "(^|/)(test|tests|__tests__|spec)/", "dirSkipExt": ["md"] },
+    { "rules": ["RULE-coding.md", "RULE-pattern-core.md"], "ext": ["ts", "tsx", "js", "jsx", "mjs", "cjs", "vue", "svelte", "rs", "py", "go", "rb", "php", "java", "kt", "swift", "c", "cc", "cpp", "h", "hpp", "cs", "sh", "bash", "zsh", "ps1", "sql", "css", "scss", "lua", "dart"] },
+    { "rules": ["RULE-docs.md"], "ext": ["md"] },
+    { "rules": ["RULE-release.md"], "name": ["CHANGELOG.md", "releases.json"] },
+    { "rules": ["RULE-ui-pattern.md"], "ext": ["vue", "svelte", "css", "scss", "tsx", "jsx"] },
+    { "rules": ["RULE-db-design.md"], "ext": ["sql"], "dirRe": "/migrations/" },
+    { "rules": ["RULE-content-write.md"], "dirRe": "/(locales|i18n|lang)/" },
+    { "rules": ["RULE-stack-tauri.md"], "ext": ["rs"], "name": ["tauri.conf.json"], "dirRe": "/src-tauri/" },
+    { "rules": ["RULE-stack-akiNuxtCf.md"], "ext": ["vue", "ts"], "projectHas": ["nuxt.config.ts", "nuxt.config.js", "nuxt.config.mjs"] }
+  ],
+  "ungated": { "segments": ["/.aki/"], "prefixes": ["/tmp/"], "dirs": ["scratchpad"] }
+}

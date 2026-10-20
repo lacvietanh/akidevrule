@@ -545,10 +545,22 @@ function tomlStringArray(body, key) {
   return out;
 }
 
-// Smallest safe change: no file → write; no [hooks] → append the table; [hooks] without exclude_commands → insert the key; the user's own exclude_commands → keep, report what is missing.
-function rtkConfigure(cfg) {
+// Read-only classification: the state the file is already in, or null when a write would be needed (no file, no [hooks], [hooks] without exclude_commands).
+function rtkReadState(cfg) {
   const text = isFile(cfg) ? readFileSync(cfg, "utf-8") : "";
   if (text.includes(RTK_OPT_OUT)) return { path: cfg, state: "opt-out" };
+  const hooks = tomlTable(text, "hooks");
+  const have = hooks && tomlStringArray(hooks.body, "exclude_commands");
+  if (!have) return null;
+  const missing = RTK_EXCLUDE.flat().filter((s) => !have.includes(s));
+  return { path: cfg, state: missing.length ? "kept" : "unchanged", missing };
+}
+
+// Smallest safe change: no file → write; no [hooks] → append the table; [hooks] without exclude_commands → insert the key; anything else is rtkReadState's answer.
+function rtkConfigure(cfg) {
+  const known = rtkReadState(cfg);
+  if (known) return known;
+  const text = isFile(cfg) ? readFileSync(cfg, "utf-8") : "";
   const write = (after) => {
     if (text) {
       backup(cfg);
@@ -561,13 +573,8 @@ function rtkConfigure(cfg) {
     write((text ? text.replace(/\s*$/, "") + "\n\n" : "") + rtkHooksTable());
     return { path: cfg, state: text ? "appended" : "written" };
   }
-  const have = tomlStringArray(hooks.body, "exclude_commands");
-  if (!have) {
-    write(text.slice(0, hooks.bodyStart) + `exclude_commands = [ ${RTK_MANAGED_MARK}\n${rtkExcludeLines()}\n]\n` + text.slice(hooks.bodyStart));
-    return { path: cfg, state: "appended" };
-  }
-  const missing = RTK_EXCLUDE.flat().filter((s) => !have.includes(s));
-  return { path: cfg, state: missing.length ? "kept" : "unchanged", missing };
+  write(text.slice(0, hooks.bodyStart) + `exclude_commands = [ ${RTK_MANAGED_MARK}\n${rtkExcludeLines()}\n]\n` + text.slice(hooks.bodyStart));
+  return { path: cfg, state: "appended" };
 }
 
 function rtkPrompt(cfg) {
@@ -703,16 +710,18 @@ function mergeSettings(settingsPath, installRoot, claudeDir) {
     }
   };
   hooks.PreToolUse = hooks.PreToolUse.filter((e) => !isAkiRouteGuard(e));
-  hooks.PreToolUse.push({
-    matcher: "Edit|MultiEdit|Write|NotebookEdit",
-    hooks: [
-      {
-        type: "command",
-        command: `node "${join(claudeDir, "hooks", "aki-route-guard.mjs")}"`,
-        timeout: 10,
-      },
-    ],
-  });
+  for (const matcher of ["Edit|MultiEdit|Write|NotebookEdit", "Read"]) {
+    hooks.PreToolUse.push({
+      matcher,
+      hooks: [
+        {
+          type: "command",
+          command: `node "${join(claudeDir, "hooks", "aki-route-guard.mjs")}"`,
+          timeout: 10,
+        },
+      ],
+    });
+  }
 
   writeTextLf(settingsPath, JSON.stringify(data, null, 2) + "\n");
 }
@@ -1070,7 +1079,7 @@ function printSummary(claudeDirs, preAllow, codex, rtk) {
 
   console.log();
   console.log(cyanBold("Hooks deployed:"));
-  console.log("  🚧 aki-route-guard (PreToolUse on Edit|MultiEdit|Write|NotebookEdit) — denies the first edit of an artifact type until its routed rule was Read after the last compaction; AKI_ROUTE_GUARD=0 disables");
+  console.log("  🚧 aki-route-guard (PreToolUse on Edit|MultiEdit|Write|NotebookEdit and Read) — edit gate: denies the first edit of an artifact type until its routed rule was Read whole after the last compaction; Read of a rule file is widened to the whole file; AKI_ROUTE_GUARD=0 disables");
   console.log("  🔁 aki-compact-reread (SessionStart, compact only) — one notice after a compaction: routed rules left context, re-read before the next edit");
   console.log("  📢 aki-update-check (SessionStart, notify-only) — notifies when a new rule version is available");
 
@@ -1111,8 +1120,9 @@ async function runInstall(claudeDirs, { rtkFlag = false } = {}) {
 
   // rtk: asked up front so the run has no mid-install question; default and non-interactive answer is "leave it".
   const rtkFound = rtkDetect();
+  const rtkKnown = rtkFound && rtkReadState(rtkFound.path);
   let rtkYes = rtkFlag;
-  if (rtkFound && !rtkFlag && process.stdin.isTTY) {
+  if (rtkFound && !rtkKnown && !rtkFlag && process.stdin.isTTY) {
     rtkPrompt(rtkFound.path);
     rtkYes = (await ask("Configure rtk accuracy-first? [y/N]: ")).trim().toLowerCase() === "y";
   }
@@ -1243,8 +1253,8 @@ async function runInstall(claudeDirs, { rtkFlag = false } = {}) {
   // --- 5. Script pre-allow for every other harness present ---
   const preAllow = preAllowHarnessScripts(claudeDirs);
 
-  // --- 6. rtk accuracy-first config, only on an explicit yes ---
-  const rtk = rtkFound ? (rtkYes ? rtkConfigure(rtkFound.path) : { path: rtkFound.path, state: "declined" }) : null;
+  // --- 6. rtk accuracy-first config: an existing state is reported as is, a write only on an explicit yes ---
+  const rtk = rtkFound ? (rtkKnown || (rtkYes ? rtkConfigure(rtkFound.path) : { path: rtkFound.path, state: "declined" })) : null;
 
   dropRunBackups();
   printSummary(claudeDirs, preAllow, codex, rtk);

@@ -1,19 +1,32 @@
 #!/usr/bin/env python3
 # test_lint.py — mechanical detectors for the test-file failure shapes RULE-test.md owns (test.D1); each tag names the item it serves.
-# Usage: test_lint.py [--all] <path|dir> [...]   A dir expands to its git-tracked files matching the test-path signature (the aki-route-guard one); a file is linted as given.
+# Usage: test_lint.py [--all] <path|dir> [...]   A dir expands to its git-tracked files matching the test-path signature (the RULE-test.md route of route-map.json); a file is linted as given.
 # Output: [TAG] path:line | short label      Exit: 0 clean · 1 any CERTAIN tag · 2 usage error.   Same grammar as scythe.py and release_lint.py.
 # CERTAIN (verdicts): [TMPLIT] temp dir or file created at a literal /tmp path (B3) · [CLEANUP] a file that creates a temp dir and contains no removal call, unless the repo configures a suite preload (B2) · [EXIT] process.exit/sys.exit/os.Exit in a test (C3).
 # SUGGESTED (review): [CLEANUP-FINALLY] removal present but no finally/after hook (B3) · [SLEEP] fixed sleep (C3) · [VACUOUS] assertion whose only argument is Array.isArray, typeof === 'function' or a bare identifier (C2) · [AMBIENT] an if on env/filesystem/platform state with an assertion or continue under it (C2) · [HOMEREAD] real HOME read with no preload and no restored override (B1) · [NET] literal non-loopback URL fetched in the default suite (B1) · [PORT] fixed or random-range port (B1) · [SRCPIN] a project source file read by a test (C1) · [HISTORY] change-history comment (A3).
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-TEST_NAME = re.compile(r'\.(test|spec)\.[a-z]+$|_test\.[a-z]+$|^test_.*\.py$|^conftest\.py$')
-TEST_DIR = re.compile(r'(^|/)(test|tests|__tests__|spec)/')
+
+def test_route() -> dict:
+    for p in (Path.home() / '.aki' / 'akidevrule' / 'route-map.json', Path(__file__).resolve().parents[3] / 'payload' / 'route-map.json'):
+        try:
+            return next(r for r in json.loads(p.read_text())['routes'] if 'RULE-test.md' in r['rules'])
+        except (OSError, ValueError, KeyError, StopIteration):
+            pass
+    print("test_lint: no RULE-test.md route in route-map.json (~/.aki/akidevrule or payload/)", file=sys.stderr)
+    raise SystemExit(2)
+
+
+_route = test_route()
+TEST_NAME = re.compile(_route['nameRe'])
+TEST_DIR = re.compile(_route['dirRe'])
 CODE_EXT = {'.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.py', '.go', '.rs', '.sh'}
 CERTAIN = {'TMPLIT', 'CLEANUP', 'EXIT'}
 

@@ -55,6 +55,18 @@ jobs:
           for (const file of [path.join(primary, "CLAUDE.md"), path.join(envProfile, "CLAUDE.md"), path.join(flagProfile, "CLAUDE.md"), path.join(home, ".aki", "akidevrule", "RULE-agent-behavior.md"), path.join(primary, "hooks", "aki-route-guard.mjs"), path.join(primary, "hooks", "aki-compact-reread.mjs")]) if (!fs.existsSync(file)) throw new Error(`missing ${file}`);
           const hooksCfg = JSON.parse(fs.readFileSync(path.join(primary, "settings.json"))).hooks;
           if (!hooksCfg.SessionStart.some((e) => e.matcher === "compact" && e.hooks.some((h) => h.command.includes("aki-compact-reread")))) throw new Error("compact SessionStart hook not registered");
+          const routeMap = JSON.parse(fs.readFileSync(path.join(home, ".aki", "akidevrule", "route-map.json"), "utf8"));
+          if (!Array.isArray(routeMap.routes) || routeMap.routes.length === 0) throw new Error("route-map.json has no routes");
+          const guardMatchers = (matcher) => (hooksCfg.PreToolUse || []).filter((e) => e.matcher === matcher && e.hooks.some((h) => h.command.includes("aki-route-guard.mjs")));
+          for (const matcher of ["Read", "Edit|MultiEdit|Write|NotebookEdit"]) if (guardMatchers(matcher).length === 0) throw new Error(`aki-route-guard not registered for PreToolUse ${matcher}`);
+          const guard = (event) => spawnSync(process.execPath, [path.join(primary, "hooks", "aki-route-guard.mjs")], { input: JSON.stringify({ hook_event_name: "PreToolUse", session_id: "x", ...event }), env: { ...process.env, CLAUDE_CONFIG_DIR: "" }, encoding: "utf8" }).stdout;
+          const proj = path.join(home, "proj");
+          const transcript = path.join(home, "transcript.jsonl");
+          write(transcript, "");
+          const denied = guard({ tool_name: "Edit", transcript_path: transcript, cwd: proj, tool_input: { file_path: path.join(proj, "src", "a.js") } });
+          if (!denied.includes("deny") || !denied.includes("RULE-coding.md") || !denied.includes("RULE-pattern-core.md")) throw new Error(`route gate did not deny an unread code edit: ${denied}`);
+          const widened = guard({ tool_name: "Read", transcript_path: transcript, cwd: proj, tool_input: { file_path: path.join(home, ".aki", "akidevrule", "RULE-docs.md"), limit: 5 } });
+          if (!widened.includes("updatedInput") || "limit" in JSON.parse(widened).hookSpecificOutput.updatedInput) throw new Error(`partial rule Read was not widened: ${widened}`);
           if (fs.existsSync(path.join(home, ".codex"))) throw new Error("~/.codex must not be created by an install");
           const codexHome = path.join(home, ".codex");
           write(path.join(codexHome, "AGENTS.md"), "# my own codex notes\nkeep me\n");
@@ -108,4 +120,6 @@ jobs:
           if (!runOut(["--rtk"], withRtk).includes("kept as yours") || fs.readFileSync(rtkCfg, "utf8") !== "[hooks]\nexclude_commands = [\"ls\"]\n") throw new Error("--rtk overwrote the user's own exclude_commands");
           write(rtkCfg, "# akidevrule: rtk off\n");
           if (!runOut(["--rtk"], withRtk).includes("skipped") || fs.readFileSync(rtkCfg, "utf8") !== "# akidevrule: rtk off\n") throw new Error("rtk opt-out line not honored");
+          write(rtkCfg, rtkFirst);
+          if (!runOut([], withRtk).includes("already in place")) throw new Error("rtk managed config must be reported without --rtk");
           console.log(`OK: installer smoke passed on ${process.platform}`);
