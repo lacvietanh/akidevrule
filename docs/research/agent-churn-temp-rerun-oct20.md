@@ -40,14 +40,16 @@ An earlier count of 58% did not count edits made through Bash and was wrong.
 ### Harness context
 The Claude Code 2.1.304 binary contains a conditionally included instruction: "When a task finishes, put yourself in the user's shoes … run the tests and fix what fails, fix lint and type errors, update affected docs, tie off loose ends you created …". It is not confirmed to reach the owner's sessions, so no `agent.B7` row was added. The owner's "hasty harness" failure is the separate, already-recorded one: models citing "resume directly, act" / "when you have enough information to act, act" to skip steps where no hook enforces them (`agent.B7`).
 
+Claude Code's own defaults (official permissions and permission-modes docs, read 2026-10-20): Manual mode asks for every non-read-only Bash command; `acceptEdits` auto-approves `rm` inside the working directories; the auto-mode classifier allows deleting a specific named path and blocks wildcard deletes in shared temp; no hook or allow rule can approve removing a critical path.
+
 ### Verification
 Counts are transcript scans, not controlled runs. The causal reading of reruns (filtered output discarded) rests on the 78% and 1% splits; it is not tested by an intervention yet, which is what the reopen trigger measures.
 
 ## Decision
 **Action**
-1. Subtract the corpus's own deletion mandates and compress `agent.C5` to three bullets (`payload/RULE-agent-behavior.md`).
+1. Subtract the corpus's own deletion mandates (`agent.B1` no longer lists temp files) and reduce `agent.C5` to: no file the task can do without and none outside the scratchpad; one session folder only where the harness gives none.
 2. `coding.B3` "one run per change state": keep a long check's output once and grep it (`payload/RULE-coding.md`).
-3. The machine-local command gate (outside this repo) now treats an `rm` whose every target resolves under a temp location as no danger: below `/tmp` or `/private/tmp` (inside the harness's own `claude-<uid>` tree only at session-item depth, so one session cannot wipe another's scratchpad), below a `/var/folders/…/T/` temp directory (never the cache tree beside it), or below `$TMPDIR`; a variable assigned literally earlier in the same command is resolved. Everything else — an unresolved variable, a temp root itself, a glob at the root, `..`, `$(…)` — still asks, and the rest of a compound command is still scanned.
+3. The machine-local command gate (outside this repo) no longer asks for an `rm` whose every target resolves to a named path below `/tmp`, `/private/tmp` or `$TMPDIR` (a variable assigned literally earlier in the same command is resolved); a temp root itself, a glob, `.`/`..`, an unresolved variable or `$(…)` still asks. Critical paths (`/`, `~`, the working directory and its parents) need no rule there: Claude Code never lets a hook approve their removal.
 
 **Rejected**
 - A deny hook for scratchpad `rm`: a second gate layered on the one that asks; the owner's goal is automation, so the asking gate is relaxed instead.

@@ -67,7 +67,7 @@ A worker is a subagent, or a CLI called headlessly (`claude -p`, `agy -p`, equiv
 - Do exactly what was asked
 - Do not add commits, pushes, pull requests, deploys, tags, refactors, new features, or cleanup unless requested
 - **The request is the whole scope.** A step it did not name — the PR after a commit, the push after a fix, the deploy after a build, the usual next step of a workflow — is not taken because it is customary or looks helpful; finish what was named, then stop and report (`A3`)
-- **What you create, you remove.** A worktree, branch, build output, temp file outside the harness scratchpad (`C5`), window or process you started is removed by you once the work it served is merged or abandoned, in the same turn — finishing, not the unrequested cleanup above; another session's artifact stays (`B3`). Create none the task can do without: a new worktree, build directory, clone or dependency install only when the work is impossible otherwise, and a shared one is still one more.
+- **What you create, you remove.** A worktree, branch, build output, window or process you started is removed by you once the work it served is merged or abandoned, in the same turn — finishing, not the unrequested cleanup above; another session's artifact stays (`B3`). Create none the task can do without: a new worktree, build directory, clone or dependency install only when the work is impossible otherwise, and a shared one is still one more.
 - If a better adjacent task is discovered, report it first; do not perform it silently
 - Git artifact hygiene (no model-credit trailers): `B4` below
 
@@ -163,5 +163,5 @@ Written against Claude Opus 5.5 and Sonnet 5.5 on Claude Code, which skip mandat
 
 ### C5. Temporary and working files
 - **No file the task can do without, and none outside the scratchpad.** A one-off script runs from stdin or a pipe (`python3 - <<'EOF'`, `node -e`); a file is written only when it is read again or by another process, and only into the harness-provided scratchpad — never the project tree, `/tmp` or the home directory, even when a tool restriction makes that easier. No side copy anywhere (`.bak`/`.orig`/`.old`, `verify/`, `shots/`, `tmp/`, `test-*/`): version control is the backup.
-- **The scratchpad belongs to the harness and is never cleaned by hand.** Where the harness provides none, create one session folder (`session-YYYY-MM-DD-<task>/` in the agent's workspace) for every throwaway file and remove it as one folder before reporting (`B1`).
+- **Where the harness provides no scratchpad,** create one session folder (`session-YYYY-MM-DD-<task>/` in the agent's workspace) for every throwaway file and remove it as one folder before reporting.
 - A file that genuinely needs to persist beyond the current task goes into `scripts/` (or the project's equivalent convention). This is reversible, in-scope work per B1/B3 — do it and report it, no need to ask first.

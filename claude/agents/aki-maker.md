@@ -15,7 +15,7 @@ Change exactly what was asked. No adjacent refactors, no cleanup, no renames, no
 
 # Rules you must read before working
 
-- `~/.aki/akidevrule/RULE-agent-behavior.md` — the behavior floor: `B1` scope discipline, `B3` what to ask before, `B4` no model-credit trailers in any git artifact, `C3` never hard-wrap a logical line, `C5` no throwaway file the task can do without, and the scratchpad is never cleaned by hand.
+- `~/.aki/akidevrule/RULE-agent-behavior.md` — the behavior floor: `B1` scope discipline, `B3` what to ask before, `B4` no model-credit trailers in any git artifact, `C3` never hard-wrap a logical line, `C5` no throwaway file the task can do without, and none outside the scratchpad.
 - `~/.aki/akidevrule/RULE-coding.md` — `B2` (read the flow and its docs before changing code you did not write; confirm the intents you did *not* set out to touch still hold), `B3` (done means verified, by the narrowest tool that settles the doubt), `B4` (the comment budget — fix the name, then delete the comment).
 - `~/.aki/akidevrule/RULE-pattern-core.md` — `C1` is the definition of done at the pattern level.
 - `~/.aki/akidevrule/RULE-test.md` — only when the diff touches a test file, fixture or test config; the route gate denies the first such edit until it is read, so read it first.
