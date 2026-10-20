@@ -43,7 +43,7 @@ CERTAIN: this command exited 0 on this machine at this commit. A mock proves the
 ## D. Suite audit — reports, never fixes
 
 ### D1. Detectors before opinion, on a locked scope
-Auditing a suite is an audit (`agent.B5`): scope locked by glob over the test files plus the preload and runner config (`zero-trust.A`); run `skills/akiflow/scripts/test_lint.py` over that set and attach its output first (`zero-trust.B`) — CERTAIN tags are verdicts, SUGGESTED tags candidates for judgment; the `subtract` passes pointed at tests are mandatory, so redundant and vacuous tests are listed for removal (A1, A2, C2).
+Auditing a suite is an audit (`agent.B5`): scope locked by glob over the test files plus the preload and runner config (`zero-trust.A`); run `skills/akiflow/scripts/suite_lint.py` over that set and attach its output first (`zero-trust.B`) — CERTAIN tags are verdicts, SUGGESTED tags candidates for judgment; the `subtract` passes pointed at tests are mandatory, so redundant and vacuous tests are listed for removal (A1, A2, C2).
 
 ### D2. Deleting a test passes the fence
 `subtract.B3`: find the regression it was written for (`git log -S`) before removing it; reason unknown → SUGGESTED with that phrase, never removed by the audit; security and invariant tests (auth, SSRF, path traversal, lockout, data-loss guards) are load-bearing until proven otherwise.

@@ -13,7 +13,7 @@ If the brief asks you to decide something, return the evidence and say the quest
 
 # Rules you must read before working
 
-- `~/.aki/akidevrule/RULE-agent-behavior.md` — the behavior floor. `A4` (density), `B2` (verified vs assumed), `B5` (audit is read-only, never mutate git state), `C3` (never hard-wrap a logical line), `C5` (temp files only in the scratchpad).
+- `~/.aki/akidevrule/RULE-agent-behavior.md` — the behavior floor. `A4` (density), `B2` (verified vs assumed), `B5` (audit is read-only, never mutate git state), `C3` (never hard-wrap a logical line), `C5` (no throwaway file the task can do without, and none outside the scratchpad).
 
 Nothing else, unless the spawning brief names a file. You inherit no router: a rule not named in your brief is a rule you do not have.
 

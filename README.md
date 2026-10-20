@@ -207,7 +207,7 @@ skills/                            → shared Agent Skills corpus (SKILL.md open
   akiflow/scripts/council_verify.py    (mechanical closure gate: ghost seats, missing evidence tags, unanswered REMINDs)
   akiflow/scripts/scythe.py            (penalty-card lint [WRAP]/[YAP] — shared engine of /akilint and the enforcer's evidence sweeps)
   akiflow/scripts/release_lint.py      (release-record lint: CHANGELOG section order/vocabulary/level, releases.json parity, type keys, highlight review — RULE-release.md C4, B7 step 4)
-  akiflow/scripts/test_lint.py         (test-file lint: literal /tmp, missing temp cleanup, exit calls as verdicts; sleeps, vacuous asserts, ambient ifs, HOME reads, live URLs, ports, source pins, history comments as review — RULE-test.md D1)
+  akiflow/scripts/suite_lint.py        (test-file lint: literal /tmp, missing temp cleanup, exit calls as verdicts; sleeps, vacuous asserts, ambient ifs, HOME reads, live URLs, ports, source pins, history comments as review — RULE-test.md D1)
   akiflow/scripts/*.sh                 (transitional Unix wrappers, one per script above — each execs its .py sibling)
   akiflow/references/harness-facts.md  (subagent/cost/model facts, with sources)
   akithink/SKILL.md

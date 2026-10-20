@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# test_lint.py — mechanical detectors for the test-file failure shapes RULE-test.md owns (test.D1); each tag names the item it serves.
-# Usage: test_lint.py [--all] <path|dir> [...]   A dir expands to its git-tracked files matching the test-path signature (the RULE-test.md route of route-map.json); a file is linted as given.
+# suite_lint.py — mechanical detectors for the test-file failure shapes RULE-test.md owns (test.D1); each tag names the item it serves.
+# Usage: suite_lint.py [--all] <path|dir> [...]   A dir expands to its git-tracked files matching the test-path signature (the RULE-test.md route of route-map.json); a file is linted as given.
 # Output: [TAG] path:line | short label      Exit: 0 clean · 1 any CERTAIN tag · 2 usage error.   Same grammar as scythe.py and release_lint.py.
 # CERTAIN (verdicts): [TMPLIT] temp dir or file created at a literal /tmp path (B3) · [CLEANUP] a file that creates a temp dir and contains no removal call, unless the repo configures a suite preload (B2) · [EXIT] process.exit/sys.exit/os.Exit in a test (C3).
 # SUGGESTED (review): [CLEANUP-FINALLY] removal present but no finally/after hook (B3) · [SLEEP] fixed sleep (C3) · [VACUOUS] assertion whose only argument is Array.isArray, typeof === 'function' or a bare identifier (C2) · [AMBIENT] an if on env/filesystem/platform state with an assertion or continue under it (C2) · [HOMEREAD] real HOME read with no preload and no restored override (B1) · [NET] literal non-loopback URL fetched in the default suite (B1) · [PORT] fixed or random-range port (B1) · [SRCPIN] a project source file read by a test (C1) · [HISTORY] change-history comment (A3).
@@ -20,7 +20,7 @@ def test_route() -> dict:
             return next(r for r in json.loads(p.read_text())['routes'] if 'RULE-test.md' in r['rules'])
         except (OSError, ValueError, KeyError, StopIteration):
             pass
-    print("test_lint: no RULE-test.md route in route-map.json (~/.aki/akidevrule or payload/)", file=sys.stderr)
+    print("suite_lint: no RULE-test.md route in route-map.json (~/.aki/akidevrule or payload/)", file=sys.stderr)
     raise SystemExit(2)
 
 
@@ -140,7 +140,7 @@ def main() -> None:
     show_all = '--all' in sys.argv
     targets = [a for a in sys.argv[1:] if not a.startswith('--')]
     if not targets:
-        print("usage: test_lint.py [--all] <path|dir> [...]", file=sys.stderr)
+        print("usage: suite_lint.py [--all] <path|dir> [...]", file=sys.stderr)
         sys.exit(2)
     files: list[Path] = []
     for t in targets:

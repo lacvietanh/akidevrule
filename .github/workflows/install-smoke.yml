@@ -60,7 +60,7 @@ jobs:
           const guardMatchers = (matcher) => (hooksCfg.PreToolUse || []).filter((e) => e.matcher === matcher && e.hooks.some((h) => h.command.includes("aki-route-guard.mjs")));
           for (const matcher of ["Read", "Edit|MultiEdit|Write|NotebookEdit"]) if (guardMatchers(matcher).length === 0) throw new Error(`aki-route-guard not registered for PreToolUse ${matcher}`);
           const guard = (event) => spawnSync(process.execPath, [path.join(primary, "hooks", "aki-route-guard.mjs")], { input: JSON.stringify({ hook_event_name: "PreToolUse", session_id: "x", ...event }), env: { ...process.env, CLAUDE_CONFIG_DIR: "" }, encoding: "utf8" }).stdout;
-          const proj = path.join(home, "proj");
+          const proj = path.join(path.parse(home).root, "akismoke-proj"); // never created; outside HOME so a HOME under an ungated scratchpad cannot mask the deny
           const transcript = path.join(home, "transcript.jsonl");
           write(transcript, "");
           const denied = guard({ tool_name: "Edit", transcript_path: transcript, cwd: proj, tool_input: { file_path: path.join(proj, "src", "a.js") } });
@@ -111,7 +111,10 @@ jobs:
           else { write(path.join(rtkBin, "rtk"), `#!/bin/sh\necho "Config: ${rtkCfg}"\n`); fs.chmodSync(path.join(rtkBin, "rtk"), 0o755); }
           const runOut = (args, env = {}) => { const r = spawnSync(process.execPath, ["install.mjs", ...args], { cwd: process.cwd(), env: { ...process.env, CLAUDE_CONFIG_DIR: "", ...env }, encoding: "utf8" }); if (r.error || r.status !== 0) throw new Error(r.error || r.stdout + r.stderr); return r.stdout; };
           const withRtk = { PATH: rtkBin + path.delimiter + process.env.PATH, Path: rtkBin + path.delimiter + (process.env.Path || process.env.PATH) };
-          if (!runOut([]).includes("rtk not found")) throw new Error("rtk absent: hint line missing");
+          const rtkNames = process.platform === "win32" ? ["rtk.exe", "rtk.cmd"] : ["rtk"];
+          const pathWithoutRtk = (process.env.PATH || process.env.Path || "").split(path.delimiter).filter((d) => !rtkNames.some((n) => fs.existsSync(path.join(d, n)))).join(path.delimiter);
+          const withoutRtk = { PATH: pathWithoutRtk, Path: pathWithoutRtk };
+          if (!runOut([], withoutRtk).includes("rtk not found")) throw new Error("rtk absent: hint line missing");
           if (!runOut([], withRtk).includes("rtk found, left as is") || fs.existsSync(rtkCfg)) throw new Error("rtk present without --rtk must be left untouched");
           if (!runOut(["--rtk"], withRtk).includes("accuracy-first config written") || !fs.readFileSync(rtkCfg, "utf8").includes("[hooks]")) throw new Error("--rtk did not write the config");
           const rtkFirst = fs.readFileSync(rtkCfg, "utf8");
