@@ -1,6 +1,6 @@
 # Full-file reads — a rule file counts as read only when it was read whole
 
-Status: proposed, not started — awaiting the owner (shared rule text and a hook on 100+ installs, `agent.B3`). Reopens a residue accepted in `done/resident-context-slim-sep28.md` (Item 4, "A `Read` with `limit` or a `head` fragment counts as read — 'in full' is not enforced"), which carried no reopen trigger; the incident below is the evidence.
+Status: executed 2026-10-20 (CHANGELOG 3.8.0). Deviations: F2 widens a partial `Read` instead of denying it, and F4 is deferred (see Outcome). Reopens a residue accepted in `done/resident-context-slim-sep28.md` (Item 4, "A `Read` with `limit` or a `head` fragment counts as read — 'in full' is not enforced"), which carried no reopen trigger; the incident below is the evidence.
 
 ## Why
 
@@ -15,7 +15,7 @@ Status: proposed, not started — awaiting the owner (shared rule text and a hoo
 | R1 | The harness asks for partial reads. Claude Code's `Read` description: "When you already know which part of the file you need, only read that part. This can be important for larger files." A model that believes it knows a rule file reads its head. `agent.B7` has no row for this instruction. | the tool description as shipped in Claude Code 2.1.303 |
 | R2 | The gate counts any read. `aki-route-guard.mjs` `scanTranscript` matches a `Read` by `file_path` alone and a Bash call by `cat\|sed\|head\|bat\|less` + file name, so `limit: 30` or `head -20` marks the file read. `scripts/second_hop_audit.py` counts the same way, so the audit cannot see the gap either. | `claude/hooks/aki-route-guard.mjs` `scanTranscript`; `scripts/second_hop_audit.py:49` |
 | R3 | A read-only worker is never checked. The gate fires only on Edit/Write, so a worker that only reads and reports never meets it; its receipt is self-reported (`agent.B2`) and nothing compares it with what it read. The incident took this path. `agent.A5` makes the brief name the rule files, but says neither "whole" nor how the caller could check. | `aki-route-guard.mjs` `main` (Edit-family matcher); `docs/arch/rule-delivery-architecture.md` § gate ("a read-only reviewer never triggers it") |
-| R4 | A Bash read of a rule file can come back shortened before the model sees it, if an output-compression hook is installed (observed on the dev box with rtk 0.50.0: listings and long lines elided, with a `recall` marker). The gate counts such a `cat` as a whole read. | session observation 2026-10-19; `../research/rtk-output-loss-oct19.md` R2: `cat`/`head`/`tail` are byte-identical through rtk 0.50.0, lossy in older versions |
+| R4 | A Bash read of a rule file can come back shortened before the model sees it, if an output-compression hook is installed (observed on the dev box with rtk 0.50.0: listings and long lines elided, with a `recall` marker). The gate counts such a `cat` as a whole read. | session observation 2026-10-19; `../../research/rtk-output-loss-oct19.md` R2: `cat`/`head`/`tail` are byte-identical through rtk 0.50.0, lossy in older versions |
 
 ## Changes (proposed)
 
@@ -54,20 +54,33 @@ Cheap (one line per file) and harness-independent: it covers `agy -p`, Codex and
 
 ## Steps
 
-- [ ] **P0 · baseline (read-only).** Run the partial-read count on the Mac's transcripts (main vs subagent, by model with `second_hop_audit.py --by-model`). Settle V1 and V2.
-- [ ] **P1 · F1 + F6.** Fixture, kept in the session scratchpad and listed in the CHANGELOG: whole `Read` → allow; `limit` below the line count → deny with the clause; `limit` ≥ line count → allow; `offset: 50` → deny; `head -20` → deny; `cat` → allow (until F5); partial read then compaction then whole read → allow.
-- [ ] **P2 · F2.** Fixture: `Read` of a rule file with `limit` → deny; the same without → allow; `Read` of a project file with `limit` → allow, no transcript read; a subagent's `Read` with `limit` on a rule file → deny. Measure the added latency per `Read` (V2).
-- [ ] **P3 · F3 + F4** in `payload/RULE-agent-behavior.md`, with the change sweep from the repo `CLAUDE.md`: `skills/akirule/SKILL.md` (delivery bullet, receipt row), `claude/CLAUDE.md` gate paragraph, `claude/agents/*.md` receipt lines, `skills/akiflow` worker briefs and `references/harness-facts.md` if they name the receipt, `install.mjs` (matcher, printed summary), `README.md` (gate paragraph, install list), `docs/arch/rule-delivery-architecture.md` (gate section, "a read-only reviewer never triggers it"), `docs/arch/corpus-map.md` if a lens row names `A5`/`B7`, `CHANGELOG.md` with the reasoning above.
-- [ ] **P4 · F5** — G1 shipped opt-in on 2026-10-19, so F5 is decided as written above; nothing to change in the gate unless an older rtk is found lossy on `cat`.
-- [ ] **P5 · live check** on the dev box after install: one worker briefed with two rule files, then its transcript: no partial `Read` of a rule file succeeded, and the receipt carries line counts and last lines that match.
+- [x] **P0 · baseline (read-only).** Run the partial-read count on the Mac's transcripts (main vs subagent, by model with `second_hop_audit.py --by-model`). Settle V1 and V2.
+- [x] **P1 · F1 + F6.** Fixture, kept in the session scratchpad and listed in the CHANGELOG: whole `Read` → allow; `limit` below the line count → deny with the clause; `limit` ≥ line count → allow; `offset: 50` → deny; `head -20` → deny; `cat` → allow (until F5); partial read then compaction then whole read → allow.
+- [x] **P2 · F2.** Fixture: `Read` of a rule file with `limit` → deny; the same without → allow; `Read` of a project file with `limit` → allow, no transcript read; a subagent's `Read` with `limit` on a rule file → deny. Measure the added latency per `Read` (V2).
+- [x] **P3 · F3 + F4** in `payload/RULE-agent-behavior.md`, with the change sweep from the repo `CLAUDE.md`: `skills/akirule/SKILL.md` (delivery bullet, receipt row), `claude/CLAUDE.md` gate paragraph, `claude/agents/*.md` receipt lines, `skills/akiflow` worker briefs and `references/harness-facts.md` if they name the receipt, `install.mjs` (matcher, printed summary), `README.md` (gate paragraph, install list), `docs/arch/rule-delivery-architecture.md` (gate section, "a read-only reviewer never triggers it"), `docs/arch/corpus-map.md` if a lens row names `A5`/`B7`, `CHANGELOG.md` with the reasoning above.
+- [x] **P4 · F5** — G1 shipped opt-in on 2026-10-19, so F5 is decided as written above; nothing to change in the gate unless an older rtk is found lossy on `cat`.
+- [x] **P5 · live check** on the dev box after install: one worker briefed with two rule files, then its transcript: no partial `Read` of a rule file succeeded, and the receipt carries line counts and last lines that match.
 
-Sequencing: `plan/route-map-json.md` rewrites the same hook file. Whichever lands second rebases onto the other; this plan touches `scanTranscript` and `main`, that one the path map.
+Sequencing: `plan/done/route-map-json.md` rewrote the same hook file. Whichever lands second rebases onto the other; this plan touches `scanTranscript` and `main`, that one the path map.
+
+## Outcome
+
+| Item | Result |
+|---|---|
+| F1 | done: `scanTranscript` counts a `Read` only when `offset` ≤ 1 and `limit` is absent or ≥ the file's line count; `cat`/`bat`/`less` in Bash/Shell count, `head`/`sed`/`tail` never; the deny reason adds the whole-file clause when only partial reads were found |
+| F2 | done as **widen**, not deny: the hook also runs on matcher `Read` (registered by `install.mjs`) and rewrites a partial `Read` of a rule file (`~/.aki/akidevrule/*.md` or a `SKILL.md` under `~/.claude/skills/`, judged on the resolved path, at most 60,000 bytes) into a whole one through `PreToolUse` `updatedInput` with `permissionDecision: allow`. Why: a deny costs a round trip per partial read and a model may retry partially; widening costs none. Above 60,000 bytes the `Read` tool's ~25k-token cap makes a partial read the only possible one, so it passes |
+| F3 | done: the `agent.B7` row for the `Read` tool description |
+| F4 | deferred: evidence of partial reads exists only on Claude Code, where F2 now widens them mechanically. Reopen on a partial rule read observed in a worker on a harness without the hook (agy, Codex, Kiro) or a receipt naming a file the worker did not read whole |
+| F5 | unchanged: Bash `cat` stays counted |
+| F6 | done: `second_hop_audit.py` prints `rule reads: N (partial K, P%)` for main and subagent and no longer counts a partial read as a read |
+| P0 | Mac baseline (2026-10-20): main 44 of 1,164 rule reads partial (3.8%), subagents 34 of 440 (7.7%) |
+| P5 | live check done on the Mac for F2 (Claude Code 2.1.303, 2026-10-20): a `Read` of `METHOD-proportionality.md` with `limit` 5 returned all 63 lines |
 
 ## Open items
 
 | Code | Item | Weight if ignored |
 |---|---|---|
-| D1 | Owner approval of F1–F6 and of the F3/F4 wording | nothing starts without it |
-| V1 | Whether a Claude Code subagent receives the global `CLAUDE.md` `@` imports. If it does, a brief that orders `agent` and `akirule` re-read pays twice for files already in the worker's context, and F4 should name only routed files | medium: decides brief wording and worker cost, not correctness |
-| V2 | Latency a `Read`-matcher hook adds to every `Read` (one `node` start) | low: if material, the matcher narrows to rule paths where the harness allows, else F2 drops to F1 + F4 |
-| V3 | Answered 2026-10-19: rtk 0.50.0 passes `cat` byte-identical; older versions did not (`../research/rtk-output-loss-oct19.md` R2); rtk G1 shipped opt-in the same day | low: closed by G1 where it was accepted, by F5's fallback elsewhere |
+| ~~D1~~ | closed: the owner delegated the decision on 2026-10-20; F1–F3, F5, F6 executed, F4 deferred | — |
+| ~~V1~~ | moot with F4 deferred. Was: whether a Claude Code subagent receives the global `CLAUDE.md` `@` imports. If it does, a brief that orders `agent` and `akirule` re-read pays twice for files already in the worker's context, and F4 should name only routed files | medium: decides brief wording and worker cost, not correctness |
+| ~~V2~~ | answered: about 29 ms per non-rule `Read` (one `node` start), measured. Was: latency a `Read`-matcher hook adds to every `Read` | low: if material, the matcher narrows to rule paths where the harness allows, else F2 drops to F1 + F4 |
+| V3 | Answered 2026-10-19: rtk 0.50.0 passes `cat` byte-identical; older versions did not (`../../research/rtk-output-loss-oct19.md` R2); rtk G1 shipped opt-in the same day | low: closed by G1 where it was accepted, by F5's fallback elsewhere |

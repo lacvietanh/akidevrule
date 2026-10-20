@@ -1,6 +1,6 @@
 # Plan — one route map as data: `payload/route-map.json`
 
-Status: proposed, not started; waiting on the owner's go (shared runtime on 100+ installs, `agent.B3`). The Cursor-transcript fix to `claude/hooks/aki-route-guard.mjs` that this plan had to land after was committed on 2026-10-20 (CHANGELOG 3.8.0, Fixed).
+Status: executed 2026-10-20 (CHANGELOG 3.8.0). Two deviations from D2: `projectHas` is satisfied by any one listed file, not all (the Nuxt route names three alternative config files); the `configDir` and `outsideProject` flags of D2 stay in hook code, because only the hook needs them and AkiMCP's D4 uses only the segment/prefix/dir list; the data file's `ungated` carries `segments`, `prefixes` and `dirs`.
 
 ## Problem
 
@@ -76,9 +76,9 @@ The gate denies exactly what it denies today; only the place the map is read fro
 ## Steps
 
 - [x] 0. Wait for the in-flight hook change to be committed (done 2026-10-20).
-- [ ] 1. Write `payload/route-map.json` from the hook's current code, entry by entry.
-- [ ] 2. Switch the hook; then the audit script; then `test_lint.py`.
-- [ ] 3. Verify the hook with synthetic `PreToolUse` stdin, same answers before and after: `test/x.test.js`, `test/fixtures/a.json`, `tests/helper.mjs`, `src/foo_test.go`, `lib/test_util.py` → `RULE-test.md`; `src/x.js` → `coding` + `pattern` only; `docs/spec/a.md` → `docs` only; `a.tsx` → `ui`; `pages/a.vue` in a project with `nuxt.config.ts` → `stack`, without it → no `stack`; `src-tauri/x.json` → `tauri`; `locales/vi.json` → `content`; `~/.aki/x.md`, `/tmp/x.js`, a path outside `cwd` → allowed; map file removed → allowed.
-- [ ] 4. Run `second_hop_audit.py` on the same transcripts before and after; record both figures in the CHANGELOG entry (D5).
-- [ ] 5. Change sweep (table above), `node install.mjs` on the dev box, read back `~/.aki/akidevrule/route-map.json`.
-- [ ] 6. Tell the aki-mcp-sv side the file is installed (its plan step 0).
+- [x] 1. Write `payload/route-map.json` from the hook's current code, entry by entry.
+- [x] 2. Switch the hook; then the audit script; then `test_lint.py`.
+- [x] 3. Verify the hook with synthetic `PreToolUse` stdin, same answers before and after: `test/x.test.js`, `test/fixtures/a.json`, `tests/helper.mjs`, `src/foo_test.go`, `lib/test_util.py` → `RULE-test.md`; `src/x.js` → `coding` + `pattern` only; `docs/spec/a.md` → `docs` only; `a.tsx` → `ui`; `pages/a.vue` in a project with `nuxt.config.ts` → `stack`, without it → no `stack`; `src-tauri/x.json` → `tauri`; `locales/vi.json` → `content`; `~/.aki/x.md`, `/tmp/x.js`, a path outside `cwd` → allowed; map file removed → allowed. Done: 17 sample paths plus 2 Nuxt cases gave byte-identical deny lists before and after; map removed → allow.
+- [x] 4. Run `second_hop_audit.py` on the same transcripts before and after; record both figures in the CHANGELOG entry (D5). Done on the Mac's transcripts, "before" era: sessions routed to `docs` 94 → 128 (any `.md` now, not only under `docs/`), `stack` 41 → 40, `tauri` 6 → 8, and a `content` route appears; figures before and after the switch are not comparable.
+- [x] 5. Change sweep (table above), `node install.mjs` on the dev box, read back `~/.aki/akidevrule/route-map.json`. Install done on the Mac.
+- [x] 6. Tell the aki-mcp-sv side the file is installed (its plan step 0): the file ships in 3.8.0 at `~/.aki/akidevrule/route-map.json`; aki-mcp-sv picks it up through its own plan's § Dependency (that repo's plan is uncommitted work of another session, not edited from here).

@@ -67,7 +67,7 @@ R1–R4 and the tested rows of R2 verified by source lines and sandbox runs (raw
 Accuracy-first, not abandonment. rtk violates "accuracy over savings" for every command family whose output is counted, quoted, diffed or used to claim absence, and upstream offers no lossless mode. The safe remainder (`git status/add/commit/push/pull`, package installs, build logs) still saves real noise. So: exclude the evidence-bearing families from the rewrite (R3, the only lossless knob for Rust filters), keep recall on with a larger store, never touch `filters.toml`, and add one verification line for the families that stay compressed.
 
 - **Action:** `../plan/rtk-accuracy-first.md` — executed 2026-10-19 as an opt-in installer step (`install.mjs --rtk` or a terminal prompt), `coding.B3` one bullet, `README.md` § Optional: rtk.
-- **Cross-references:** `../plan/full-file-reads.md` (R4, V3: a `cat` of a rule file is lossless in 0.50.0, and the exclusion makes it independent of rtk's version).
+- **Cross-references:** `../plan/done/full-file-reads.md` (R4, V3: a `cat` of a rule file is lossless in 0.50.0, and the exclusion makes it independent of rtk's version).
 
 ## Amendments
 
