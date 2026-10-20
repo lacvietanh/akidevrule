@@ -22,7 +22,7 @@ If a step in this file disagrees with the rule file, the rule file wins — exce
 
 **1. Release order.** The current user turn carries either the exact token `/akiship`, or a turn explicitly ordering the release ritual for this repo, in any wording (worked examples in the table below). A completion-intensity phrase with no release object activates nothing: it names no ritual, so it is ordinary vocabulary about finishing something, not an order to run this skill. Seeing this file, or `release.B8`, in context is not an invocation either: being loaded is not being called.
 
-**2. Imperative, not interrogative** (`agent.A3`). The order alone authorizes nothing — the turn must ask for the run to be *performed*. Where both readings are available, consult.
+**2. An order, not a question** (`agent.A3`). The order alone authorizes nothing — the turn must ask for the run to be *performed*. Where both readings are available, consult.
 
 **Why the token is not required.** The incident phrase ("tóm lại cần làm gì để trọn vẹn", `docs/research/akiship-literal-activation-aug22.md`) fails both conditions independently — no release object, and interrogative — and `agent.A3` alone was already resident when it misfired, which is why condition 1 stays a mechanical release-object check rather than judgment; the literal token on top adds only false negatives on a plainly-worded release order.
 
@@ -31,7 +31,7 @@ If a step in this file disagrees with the rule file, the rule file wins — exce
 | `/akiship` · "release trọn vẹn đi" · "chạy full release" · "ship đợt này luôn" | **execute** — run the phases below |
 | "nếu chạy /akiship thì cần gì để trọn vẹn?" · "/akiship sẽ làm những gì?" · "làm cho trọn vẹn" (no release object) | **consult / no activation** — read the checklist below and answer in chat what the run would do and what is still open on this tree; edit no file, no commit, no push, no tag, no release |
 
-Consult is the default whenever both readings are available. A withheld execution costs one extra turn; a wrongly performed one costs a published push that cannot be taken back (`agent.A3` — calibrate by reversibility).
+Consult is the default whenever both readings are available. A withheld execution costs one extra turn; a wrongly performed one costs a published push that cannot be taken back (`agent.A3`).
 
 ## Phase 1 — front check (all asks happen here or never)
 
@@ -61,7 +61,7 @@ Run B7 steps 2–7 in order, fixing findings as they surface (this is a gate, no
 
 **The FIRST block is the checklist receipt, and it is mandatory:** the `release.B7` lines `S0`–`S8` (`PASS | FIXED | FAIL | N/A — evidence`), the B5 detector output, and the four written self-interrogation answers. A report without them declares the run INCOMPLETE and says which steps were NOT RUN; an unreported step is a failed step (`release.B7` fail-closed contract), never an implicit pass.
 
-Then one dense summary (`agent.A4`): state derived → findings fixed (counts per gate step) → commits made → version minted or deferred with the reason → artifacts created → CI results (`release.B10`) → any owner-worded criteria self-decided this run, as an `agent.A3` decision block (`Decided: X · because Y · rejected Z (why) · reopen if W`) → anything left **unverified**, each with the exact command that would settle it.
+Then one dense summary (`agent.A4`): state derived → findings fixed (counts per gate step) → commits made → version minted or deferred with the reason → artifacts created → CI results (`release.B10`) → any owner-worded criteria self-decided this run, as an `agent.A3` decision block (`Decided: X · because Y · rejected Z (why) · reopen if W`) → anything left **unverified**, each an `agent.A4` `N` with the exact command that would settle it.
 
 **The LAST block is the release copy, every run, in `release.B6`'s shape** — Headline, Short, Full, and the announce verdict — quoting the `releases.json` entry and GitHub Release body the run already wrote rather than composing a third text; a deferred version prints `deferred — no copy`. It is the owner's paste-ready text for whatever channel they announce on (a post, a notification, a store listing); the block never names a channel the project's own records do not.
 

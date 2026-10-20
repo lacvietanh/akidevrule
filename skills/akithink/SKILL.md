@@ -1,6 +1,6 @@
 ---
 name: akithink
-description: Structured deep thinking for decisions — restate the problem, excavate the goal chain to the ultimate goal, first-principles decomposition (facts/constraints/assumptions), mandatory critique (steelman, inversion, pre-mortem), then converge into a decision record. Thinking only: it never edits, runs or ships anything — what happens after the record is decided by the originating turn's class (`agent.A3`), outside this skill. Self-run mode (non-interactive, decide and report) fires on an `agent.A3` deep-think trigger or on owner authorization; trivial two-way-door calls stay inline. Interactive session only when the owner asks for one. Best on a top-tier model (Opus/Fable).
+description: Structured deep thinking for decisions — restate the problem, excavate the goal chain to the ultimate goal, first-principles decomposition (facts/constraints/assumptions), mandatory critique (steelman, inversion, pre-mortem), then converge into a decision record. Thinking only: it never edits, runs or ships anything — acting on the record needs the owner's order (`agent.A3`), outside this skill. Self-run mode (non-interactive, decide and report) fires on an `agent.A3` deep-think trigger or on owner authorization; trivial two-way-door calls stay inline. Interactive session only when the owner asks for one. Best on a top-tier model (Opus/Fable).
 ---
 
 # akithink — structured deep-thinking session
@@ -60,7 +60,7 @@ Runs all phases without waiting, when the owner authorizes the agent to decide o
 - Phase 1 restatement is written, not confirmed.
 - The Interaction rules pacing (1–2 questions per turn) does not apply — no questions are asked mid-session.
 - Questions reach the owner only via `agent.A3`'s escalation outcomes, never through this skill's own turn-by-turn interaction.
-- Phase 5 converges and reports the decision block (`agent.A3`'s converged outcome), and the session ends there. This skill thinks and never acts (`pattern.A3`): whether anything is then executed is decided by the class of the originating turn — a task turn proceeds under `agent.A3`, a question turn gets the block and nothing else. A decision-record doc per `RULE-docs.md` still applies when the decision is durable.
+- Phase 5 converges and reports the decision block (`agent.A3`'s converged outcome), and the session ends there. This skill thinks and never acts (`pattern.A3`): an order proceeds under `agent.A3`; a communication turn gets the block and nothing else. A durable decision gets a decision-record doc per `RULE-docs.md` — written on an order, proposed on a communication turn.
 
 ## Invocation scope
 
