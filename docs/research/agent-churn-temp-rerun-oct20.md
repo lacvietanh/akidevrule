@@ -47,11 +47,12 @@ Counts are transcript scans, not controlled runs. The causal reading of reruns (
 
 ## Decision
 **Action**
-1. Subtract the corpus's own deletion mandates (`agent.B1` no longer lists temp files) and reduce `agent.C5` to: no file the task can do without and none outside the scratchpad; one session folder only where the harness gives none.
+1. Subtract the corpus's deletion mandate on the scratchpad (`agent.B1` now covers anything the agent or a command it ran created outside the harness scratchpad, so a throwaway that breaches `agent.C5` is still removed) and reduce `agent.C5` to: no file the task can do without and none outside the scratchpad; one session folder only where the harness gives none.
 2. `coding.B3` "one run per change state": keep a long check's output once and grep it (`payload/RULE-coding.md`).
 3. The machine-local command gate (outside this repo) no longer asks for an `rm` whose every target resolves to a named path below `/tmp`, `/private/tmp` or `$TMPDIR` (a variable assigned literally earlier in the same command is resolved); a temp root itself, a glob, `.`/`..`, an unresolved variable or `$(…)` still asks. Critical paths (`/`, `~`, the working directory and its parents) need no rule there: Claude Code never lets a hook approve their removal.
 
 **Rejected**
+- Prevention only (`agent.B1` silent on files): a `agent.C5` breach then had no removal duty, and `test.B3`, which applies `agent.B1` to a suite's temp dirs, outgrew its own root.
 - A deny hook for scratchpad `rm`: a second gate layered on the one that asks; the owner's goal is automation, so the asking gate is relaxed instead.
 - A `tee`-rewriting hook for check output: rewrites agent commands, carries parse risk, and the prize is about 0.8 filtered reruns per transcript.
 - A hook blocking `.bak` writes: 4 cases, recoverable, and it misses `cp`.

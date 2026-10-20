@@ -67,7 +67,7 @@ A worker is a subagent, or a CLI called headlessly (`claude -p`, `agy -p`, equiv
 - Do exactly what was asked
 - Do not add commits, pushes, pull requests, deploys, tags, refactors, new features, or cleanup unless requested
 - **The request is the whole scope.** A step it did not name — the PR after a commit, the push after a fix, the deploy after a build, the usual next step of a workflow — is not taken because it is customary or looks helpful; finish what was named, then stop and report (`A3`)
-- **What you create, you remove.** A worktree, branch, build output, window or process you started is removed by you once the work it served is merged or abandoned, in the same turn — finishing, not the unrequested cleanup above; another session's artifact stays (`B3`). Create none the task can do without: a new worktree, build directory, clone or dependency install only when the work is impossible otherwise, and a shared one is still one more.
+- **What you create, you remove.** Anything you or a command you ran created outside the harness scratchpad (`C5`) — a throwaway file or folder, worktree, branch, build output, window or process — is removed by you once the work it served is merged or abandoned, in the same turn: finishing, not the unrequested cleanup above; another session's artifact stays (`B3`). Create none the task can do without: a new worktree, build directory, clone or dependency install only when the work is impossible otherwise, and a shared one is still one more.
 - If a better adjacent task is discovered, report it first; do not perform it silently
 - Git artifact hygiene (no model-credit trailers): `B4` below
 
