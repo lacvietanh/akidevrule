@@ -1,6 +1,6 @@
 # UI Pattern — Frontend Enforcement (Nuxt / Vue / Tailwind)
 
-<!-- Address map: ui.A1-4 · ui.B1-5 · ui.C1-5 -->
+<!-- Address map: ui.A1-4 · ui.B1-6 · ui.C1-5 -->
 
 **Tier: Contextual.** Load on any UI authoring/refactor signal, or on an audit signal (see the Audit section). This file is the **UI-specific enforcement** of the universal laws in `RULE-pattern-core.md` — it does not redefine them. Nuxt/Cloudflare stack mechanics (rendering, i18n, layout chrome, deploy) live in `RULE-stack-akiNuxtCf.md`; this file owns the design-system layer: tokens, class taxonomy, variant API, and UI audit.
 
@@ -102,6 +102,13 @@ Recording alone does not prevent this. A write-only duty produces a documented p
 ### B5. Hover proximity — no dead gap on the pointer path (Law 8)
 
 Invariant: a `:hover`-shown popup/menu/tooltip stays open while the pointer travels trigger → content. Root fix first: eliminate the gap — nest the popup in the trigger's hover scope (parent `:hover` / `group-hover`) and create visual spacing with inner `padding`, never external `margin`. Only when the popup must escape the flow (portal/teleport, `overflow` clipping): transparent `::before`/`::after` bridge over the gap, or a short close-grace delay (~300ms). Closing mid-travel is a bug, not a styling choice.
+
+### B6. Popups: one wrapper, tokens only (Law 1 + Law 8)
+
+- One framework-free wrapper per repo owns every popup: `confirm` (→ boolean), `alert`, `toast`, and `fire`, the themed raw escape hatch. The library is loaded by a dynamic `import()` inside the call, never statically. Every surface of the repo (web app, desktop frontend) shares that one file and one stylesheet block; a framework composable is a thin adaptor that injects i18n labels. Call sites never import the library.
+- The look is the library's `--swal2-*` variables mapped to project tokens (`A2`) once, on `.swal2-container`, in CSS outside any `@layer`: the library injects its own `:root` block after the project's CSS, so a `:root` mapping loses, and a rule inside `@layer` loses to the library's unlayered rules. Tokens live on `:root`/`html` because the container is appended to `body`, and every surface defines each token the block reads: an undefined `var()` makes its property invalid (a missing top-inset token drops the container to the bottom of the viewport). No per-popup class and no `!important`: the base selectors are `:where()`-wrapped (specificity 0), so one class wins. The exception is toast placement (`body.swal2-toast-shown .swal2-container.swal2-*`, not wrapped): offset a toast through `--swal2-container-padding`, never `top … !important`.
+- A Tailwind v4 utility passed through `customClass` sits in the native `@layer utilities` and loses to the library's unlayered CSS unless suffixed `!`; set a variable instead (`customClass.popup: '[--swal2-width:40rem]'`). Dark/light follows the tokens, never `theme: 'dark'`.
+- Modal defaults: `reverseButtons: true` and `focusCancel: true` (the safe button takes focus; ignored when there is no cancel button), `heightAuto: false`; the wrapper skips them when `toast` is set, since the library warns that `heightAuto` and `focusCancel` are incompatible with toasts. Esc and outside click keep the library defaults; button text comes from i18n through the adaptor, never a hardcoded `'OK'`/`'Cancel'` at a call site. The library shows one popup at a time: a toast fired over an open confirm replaces it and resolves the confirm as dismissed, so the caller reads "cancelled"; skip or defer a toast while a non-toast popup is visible.
 
 ---
 

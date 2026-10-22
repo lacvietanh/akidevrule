@@ -51,7 +51,7 @@ Nuxt 4 · Vue 3 · Tailwind v4 · @nuxtjs/i18n · @nuxtjs/seo · SweetAlert2 · 
 - `v-if` for conditional rendering; `v-show` for frequent toggles
 - Internal links: `NuxtLink`
 - External links: `<a target="_blank" rel="noopener noreferrer">`
-- Dialogs: ONLY use `useSwal()`. Strictly forbidden to use `window.alert()` or `window.confirm()`.
+- Dialogs: ONLY `useSwal()` (`ui.B6`); never `window.alert()` or `window.confirm()`.
 - Template attribute order: `id` → `v-for :key` → `v-if/show` → `v-model` → `@events` → `:bindings` → `class/static`
 
 ### B3. i18n

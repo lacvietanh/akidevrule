@@ -159,6 +159,7 @@ def _lint_md(path: str) -> list[str]:
 
     front = False
     fence = False
+    fence_run = ''
     fence_marker: re.Pattern | None = None
     fence_body: list[tuple[int, str]] = []
     prev = ''
@@ -172,20 +173,21 @@ def _lint_md(path: str) -> list[str]:
             if re.match(r'^---[ \t]*$', raw):
                 front = False
             continue
-        fm = re.match(r'^[ \t]*(?:```|~~~)[ \t]*([A-Za-z0-9_+#-]*)', raw)
-        if fm:
-            if fence:
+        fm = re.match(r'^[ \t]*(`{3,}|~{3,})[ \t]*([A-Za-z0-9_+#-]*)', raw)
+        if fence:
+            # CommonMark: only a bare run of the opening character, at least as long as the opening run, closes the block; a ``` line inside a ```` block is content.
+            if fm and fm.group(1)[0] == fence_run[0] and len(fm.group(1)) >= len(fence_run) and not raw[fm.end(1):].strip():
                 if fence_marker is not None:
                     findings.extend(_scan_comment_runs(path, fence_body, fence_marker, False))
-                fence, fence_marker, fence_body = False, None, []
-            else:
-                fence, fence_marker, fence_body = True, _fence_marker(fm.group(1)), []
+                fence, fence_run, fence_marker, fence_body = False, '', None, []
+                prevset = False
+            elif fence_marker is not None:
+                fence_body.append((lineno, raw))
+            continue
+        if fm:
+            fence, fence_run, fence_marker, fence_body = True, fm.group(1), _fence_marker(fm.group(2)), []
             # A fence is a block boundary: the lines either side of it are not a wrapped pair.
             prevset = False
-            continue
-        if fence:
-            if fence_marker is not None:
-                fence_body.append((lineno, raw))
             continue
 
         if prevset:
