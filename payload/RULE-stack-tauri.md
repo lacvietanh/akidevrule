@@ -1,6 +1,6 @@
 # Tauri v2 + Rust Stack Rule
 
-<!-- Address map: tauri.A1-2 · tauri.B1-7 -->
+<!-- Address map: tauri.A1-2 · tauri.B1-8 -->
 
 ## Scope — when this applies
 Every Aki desktop project built on Tauri v2 + Rust (backend commands) + any JS frontend framework. Generic lessons only — project-specific facts (titlebar height, bundle naming, etc.) stay in that project's own `CLAUDE.md`.
@@ -57,3 +57,13 @@ Three switches, routinely confused — pick by what each actually controls:
 - **Scope limit — this chain governs consent-based reads.** It does not apply to paths the user picked in an Open/Save dialog or by drag-and-drop (user intent grants access directly), and Apple's own analysis excludes file *writes* from it. A write-only or file-picker-driven sidecar failing is a different diagnosis; don't reach for these switches first.
 
 When you cannot tell which switch fired, watch it rather than guess: `log show --predicate 'subsystem == "com.apple.TCC"' --last 5m` prints the `AttributionChain` (which process was held responsible) and the request's result. Claims and sources: `docs/research/macos-tcc-tauri-boundary-aug21.md` in the akidevrule repo. Full lookup (switches + rebuild/DR mechanism): `~/.aki/akidevrule/docs/ref/fact-macos-codesign-tcc.md`.
+
+### B8. Windows: a cross-compile proves it builds, never that it runs
+
+Symptom first: an app cross-built for Windows on macOS/Linux (`cargo xwin check`, `cargo check --target *-pc-windows-msvc`) passes every check and fails for the first Windows user — `Access is denied (os error 5)` on a file the app owns, a path shown as `\\?\C:\…`, a CLI that is found but cannot start (os error 193). A compile check never executes Windows file, path or process semantics; only a native test run does, so a change touching files, paths or processes runs the suite on Windows (VM or machine) before it ships (`coding.B3` rung 5).
+- **Native run from the build host:** `cargo xwin test --no-run --lib --target <arch>-pc-windows-msvc --message-format=json` → the last `executable`, run in the VM. Three traps: (1) a Tauri test exe imports `comctl32!TaskDialogIndirect`, present only in Common Controls v6, and has no manifest → dies at load with `0xC0000139` before any test runs; put `<exe>.manifest` declaring `Microsoft.Windows.Common-Controls` `6.0.0.0` beside it, in a fresh directory each run (Windows caches the manifest decision per exe path); (2) start the exe directly, never through `cmd /c` — a parent whose command line names the exe reads as a second instance to process-table code; (3) pass only on the harness summary line (`test result: ok. N passed; 0 failed`), never on exit code: a test that ends its own process (its own pid inside a Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`) exits 0 with the rest of the suite unrun.
+- **Append handles cannot truncate:** `OpenOptions::append(true)` grants `FILE_GENERIC_WRITE` minus `FILE_WRITE_DATA`, so `set_len` on it is `os error 5` on Windows and silently fine on unix. Empty through a `write(true)` handle, then open for append.
+- **Verbatim paths:** `std::fs::canonicalize` returns `\\?\C:\…` and `\\?\UNC\server\…`; strip the prefix (`\\?\UNC\` → `\\`) before showing a path or comparing it with one a person typed. Tests build expected paths with `Path::join` and compare `display()`, never a literal `/`.
+- **npm global bins are shims, not symlinks:** `%APPDATA%\npm\<bin>` (sh script), `<bin>.cmd`, `<bin>.ps1`, the package at `%APPDATA%\npm\node_modules\<pkg>` (a junction under `npm link`). Find the package through that `node_modules` entry and check its `package.json` `name`; walking up from the shim to "the nearest `package.json`" can land in the user's home folder.
+- **Only four extensions start:** `std::process::Command` runs `.com`, `.exe`, `.bat`, `.cmd`; resolving a bare name through every `PATHEXT` entry can pick a `.ps1` or `.js` → os error 193. Filter `PATHEXT` to those four, keeping its order.
+- **A test owns the processes it signals:** one that needs a live pid spawns a sleeper child (`ping -n 120 127.0.0.1` on Windows, `sleep 120` on unix) and kills it on drop (`test.B3`), never its own pid.

@@ -22,7 +22,7 @@ Every file is internally organized into groups **A/B/C** (a topic's broad themes
 | `seo` | A Meta & structure · B AI visibility & entity · **C ⟨Aki⟩ API & tooling stack** |
 | `release` | A Versioning core · B Identify & audit · **C ⟨Aki⟩ Web release artifacts** |
 | `stack` | A Cloudflare & TypeScript foundation · B Render · i18n · Vue patterns · **C ⟨Aki⟩ Ecosystem conventions** |
-| `tauri` | A Never block the UI · B Boundary & config |
+| `tauri` | A Never block the UI · B Boundary & config, incl. B8 Windows native run |
 | `ui` | A Taxonomy & tokens · B Component structure · C Audit playbook |
 | `think` | A Decision framework · B 5 Modules · C Radar |
 | `flow` | A Flow thinking · B 8 first-principles questions · C Closure & output |
