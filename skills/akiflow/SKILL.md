@@ -162,6 +162,8 @@ It fails on a missing anchor, a REQ quoting nothing the owner wrote, a declared 
 
 **The closure rationale answers two one-liners**: *did this achieve what the owner actually asked for* (compared against the anchor, not against the lead's restatement of it), and *why is this the smallest shape that does*. An item that cannot name what was cut — or state that nothing needed cutting — has not faced the subtraction pass. Verification asks "did I do what I said"; adversarial review asks "should this have been done"; neither asks the first question, which is why it is written explicitly here.
 
+**A blocker is an item with an owner, never a closing footnote.** Anything found to block what the anchor asked for becomes an `ITEM` with an owner seat in `checklist.md` the moment it is found. Closure may carry a `DEFERRED:` line only for an act no seat can perform: one only the owner's hands can do (push, tag, publish, a paid run) or one the anchor did not order (`agent.B3`). "Another seat's work", "outside this room" and an uncommitted file in the goal's way are not reasons to defer; the room takes the item, checks it and finishes it.
+
 ## Step 5 — `execute` mode
 
 | Job | Mechanism |
