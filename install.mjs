@@ -48,6 +48,7 @@ const CODEX_SKILLS_DIR = join(HOME, ".agents", "skills");
 const CODEX_HOME = process.env.CODEX_HOME ? expandTilde(process.env.CODEX_HOME.trim()) : join(HOME, ".codex");
 const KIRO_SKILLS_DIR = join(HOME, ".kiro", "skills");
 const GROK_SKILLS_DIR = join(HOME, ".grok", "skills");
+const WORKBUDDY_SKILLS_DIR = join(HOME, ".workbuddy-ai", "skills");
 const SKILLS_SRC = join(REPO_ROOT, "skills");
 
 const OLD_SKILLS = ["akidoc-rules", "akidoc-flow-audit", "akidoc-techbiz-optimizer", "akiadvise"];
@@ -1054,6 +1055,7 @@ function printSummary(claudeDirs, preAllow, codex, rtk) {
   console.log(`  🤖 Codex CLI : ${CODEX_SKILLS_DIR}`);
   console.log(`  🤖 Kiro CLI  : ${KIRO_SKILLS_DIR}`);
   console.log(`  🤖 Grok CLI  : ${GROK_SKILLS_DIR}`);
+  console.log(`  🤖 WorkBuddy : ${WORKBUDDY_SKILLS_DIR}`);
 
   console.log();
   console.log(cyanBold("Codex global instructions (behavior floor + router, resident):"));
@@ -1188,6 +1190,7 @@ async function runInstall(claudeDirs, { rtkFlag = false } = {}) {
   syncAkiSkills(CODEX_SKILLS_DIR);
   syncAkiSkills(KIRO_SKILLS_DIR);
   syncAkiSkills(GROK_SKILLS_DIR);
+  syncAkiSkills(WORKBUDDY_SKILLS_DIR);
   const codex = installCodexInstructions();
 
   // --- 4. GEMINI.md (only when ~/.gemini exists) ---

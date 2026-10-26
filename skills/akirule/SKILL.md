@@ -12,7 +12,8 @@ user-invocable: false
 - **Antigravity (IDE and `agy`):** routing is native — every rule is installed as `akirule-<topic>.md` (`agent` `always_on`, the rest by descriptions the installer generates from the routes below), so do not invoke this skill there.
 - **Codex:** resident — the installer writes the behavior floor and this router as a managed block in `$CODEX_HOME/AGENTS.md` (default `~/.codex/AGENTS.md`), so do not invoke the skill as well. Codex has no route gate: the `Read` of a routed file is the model's own mandatory step before the first edit of that artifact type.
 - **Other harnesses (Kiro, Grok):** it is a skill; invoke it before acting on any task turn.
-- **Not routed here:** `RULE-agent-behavior.md` (`agent`) — core, harness-embedded, never `Read` again and never listed as `(router)`.
+- **WorkBuddy:** a skill at `~/.workbuddy-ai/skills/`; invoke it before acting on any task turn, then `Read` `~/.aki/akidevrule/RULE-agent-behavior.md` once per session — this harness has no `@`-import or managed block, so the behavior floor is not resident and that read is what `(core)` reports. There is no route gate either.
+- **Not routed here:** `RULE-agent-behavior.md` (`agent`) — core, harness-embedded (on WorkBuddy: the once-per-session `Read` named in Delivery above), never listed as `(router)`.
 - **The second hop — reading a routed file — is the model's `Read`, and on Claude Code it is enforced for every route with an artifact signature:** the `aki-route-guard` PreToolUse hook denies the first Edit/Write of each artifact type in a session (code file → `coding`+`pattern`, `.md` → `docs`, `CHANGELOG.md` → `release`, `.vue`/`.css` → `ui`, Nuxt project → `stack`, `.rs` → `tauri`, `.sql` → `db`, `locales/` → `content`, test file or `test/` dir → `test`) until those files have been read whole in this transcript after the last compaction (a `Read` with `limit`/`offset` or a `head`/`sed`/`tail` print does not count, and the hook widens a partial `Read` of a rule file to the whole file) — a compaction drops them from context, and the `aki-compact-reread` SessionStart notice says so once; the deny reason names them — read them in full, update the receipt, retry the edit. The list above is the human summary; the path → rule map the hook, the audit and the lint read is `~/.aki/akidevrule/route-map.json`. Routes with no artifact signature (`think`, `proportion`, `biz`, `ux`, the audits) rely on this table alone, so nothing below is optional — it is the reason the receipt exists.
 
 ## How to route — meaning first, signals as evidence
@@ -70,7 +71,7 @@ One line at the start of the response, reporting the **whole rule context**:
 | Element | Rule |
 |---|---|
 | Names | the topic beside each file in the Routes table, `agent` for the core file — no new vocabulary. An item inside a file is addressed `topic.A1`: group letter, item number (`coding.B2`) |
-| `(core)` | the `@`-imported rule file, always listed (`agent`): its presence is otherwise unobservable |
+| `(core)` | the resident behavior floor, always listed (`agent`): `@`-imported on Claude Code, a managed block on Codex, the once-per-session `Read` on WorkBuddy — its presence is otherwise unobservable |
 | `(router)` | files this router loaded; full load writes `(router:full)` |
 | `(brief)` | a worker/subagent's files named by its spawning prompt and actually read — it inherits no router, and emits the line first in its single round (`agent.A5`) |
 

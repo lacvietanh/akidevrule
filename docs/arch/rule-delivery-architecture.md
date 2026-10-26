@@ -1,6 +1,6 @@
 # Architecture — how rules reach the two agents
 
-> updated 2026-10-20 · v3.7.0
+> updated 2026-10-26 · v3.8.0
 
 akidevrule is the single source of truth for a reusable rule baseline. That baseline has to reach two different agents that load context in fundamentally different ways: **Claude Code** and **Gemini / Antigravity**. This document describes how one source is installed onto a machine and consumed by each.
 
@@ -29,6 +29,10 @@ What the gate cannot reach: routes with no artifact signature (`think`, `proport
 ## Codex — resident by managed block, no gate
 
 Codex hard-loads one global file, `$CODEX_HOME/AGENTS.md` (default `~/.codex/AGENTS.md`; a non-empty `AGENTS.override.md` beside it shadows it), then the project's `AGENTS.md` chain from the repository root down; it expands no `@` imports and never reads Claude's global file, so copying `~/.claude/CLAUDE.md` would deliver two import lines and nothing behind them (`../research/codex-instruction-delivery.md`). The installer therefore renders the behavior floor and the router into a marker-delimited block in that file — `<!-- >>> akidevrule managed … -->` to `<!-- <<< akidevrule managed -->` — regenerated on every install, with every line outside the markers kept, a timestamped backup first, and only when the directory exists. The block is one copy of the same two sources Claude Code imports, never a second authored corpus. Codex stops adding instruction files once the global and project files together reach `project_doc_max_bytes` (32 KiB by default) and the block alone is about 36 KB, so the installer writes `project_doc_max_bytes = 131072` into `config.toml` once, before the first table header, only when the key is absent, and prints what it found or wrote; a smaller existing value is reported, never raised. There is no route gate on Codex (no hook surface), so the second hop stays the model's own step, which the block's preamble states; a project's `CLAUDE.md` is read only if the user opts in with `project_doc_fallback_filenames = ["CLAUDE.md"]`, which the installer never sets. Runtime delivery is unmeasured until `scripts/codex_probe.sh` runs on a machine with the CLI.
+
+## WorkBuddy — skill-only, the floor read on invocation
+
+WorkBuddy (desktop app) discovers user-level skills at `~/.workbuddy-ai/skills/<name>/SKILL.md` and follows the same `SKILL.md` standard, so the installer syncs the shared skill corpus there exactly as for Kiro and Grok (`../ref/fact-workbuddy-harness.md`). It has no `@`-import, no managed instruction block and no hook surface this baseline plugs into, so nothing is resident: the router is invoked as a skill, and its Delivery section makes that invocation also `Read` `RULE-agent-behavior.md` once per session — the behavior floor rides the artifact the installer already ships instead of a per-app config write. The one always-on text surface the app does have (Settings → Personalization, `personalization.customPrompt` in `~/.workbuddy-ai/app/app-config.json`) is app-owned state and the installer never writes it; naming `akirule` there is a manual, per-machine step.
 
 ## The same asymmetry inside a skill — the description is resident, the body is not
 

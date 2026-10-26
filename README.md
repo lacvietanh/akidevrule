@@ -1,6 +1,6 @@
 # akidevrule
 
-One install command turns a fresh environment into Aki's full working baseline — for **Claude Code, Antigravity/Gemini, Codex CLI, Kiro CLI, Grok CLI, Cursor and OpenCode**, generated from one agent-neutral source: a shared rule corpus that loads itself at the right moment (Claude Code + Antigravity), plus a small set of sharp, single-purpose skills synced to every CLI that natively consumes the shared `SKILL.md` open standard.
+One install command turns a fresh environment into Aki's full working baseline — for **Claude Code, Antigravity/Gemini, Codex CLI, Kiro CLI, Grok CLI, WorkBuddy, Cursor and OpenCode**, generated from one agent-neutral source: a shared rule corpus that loads itself at the right moment (Claude Code + Antigravity), plus a small set of sharp, single-purpose skills synced to every CLI that natively consumes the shared `SKILL.md` open standard.
 
 **Quick install (npm):**
 
@@ -90,7 +90,7 @@ A seat used to be convened by job title and then handed rules. The order is inve
 
 A catalog is not a roster. Five files on disk make it easy to pick seats from a menu, which is the failure they were built to end — a seat is convened only when it traces to a requirement in the owner's own words.
 
-**Claude Code only, deliberately.** `SKILL.md` is an open standard with five implementations; an agent-definition format currently has one, so building a vendor-neutral layer over a single consumer would be exactly the speculative generality `pattern.A2` forbids. Reopen trigger: a second CLI publishing an agent format promotes `claude/agents/` to a top-level `agents/` rendered per vendor, the way `AG_RULE_MAP` already renders rules for Antigravity.
+**Claude Code only, deliberately.** `SKILL.md` is an open standard with six implementations; an agent-definition format currently has one, so building a vendor-neutral layer over a single consumer would be exactly the speculative generality `pattern.A2` forbids. Reopen trigger: a second CLI publishing an agent format promotes `claude/agents/` to a top-level `agents/` rendered per vendor, the way `AG_RULE_MAP` already renders rules for Antigravity.
 
 ### A rule corpus that routes itself
 
@@ -297,7 +297,7 @@ flowchart TD
         G_SJSON["config/skills.json (Inherits agskills, absolute path)"]
     end
 
-    %% TARGETS 4-6: other CLIs that natively consume the SKILL.md standard
+    %% TARGETS 4-7: other harnesses that natively consume the SKILL.md standard
     subgraph T4["🧩 4. Codex CLI (~/.agents/skills/ + $CODEX_HOME/)"]
         X_SKILLS["<skill_name>/SKILL.md"]
         X_AGENTS["AGENTS.md managed block (behavior floor + router) + config.toml project_doc_max_bytes"]
@@ -308,6 +308,9 @@ flowchart TD
     subgraph T6["🧩 6. Grok CLI (~/.grok/skills/)"]
         R_SKILLS["<skill_name>/SKILL.md"]
     end
+    subgraph T7["🧩 7. WorkBuddy (~/.workbuddy-ai/skills/)"]
+        W_SKILLS["<skill_name>/SKILL.md"]
+    end
 
     INSTALL -->|"copy + prune stale"| T1
     INSTALL -->|"deploy & settings setup"| T2
@@ -315,9 +318,10 @@ flowchart TD
     INSTALL -->|"sync per skill folder"| T4
     INSTALL -->|"sync per skill folder"| T5
     INSTALL -->|"sync per skill folder"| T6
+    INSTALL -->|"sync per skill folder"| T7
 ```
 
-Targets 5-6 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`GEMINI.md`-style overrides — those CLIs have no equivalent hard-load hook this baseline plugs into yet). Target 4 also gets the behavior floor and the router as a managed block in `$CODEX_HOME/AGENTS.md` (default `~/.codex/AGENTS.md`), the one file Codex hard-loads globally — only when that directory exists, lines of your own in the file are kept, and `project_doc_max_bytes` is written to `config.toml` when absent because Codex stops loading instruction files once global plus project files pass 32 KiB (the block alone is ~36 KB). Codex expands no `@` imports and never reads Claude's global file, so copying `~/.claude/CLAUDE.md` would deliver nothing (`docs/research/codex-instruction-delivery.md`). A project's `CLAUDE.md` stays unread unless you opt in per machine with `project_doc_fallback_filenames = ["CLAUDE.md"]`; a native `AGENTS.md` in the same directory wins over it. Each sync is scoped per skill folder name via a Node `fs` copy plus a managed-names-only prune, same never-touch-the-rest guarantee as targets 2 and 3, and runs unconditionally — harmless if that CLI isn't installed on the machine, picked up the moment it is.
+Targets 5-7 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`GEMINI.md`-style overrides — those CLIs have no equivalent hard-load hook this baseline plugs into yet). Target 4 also gets the behavior floor and the router as a managed block in `$CODEX_HOME/AGENTS.md` (default `~/.codex/AGENTS.md`), the one file Codex hard-loads globally — only when that directory exists, lines of your own in the file are kept, and `project_doc_max_bytes` is written to `config.toml` when absent because Codex stops loading instruction files once global plus project files pass 32 KiB (the block alone is ~36 KB). Codex expands no `@` imports and never reads Claude's global file, so copying `~/.claude/CLAUDE.md` would deliver nothing (`docs/research/codex-instruction-delivery.md`). A project's `CLAUDE.md` stays unread unless you opt in per machine with `project_doc_fallback_filenames = ["CLAUDE.md"]`; a native `AGENTS.md` in the same directory wins over it. Each sync is scoped per skill folder name via a Node `fs` copy plus a managed-names-only prune, same never-touch-the-rest guarantee as targets 2 and 3, and runs unconditionally — harmless if that CLI isn't installed on the machine, picked up the moment it is.
 
 1. Syncs `payload/*` into `~/.aki/akidevrule/` (Node `fs` copy, excludes `ref-ECC/`), removes stale files left by renames, syncs `agskills/` for Antigravity skill inheritance, and deploys the full TCC lookup to `~/.aki/akidevrule/docs/ref/fact-macos-codesign-tcc.md`.
 2. Deploys to **all detected Claude config directories** — `~/.claude` (default primary), all existing `~/.claude*` profile variants (e.g. `~/.claude-9rt`, `~/.claude-prx`), plus `$CLAUDE_CONFIG_DIR` or `--claude-dir <path>` if provided:
@@ -329,7 +333,7 @@ Targets 5-6 only get the shared skill corpus (no rule corpus / no `CLAUDE.md`/`G
    - Installs `<target>/hooks/aki-update-check.mjs` plus its shared parser `<target>/hooks/aki_version_check.mjs`, `<target>/hooks/aki-route-guard.mjs` registered as a `PreToolUse` hook on `Edit|MultiEdit|Write|NotebookEdit` and on `Read` (the `Read` branch widens a partial read of a rule file), and `<target>/hooks/aki-compact-reread.mjs` registered as a `SessionStart` hook with matcher `compact` (all idempotent, same filter-then-push as the update check).
 3. Writes `~/.aki/akidevrule/.version` with `installed=`/`version=`/`commit=`/`branch=` and records the source-repo path in `~/.aki/akidevrule/.source-repo` — `version=` is the just-installed CHANGELOG's latest released semver, the same value `install.mjs --check` and the hook compare against remote.
 4. Installs `payload/GEMINI.md` to `~/.gemini/GEMINI.md` — Antigravity global behavior overrides, stamped with a version marker (`[AKIRULE-AG-OVERRIDES-…]`) on line 1. Generates one native rule file per `RULE-*`/`METHOD-*` under `~/.gemini/config/rules/` with YAML `trigger` frontmatter — `agent` `always_on`, the stacks `glob`, the rest `model_decision` — each description generated from its `akirule` route, so both harnesses route from one table. Deploys 11 skills directly to `~/.gemini/config/skills/` for native auto-discovery (synced per skill folder, same never-touch-the-rest guarantee as step 2), configures `~/.gemini/config/skills.json` with absolute paths as secondary, and merges skill execution permissions into `~/.gemini/antigravity-cli/settings.json` and `~/.gemini/settings.json` — a `command()` prefix rule for every `skills/*/scripts/*.py` per skill root, in both the expanded and the tilde-literal rendering (agy's matcher compares command strings literally — no glob expansion, and no tilde expansion in either direction — so a directory wildcard never matches and a rule only matches a command written the same way; see [docs/ref/fact-cli-permission-allowlist-standard.md](docs/ref/fact-cli-permission-allowlist-standard.md) §1.2) plus scoped `write_file`/`read_file` rules for the council workspace and rule corpus.
-5. Syncs the same skill folders to `~/.agents/skills/` (Codex CLI, Cursor), `~/.kiro/skills/` (Kiro CLI), and `~/.grok/skills/` (Grok CLI) — each a plain global skills root these CLIs read natively, synced per skill folder name exactly like step 2. Kiro and Grok are skills-only. Codex additionally gets the managed `AGENTS.md` block and the `project_doc_max_bytes` key described above, only when `$CODEX_HOME` (default `~/.codex`) exists; the summary names the block size, the budget written or found, and a non-empty `AGENTS.override.md` that would shadow it.
+5. Syncs the same skill folders to `~/.agents/skills/` (Codex CLI, Cursor), `~/.kiro/skills/` (Kiro CLI), `~/.grok/skills/` (Grok CLI), and `~/.workbuddy-ai/skills/` (WorkBuddy) — each a plain global skills root these harnesses read natively, synced per skill folder name exactly like step 2. Kiro, Grok and WorkBuddy are skills-only; on WorkBuddy nothing is resident, so the router's Delivery section makes the skill invocation also read the behavior floor once per session ([docs/arch/rule-delivery-architecture.md](docs/arch/rule-delivery-architecture.md) § WorkBuddy). Codex additionally gets the managed `AGENTS.md` block and the `project_doc_max_bytes` key described above, only when `$CODEX_HOME` (default `~/.codex`) exists; the summary names the block size, the budget written or found, and a non-empty `AGENTS.override.md` that would shadow it.
 6. Pre-allows every Aki skill script in each harness present on the machine, one adapter per rule dialect (`lib/permissions.mjs`): `~/.kiro/settings/permissions.yaml` (a marker-delimited managed block), `~/.codex/rules/akidevrule.rules` (a file akidevrule owns), `~/.cursor/cli-config.json` (`Shell(python3:<script>*)`, never a bare `Shell(python3)`), `~/.config/opencode/opencode.json` (`permission.bash`). Every rule names one exact script, in both path renderings; entries a previous install wrote are replaced, the user's own are kept. Grok CLI and Ollama have no file-based allowlist, so nothing is written for them — [docs/ref/fact-cli-permission-allowlist-standard.md](docs/ref/fact-cli-permission-allowlist-standard.md).
 
 7. If `rtk` is on `PATH`, asks once — in a terminal only — whether to write its accuracy-first config (next section). Default, and the only answer when there is no terminal, is to leave rtk alone; the summary then prints one line saying so, with the `--rtk` flag that opts in without a prompt.
@@ -371,7 +375,7 @@ Claude Code loads the core and the router automatically (harness-guaranteed `@`-
 - `ref-ECC/` — a large reference corpus, not needed for standard operation.
 - API keys, model-router tokens, localhost project permissions, unrelated personal Claude settings.
 - Automatic download/install logic — the update hook is strictly notify-only.
-- Any skill, rule, or file you already have that isn't part of this repo's managed set — every sync (Claude Code, Antigravity, Codex CLI, Kiro CLI, and Grok CLI skill directories included) touches only the paths/names akidevrule itself owns, never a blanket directory wipe. Verified in practice: `~/.grok/skills/` on this machine already held unrelated pre-existing skills (`best-of-n`, `docx`, `pptx`, …) and they were untouched by the sync.
+- Any skill, rule, or file you already have that isn't part of this repo's managed set — every sync (Claude Code, Antigravity, Codex CLI, Kiro CLI, Grok CLI and WorkBuddy skill directories included) touches only the paths/names akidevrule itself owns, never a blanket directory wipe. Verified in practice: `~/.grok/skills/` on this machine already held unrelated pre-existing skills (`best-of-n`, `docx`, `pptx`, …) and they were untouched by the sync.
 
 ## Why `~/.aki/akidevrule`
 
@@ -386,6 +390,7 @@ rm -rf ~/.claude/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitco
 rm -rf ~/.agents/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiopen,akiship,aki-article-writer,akidevsync-notes}   # Codex CLI
 rm -rf ~/.kiro/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiopen,akiship,aki-article-writer,akidevsync-notes}     # Kiro CLI
 rm -rf ~/.grok/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiopen,akiship,aki-article-writer,akidevsync-notes}     # Grok CLI (other, non-Aki skills already in this folder are untouched)
+rm -rf ~/.workbuddy-ai/skills/{akirule,akiflow,akithink,akihtmlreport,akihelp,akigitcommit,akilint,akiopen,akiship,aki-article-writer,akidevsync-notes}   # WorkBuddy
 rm -f  ~/.claude/agents/aki-{hands,judge,conduct,challenger,maker}.md   # your own agents in that folder are untouched
 rm -f  ~/.claude/hooks/aki-update-check.mjs ~/.claude/hooks/aki_version_check.mjs ~/.claude/hooks/aki-route-guard.mjs ~/.claude/hooks/aki-compact-reread.mjs ~/.claude/hooks/aki-update-check.py ~/.claude/hooks/aki_version_check.py
 # then delete the three entries whose command names those hooks from hooks.SessionStart and hooks.PreToolUse in ~/.claude/settings.json
