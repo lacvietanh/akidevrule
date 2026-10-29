@@ -78,7 +78,7 @@ The research doc's own not-done item stands: dispatch is argued from the shape o
 - [x] `council_verify.py` sweep over all live rooms: zero exit-code changes for council rooms
 - [x] `CHANGELOG.md` `[Unreleased]` entries per fix
 - [x] `bash install.sh` run; spot-check the deployed copy behaves the same
-- [ ] P6 dispatch run — **explicitly deferred**, reason below
+- [-] P6 dispatch run — **explicitly deferred**, reason below
 - [x] This file moved to `docs/plan/done/` with status updated
 
 ### Observed verify output

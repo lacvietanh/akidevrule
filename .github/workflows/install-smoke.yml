@@ -6,6 +6,14 @@ on:
   pull_request:
 
 jobs:
+  record-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Plans, index and CHANGELOG agree with the tree
+        run: |
+          python3 skills/akiflow/scripts/plan_lint.py .
+          python3 skills/akiflow/scripts/release_lint.py --latest .
   smoke:
     strategy:
       fail-fast: false
@@ -54,6 +62,8 @@ jobs:
           run(["--claude-dir", flagProfile]);
           for (const file of [path.join(primary, "CLAUDE.md"), path.join(envProfile, "CLAUDE.md"), path.join(flagProfile, "CLAUDE.md"), path.join(home, ".aki", "akidevrule", "RULE-agent-behavior.md"), path.join(primary, "hooks", "aki-route-guard.mjs"), path.join(primary, "hooks", "aki-compact-reread.mjs")]) if (!fs.existsSync(file)) throw new Error(`missing ${file}`);
           const hooksCfg = JSON.parse(fs.readFileSync(path.join(primary, "settings.json"))).hooks;
+          const attribution = JSON.parse(fs.readFileSync(path.join(primary, "settings.json"))).attribution;
+          if (!attribution || attribution.commit !== "" || attribution.pr !== "" || attribution.sessionUrl !== false) throw new Error(`attribution not turned off: ${JSON.stringify(attribution)}`);
           if (!hooksCfg.SessionStart.some((e) => e.matcher === "compact" && e.hooks.some((h) => h.command.includes("aki-compact-reread")))) throw new Error("compact SessionStart hook not registered");
           const routeMap = JSON.parse(fs.readFileSync(path.join(home, ".aki", "akidevrule", "route-map.json"), "utf8"));
           if (!Array.isArray(routeMap.routes) || routeMap.routes.length === 0) throw new Error("route-map.json has no routes");
@@ -125,4 +135,39 @@ jobs:
           if (!runOut(["--rtk"], withRtk).includes("skipped") || fs.readFileSync(rtkCfg, "utf8") !== "# akidevrule: rtk off\n") throw new Error("rtk opt-out line not honored");
           write(rtkCfg, rtkFirst);
           if (!runOut([], withRtk).includes("already in place")) throw new Error("rtk managed config must be reported without --rtk");
+          const rulesDir = path.join(gemini, "config", "rules");
+          const agFrontmatter = (name) => Object.fromEntries(fs.readFileSync(path.join(rulesDir, name), "utf8").match(/^---\n([\s\S]*?)\n---\n/)[1].split("\n").map((l) => [l.slice(0, l.indexOf(":")), l.slice(l.indexOf(":") + 2)]));
+          const expectedGlobs = {
+            "akirule-stack-tauri.md": ["src-tauri/**", "**/*.rs", "tauri.conf.json"],
+            "akirule-stack-akinuxtcf.md": ["**/*.vue", "nuxt.config.*", "wrangler.toml", "app/**", "server/**", "composables/**", "middleware/**", "plugins/**", "layouts/**"],
+          };
+          for (const [name, patterns] of Object.entries(expectedGlobs)) {
+            const raw = agFrontmatter(name).globs;
+            if (typeof JSON.parse(raw) !== "string" || JSON.stringify(JSON.parse(raw).split(", ")) !== JSON.stringify(patterns)) throw new Error(`${name} globs must be one quoted string carrying exactly ${patterns.length} patterns: ${raw}`);
+          }
+          const routeRows = [...fs.readFileSync(path.join("skills", "akirule", "SKILL.md"), "utf8").matchAll(/^\| `((?:RULE|METHOD)-[^`]+\.md)` · `[\w-]+` \| ([^|]+) \| ([^|]+) \|/gm)];
+          const generatedRules = fs.readdirSync(rulesDir).filter((n) => n.startsWith("akirule-"));
+          if (routeRows.length === 0 || routeRows.length !== generatedRules.length - 1) throw new Error(`router rows (${routeRows.length}) must cover every generated rule but agent-behavior (${generatedRules.length})`);
+          for (const [, file, clause, signals] of routeRows) {
+            const desc = JSON.parse(agFrontmatter(`akirule-${file.replace(/^(RULE|METHOD)-/, "").replace(/\.md$/, "").toLowerCase()}.md`).description);
+            for (const part of [clause.trim(), signals.trim(), `view_file ~/.aki/akidevrule/${file}`]) if (!desc.includes(part)) throw new Error(`${file} description lost: ${part.slice(0, 60)}`);
+          }
+          const thinkDesc = JSON.parse(agFrontmatter("akirule-deep-think.md").description);
+          if (!thinkDesc.includes("should we") || !thinkDesc.includes("có nên")) throw new Error(`deep-think description lacks the English and Vietnamese signals: ${thinkDesc}`);
+          const summary = runOut([]);
+          if (summary.includes("[object Object]") || !/loads when the task \S/.test(summary)) throw new Error("installer summary must print route clauses, never [object Object]");
+          write(skillsJson, JSON.stringify({ keep: true, entries: [
+            { path: "~/.aki/akidevrule/agskills", note: "mine" },
+            { path: path.join(home, ".aki", "akidevrule", "agskills"), duplicate: true },
+            { path: "/opt/foreign/skills", label: "foreign", enabled: false },
+            { path: "~/.aki/claudedoc/agskills" },
+          ] }));
+          run([]);
+          const skillsAfterFirst = fs.readFileSync(skillsJson, "utf8");
+          const skillEntries = JSON.parse(skillsAfterFirst).entries;
+          const ownAgskills = path.join(home, ".aki", "akidevrule", "agskills");
+          if (skillEntries.some((e) => e.path.startsWith("~")) || new Set(skillEntries.map((e) => e.path)).size !== skillEntries.length) throw new Error(`skills.json kept a tilde path or a duplicate: ${skillsAfterFirst}`);
+          if (JSON.stringify(skillEntries[0]) !== JSON.stringify({ path: ownAgskills, note: "mine" }) || JSON.stringify(skillEntries[1]) !== JSON.stringify({ path: "/opt/foreign/skills", label: "foreign", enabled: false }) || skillEntries[2].path !== path.join(home, ".aki", "claudedoc", "agskills") || skillEntries.length !== 3 || JSON.parse(skillsAfterFirst).keep !== true) throw new Error(`skills.json lost or reordered a foreign entry, a field, or the legacy root: ${skillsAfterFirst}`);
+          run([]);
+          if (fs.readFileSync(skillsJson, "utf8") !== skillsAfterFirst) throw new Error("second install changed skills.json");
           console.log(`OK: installer smoke passed on ${process.platform}`);

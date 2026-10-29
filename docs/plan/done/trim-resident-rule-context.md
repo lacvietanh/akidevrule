@@ -143,14 +143,14 @@ Required by this repo's `CLAUDE.md`, not optional follow-ups:
 
 ## Verify checklist
 
-- [ ] `wc -c payload/index.md` — expect ~13.0k after Item 1 alone, ~10.9k after Items 1+2 (from 17,272)
-- [ ] Manifest row count in `payload/index.md` is still 36 — Item 1 shortens rows, it must not delete any
-- [ ] Every routed file named in `skills/akirule/SKILL.md` still has a manifest row in `payload/index.md` — the router and the manifest must not diverge
-- [ ] `bash install.sh`, then `wc -c ~/.aki/akidevrule/index.md` matches the source — propagation actually happened
-- [ ] `wc -c ~/.claude/CLAUDE.local.md` — expect ~2.5k after Item 3 (from 3,509)
-- [ ] Open a new session in an unrelated project: the `[RULES]` receipt still reports `agent,coding,pattern (core)` and `missing: none`
-- [ ] `/akihelp` still dispatches after Item 4 (name-only keeps it invocable; only auto-matching is dropped)
-- [ ] Re-run `bash install.sh` once more and confirm `~/.claude/CLAUDE.local.md` is unchanged — the create-only guarantee holds in practice, not just in the source
+- [-] `wc -c payload/index.md` — expect ~13.0k after Item 1 alone, ~10.9k after Items 1+2 (from 17,272) — not run as listed; the status line records the measured sizes, and `payload/index.md` was later removed
+- [-] Manifest row count in `payload/index.md` is still 36 — Item 1 shortens rows, it must not delete any — not run as listed; the status line records the measured sizes, and `payload/index.md` was later removed
+- [-] Every routed file named in `skills/akirule/SKILL.md` still has a manifest row in `payload/index.md` — the router and the manifest must not diverge — not run as listed; the status line records the measured sizes, and `payload/index.md` was later removed
+- [-] `bash install.sh`, then `wc -c ~/.aki/akidevrule/index.md` matches the source — propagation actually happened — not run as listed; the status line records the measured sizes, and `payload/index.md` was later removed
+- [-] `wc -c ~/.claude/CLAUDE.local.md` — expect ~2.5k after Item 3 (from 3,509) — not run as listed; the status line records the measured sizes, and `payload/index.md` was later removed
+- [-] Open a new session in an unrelated project: the `[RULES]` receipt still reports `agent,coding,pattern (core)` and `missing: none` — not run as listed; the status line records the measured sizes, and `payload/index.md` was later removed
+- [-] `/akihelp` still dispatches after Item 4 (name-only keeps it invocable; only auto-matching is dropped) — not run as listed; the status line records the measured sizes, and `payload/index.md` was later removed
+- [-] Re-run `bash install.sh` once more and confirm `~/.claude/CLAUDE.local.md` is unchanged — the create-only guarantee holds in practice, not just in the source — not run as listed; the status line records the measured sizes, and `payload/index.md` was later removed
 
 Runtime-only, cannot be settled statically: whether dropping the Cross-cutting lens (Item 2) measurably increases rule restatement in practice. If Item 2 ships, watch for it over the following weeks rather than treating the item as closed on a character count.
 

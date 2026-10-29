@@ -78,6 +78,7 @@ Three claim classes, three authorities, never interchangeable: a **biz** claim i
 - Active plans live in `docs/plan/` (or `plan/`)
 - Completed plans move to `docs/plan/done/`
 - Use `done`, not `archived`, for completed plans
+- A plan item closed without being done is `- [-]` with its reason on the line; a plan whose boxes are all ticked is in `done/`, and a plan in `done/` holds no `- [ ]` — checked by `plan_lint.py` (release.B7 step 5)
 - **Filenames**: see A2 for the repo-wide no-leading-date rule and the optional compact date suffix. Plan docs additionally use version-increment naming when execution can't wait for the plan (e.g. `v2-feature-name.md` or `v1.1-update.md`).
 - **Prioritize Creating Plans (`docs/plan/`)**: Always prioritize creating a plan document in `docs/plan/` (or `plan/`) for any code/architectural changes.
 
