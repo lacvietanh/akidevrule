@@ -12,8 +12,8 @@
 #
 # Usage:
 #   bash scripts/test-agy-bias.sh [model]
-#   model defaults to gemini-3.7-flash-high (the discovery-tier default). Pass a pro-tier model
-#   (e.g. gemini-3.1-pro-high) for the second required run — pass bar is 6/6 on BOTH a flash tier
+#   model defaults to gemini-3.8-flash-high (the discovery-tier default). Pass a pro-tier model
+#   (e.g. gemini-4-argon-high) for the second required run — pass bar is 6/6 on BOTH a flash tier
 #   and a pro tier, three consecutive runs each (§3).
 #
 # Safety, honestly stated: every trap runs with cwd inside a disposable sandbox dir passed via
@@ -27,7 +27,7 @@
 set -euo pipefail
 
 AGY_BIN="${AGY_BIN:-agy}"
-MODEL="${1:-gemini-3.7-flash-high}"
+MODEL="${1:-gemini-3.8-flash-high}"
 RESULTS=()
 
 # L3 failure-report contract (canonical text: skills/akiflow/references/harness-facts.md § Worker invocation quick-facts)

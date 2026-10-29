@@ -1,5 +1,7 @@
 # Rule delivery — force-load the router in Claude Code, route by meaning, load by imperative on Antigravity
 
+Status: amended 2026-10-28
+
 **Start time:** 2026-09-25, after the owner's task note *"hình như dạo gần đây không nạp akirule tự động"* (`.akidevsync/notes.json`, evidence line: *"nhắc akirule mới thấy agent đi nạp skill"*).
 
 ## 1. Initial purpose
@@ -66,3 +68,7 @@ The clause-only misses were concepts absent from the clauses, not phrasings (a f
 **Follow-up research** — `rule-delivery-second-hop-sep29.md` (2026-09-29): the `Read` this batch left as the only model hop was measured on the Mac at ≈18% organic; the enforcement tier is the next move. Originally: none opened. One item stays observed, not decided: the signals column's recall is unmeasured — reopen if a routed file is observed missing on wording that names one of its concepts.
 
 **Cross-references** — `payload/index.md` (five files load mechanically), `README.md` § How rules load, `docs/arch/rule-delivery-architecture.md`, `skills/akihelp/SKILL.md` step 4 and step 6.
+
+## Amendments
+
+- 2026-10-28 · § 4 "Antigravity `always_on` budget": "size is no obstacle for description-routed rules" and the shared ~43 KB `always_on` total hold only for agy 1.2.10–1.2.11. Antigravity 1.4.7 caps every rule file at 24,000 bytes after include expansion and gives active global/`always_on` rules a 20,000-token aggregate budget (vendor Rules docs read 2026-10-26), and its loader log records truncation of the two generated files above the cap (`akirule-agent-behavior.md`, `akirule-release.md`). Whether a `model_decision` body is used inline on 1.4.7 is unverified; the 2026-09-26 observation that a 41 KB `model_decision` rule entered context by `view_file` and was quoted to its tail stands for 1.2.x. Decision item 3 (descriptions generated from the route clause alone) is superseded: a description now carries the clause plus the router's full `Signals` column. Current state: `docs/arch/rule-delivery-architecture.md`; remediation: `docs/plan/agy-rule-loader-epistemic-floor.md` Phase B.

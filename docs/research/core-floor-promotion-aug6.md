@@ -1,6 +1,6 @@
 # Promoting coding and design-core to the core floor: reversing a three-day-old decision
 
-Status: amended 2026-09-26
+Status: amended 2026-10-28
 
 **Start time:** 2026-08-06
 
@@ -93,3 +93,4 @@ The compliance class is untouched. `[WRAP]` and `[YAP]` were being violated with
 ## Amendments
 
 - 2026-09-26 · § "Not extended to Antigravity": the constraint is not truncation but one shared budget of about 43 KB across all `always_on` rule files, past which a whole file is dropped silently, largest first; `model_decision` rules are never inlined and have no size limit. Measured in `rule-delivery-force-load-sep25.md`. The decision to keep `coding` and `pattern` at `model_decision` stands: promoting them (14.6 KB + 8 KB on top of 21.6 KB) would exceed the budget and evict the behavior rule.
+- 2026-10-28 · § "Not extended to Antigravity" and the 2026-09-26 amendment above: "`model_decision` rules are never inlined and have no size limit" is not a current-state claim. Antigravity 1.4.7 caps every generated rule file at 24,000 bytes after include expansion and gives active global/`always_on` rules a 20,000-token aggregate budget (vendor Rules docs read 2026-10-26); the shared ~43 KB `always_on` figure was measured on agy 1.2.x. The decision to keep `coding` and `pattern` at `model_decision` stands. Current state: `docs/arch/rule-delivery-architecture.md`.
