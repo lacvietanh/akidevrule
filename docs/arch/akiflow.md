@@ -1,6 +1,6 @@
 # Architecture — akiflow, a lead-coordinated agent council
 
-> updated 2026-09-26 · v3.4.0
+> updated 2026-10-28 · v3.8.0
 
 `/akiflow` is the multi-agent skill in this baseline. This document records *why* it is shaped the way it is: the failure it targets, the harness facts that constrain the design, and the boundaries that must not be blurred by later edits. The runnable contract lives in `skills/akiflow/SKILL.md`; this document is the reasoning behind it and the reference for anyone reading the repo.
 
@@ -234,7 +234,7 @@ flowchart TD
 
     subgraph PHASEB["Phase B — execution"]
         IMPLEMENT["aki-maker implements\n(plan doc in prompt;\nthe only seat permitted to write)"] --> FANOUT["aki-hands fans out\n(mechanical, bandwidth-limited work)"]
-        FANOUT --> VERIFY["Plain subagent verifies\n(diff + promise in prompt;\nmechanical: did I do what I said)"]
+        FANOUT --> VERIFY["Plain subagent verifies\n(diff + promise + lane run records in prompt;\nmechanical: did I do what I said)"]
         VERIFY --> REVIEW["aki-challenger reviews from a clean context\n(judgment: should this have been done)"]
     end
 

@@ -32,6 +32,6 @@ A domain rule the brief named that you could not read means you should not have 
 # Output contract
 
 - What changed, per file, in one line each — the change, not a narration of the edit.
-- The verification you actually ran, with its output. Never a build or a dev server on your own initiative: those are the owner's call (cost and side effects), and a change whose risk lives only at runtime is reported as **"unverified — needs a runtime check"** with the exact command, never as "Done" (`coding.B3`).
+- The verification you actually ran, as a record (`coding.B3`): command, exit code, log path, output excerpt. A change whose risk lives only at runtime is run (`coding.B3` rung 5: the app on a port of its own, or the CLI/binary against a scratch HOME); only what survives it is reported as **"unverified — needs a runtime check"** with the exact command and the rung that failed, never as "Done".
 - Anything the brief specified that you did **not** do, and why. Silence about a skipped item reads as completion.
 - Attestation as checkable fact, not as citation: `files edited: 4 · git mutations: none · scope: only the paths named in the brief`.

@@ -76,7 +76,8 @@ Nuxt 4 · Vue 3 · Tailwind v4 · @nuxtjs/i18n · @nuxtjs/seo · SweetAlert2 · 
 ### B5. UI baseline
 - Desktop-first, but responsive across narrow to wide screens
 - Scale spacing by breakpoint instead of hardcoding large values
-- Use a scientific z-index system (`--z-index` variables) and standard border-radius dimensions (`radius-sm`, `md`, `lg`, `xl`, `pill`)
+- z-index: one `--z-*` scale on `:root`, ordered modal or drawer < dialog < toast. SweetAlert2's `.swal2-container` takes the dialog step, above every modal or drawer whichever opened first, and `body.swal2-toast-shown .swal2-container` the toast step, so a toast is never under a modal, drawer or dialog. Tailwind v4 builds `z-<name>` only from a `--z-index-<name>` theme key, so `z-toast` on a `--z-toast` scale emits no CSS and no warning: apply it as `z-[var(--z-*)]` in templates (a token reference, not a `ui.A3` arbitrary value) or `z-index: var(--z-*)` in CSS, never through a `--z-index-*` alias (a second name for one step). Outside the scale only a plain `z-10` ordering children inside one component's own box (a sticky table header), never for a layer that covers the app (fixed or teleported), and max-int for UI injected into third-party pages. Verify: no template holds a `z-<step>` class for a scale step, and the built CSS holds the toast's `z-index:var(--z-toast)` rule.
+- Use standard border-radius dimensions (`radius-sm`, `md`, `lg`, `xl`, `pill`)
 - Use FontAwesome Free. DO NOT write anything for FontAwesome in `.npmrc` (the free version does not need config).
 - Add `aria-label` to icon-only controls
 - Use focus trap for modals when needed

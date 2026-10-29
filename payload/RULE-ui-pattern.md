@@ -53,7 +53,7 @@ Rules between tiers:
 - Every visual value — color, spacing, radius, shadow, font, breakpoint, z-index, easing, duration — exists **once**, in whichever mechanism the installed framework version actually uses: a `@theme` block for Tailwind v4 (CSS-first), `tailwind.config` for v3, plain CSS custom properties otherwise. Read the project's own setup before writing a token — a rule that names the wrong file teaches the reader that the rule is decorative. Never rewrite a hex / px / ms value anywhere else.
 - **The token layer is itself subject to SSoT: one theme source per project.** Several `@theme` blocks, or custom properties declared ad hoc across dozens of files, reintroduce exactly the drift tokens exist to prevent — a second definition wins by load order, which nothing in the source makes visible.
 - Name tokens by **role**, not by hue/value: `primary`, `surface`, `danger`, `on-surface` — never `bg-blue-500` sprinkled across code. Rebrand = edit one place, not hundreds.
-- Reuse the scientific scales required by `RULE-stack-akiNuxtCf.md`: z-index via `--z-index` variables, radius via `radius-sm | md | lg | xl | pill`.
+- Reuse the scientific scales required by `RULE-stack-akiNuxtCf.md`: z-index via the `--z-*` scale (`stack.B5`), radius via `radius-sm | md | lg | xl | pill`.
 
 ### A3. Arbitrary-value policy (Law 1 + Law 7)
 
