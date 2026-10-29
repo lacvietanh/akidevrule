@@ -1,21 +1,89 @@
 name: Release
 
-# Deliberate release tags only — bare semver (release.A3), never on every push.
+# Deliberate release tags only — bare semver (release.A3), never on every push. npm publishes through Trusted Publishing (OIDC), no stored token.
 on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
-  release:
+  verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.14.0'
+
+      - name: Tag matches the manifest and the CHANGELOG
+        run: |
+          npm run check-version
+          test "$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+          grep -q "^## \[$GITHUB_REF_NAME\]" CHANGELOG.md
+
+      - name: Packed tarball carries the corpus and the installer starts
+        run: |
+          mkdir "$RUNNER_TEMP/pack" "$RUNNER_TEMP/consumer" "$RUNNER_TEMP/home"
+          npm pack --silent --pack-destination "$RUNNER_TEMP/pack" > /dev/null
+          cd "$RUNNER_TEMP/consumer"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$RUNNER_TEMP"/pack/*.tgz
+          PKG=node_modules/@akinet/akidevrule
+          test -f "$PKG/payload/RULE-agent-behavior.md"
+          test -f "$PKG/skills/akirule/SKILL.md"
+          HOME="$RUNNER_TEMP/home" node "$PKG/install.mjs" --help | grep -F "akidevrule installer"
+
+  # prepack is the repo's own script and no dependency is installed, so no third-party code runs while the OIDC token exists.
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.14.0'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Trusted publishing needs npm 11.5.1 or newer; Node 22.14.0 ships an older one
+        run: npm install -g npm@11.21.0
+
+      - name: Publish unless this version is already on the registry
+        run: |
+          PKG=$(node -p "require('./package.json').name")
+          if [ "$(npm view "$PKG@$GITHUB_REF_NAME" version 2>/dev/null)" = "$GITHUB_REF_NAME" ]; then
+            echo "$PKG@$GITHUB_REF_NAME is already published"
+            exit 0
+          fi
+          npm publish
+          for attempt in 1 2 3 4 5; do
+            [ "$(npm view "$PKG@$GITHUB_REF_NAME" version 2>/dev/null)" = "$GITHUB_REF_NAME" ] && exit 0
+            sleep 6
+          done
+          echo "::error::$PKG@$GITHUB_REF_NAME is not visible on the registry after publish"
+          exit 1
+
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
