@@ -1,6 +1,6 @@
 ---
 name: akilint
-description: Mechanical format lint for the penalty-card classes of RULE-agent-behavior.md §0 — hard-wrapped code comments and markdown prose ([WRAP]) and oversize comments ([YAP]) — via the shared scythe.py detector. Deterministic file:line output; judgment stays with the session. Use whenever formatting is in question — the user wants lines or comments checked, complains that text is hard-wrapped or comments are bloated, or calls a penalty card ([WRAP]/[YAP]/[FLUFF]) on recent output.
+description: Mechanical format lint for the penalty-card classes of RULE-agent-behavior.md §0 — hard-wrapped code comments and markdown prose ([WRAP]) and oversize comments ([YAP]) — via the shared scythe.py detector. Deterministic file:line output; judgment stays with the session. Use whenever formatting is in question — the user wants lines or comments checked, complains that text is hard-wrapped or comments are bloated, or calls [WRAP] or [YAP] on recent output. A [FLUFF] call is judgment, not lint — on a reply it is the `noyap` skill, on a file it is `docs.B3`.
 user-invocable: true
 ---
 

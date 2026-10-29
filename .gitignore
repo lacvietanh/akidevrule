@@ -41,3 +41,5 @@ postman/
 
 # akidevsync local project state and its timestamped backups
 .akidevsync/project.json*
+
+.env
