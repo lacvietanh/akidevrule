@@ -68,9 +68,10 @@ jobs:
             exit 0
           fi
           npm publish
-          for attempt in 1 2 3 4 5; do
+          # npm answers "being processed and may take a few minutes to become available"; 3.9.0 took over 30 s and a 30 s wait went red on a successful publish.
+          for attempt in $(seq 1 20); do
             [ "$(npm view "$PKG@$GITHUB_REF_NAME" version 2>/dev/null)" = "$GITHUB_REF_NAME" ] && exit 0
-            sleep 6
+            sleep 15
           done
           echo "::error::$PKG@$GITHUB_REF_NAME is not visible on the registry after publish"
           exit 1

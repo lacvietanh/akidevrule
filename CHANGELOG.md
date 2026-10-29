@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **`release.yml` waits up to five minutes for the published version to appear on the registry, not thirty seconds.** Evidence: the 3.9.0 run published successfully (`+ @akinet/akidevrule@3.9.0`, provenance logged) and npm answered "being processed and may take a few minutes to become available", yet the job's five checks six seconds apart ran out first, scored the publish red and skipped the `release` job; `npm view` showed 3.9.0 about a minute later. Root cause: the visibility loop was sized for an instant registry, not npm's documented processing delay. Mechanism: twenty checks fifteen seconds apart; the loop still exits on the first hit, so a fast registry costs nothing. Tradeoff: a genuinely failed publish now takes five minutes to report instead of thirty seconds.
+
 ## [3.9.0] - 2026-10-29
 
 ### Added
