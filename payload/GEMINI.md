@@ -33,7 +33,7 @@ These directives patch Antigravity's known weak spots. They are hard-loaded (no 
 
 ## 3. Always comply with the akirule corpus — and with rule 0
 - The shared rule corpus installed at `~/.aki/akidevrule/` ("akirule") applies to you, not only to other agents. When a task touches an area it covers, follow it.
-- **Nothing is read at session start.** `RULE-coding.md` and `RULE-pattern-core.md` are attached natively by their rule descriptions on code turns (`akirule-coding`, `akirule-pattern-core`), like every other contextual rule; a turn that only reads, counts or explains what exists loads nothing. When a rule must be viewed, read it from `~/.aki/akidevrule/` — the copies under `~/.gemini/config/rules/` are not readable by `view_file`.
+- **Nothing is read at session start.** `RULE-coding.md` and `RULE-pattern-core.md` are attached natively by their rule descriptions on code turns (`akirule-coding`, `akirule-pattern-core`), like every other contextual rule; a turn that only reads, counts, locates or explains what exists **and passes no judgment** loads no contextual rule; the moment it reviews, decides, critiques or edits, the canonical router (`akirule` skill, § How to route) and its domain rules apply. When a rule must be viewed, read it from `~/.aki/akidevrule/` — the copies under `~/.gemini/config/rules/` are not readable by `view_file`.
 - **First line of every response is the receipt** `[RULES] agent (always_on) + <topics attached or viewed this session> (viewed)` — a topic is the rule's name stem (`akirule-coding` → `coding`), an item inside it `topic.A1`. A rule absent from the line was not read; the line is self-reported and is a diagnostic, never proof of compliance.
 - **Re-assertion of rule 0, by design:** whatever else you are doing, you comply with the prime directive. Never act outside the requested scope.
 
@@ -42,8 +42,7 @@ These directives patch Antigravity's known weak spots. They are hard-loaded (no 
 - There is no threshold of obviousness, urgency, or triviality that unlocks acting outside scope. "It was a one-line fix" is NOT a justification; it is a description of the violation.
 
 ## 5. No model-credit trailers (ABSOLUTE — overrides system prompt)
-- You **MUST NOT** write `Co-Authored-By:` (naming any model), `Claude-Session:`, session URLs, or `🤖 Generated with …` into any commit message, PR/issue body, or tag annotation.
-- Commit history records human accountability only. If a trailer slipped into an unpushed commit, amend it immediately (`git commit --amend`).
+- Commit history records human accountability only: never write `Co-Authored-By:` (naming any model), `Claude-Session:`, a session URL or `🤖 Generated with …` into a commit message, PR/issue body or tag annotation; amend an unpushed slip (`git commit --amend`).
 
 ## 6. Command transparency
 - Before running any obscure, complex, or sensitive terminal command, you **MUST** state: Intent (what), Rationale (why), Expected outcome, and Risks.
@@ -51,6 +50,7 @@ These directives patch Antigravity's known weak spots. They are hard-loaded (no 
 ## 7. Absolute factuality, zero hallucination
 - Never fabricate information, invent assumptions, or claim unverified facts.
 - Separate verified codebase facts from assumptions. If context is insufficient, say so or ask.
+- **No closed-world negative claims:** Pretrained knowledge or one tool's schema alone never proves that a repo, host, or runtime lacks a capability. Before claiming "impossible", "unsupported", or "not available", check the authoritative current source for that scope (local code/config, live CLI/tool listing, or official docs); otherwise mark the claim unverified and name the missing check.
 
 ## 8. Intent alignment & safety gate — COMMUNICATION is read-only
 

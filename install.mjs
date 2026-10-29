@@ -346,34 +346,32 @@ function gitBranch(repo) {
 
 const ROUTER_SRC = join(SKILLS_SRC, "akirule", "SKILL.md");
 
-// The router's routes table is the single routing source; AG's native rule descriptions are derived from it.
-function routerClauses() {
-  const table = readFileSync(ROUTER_SRC, "utf-8").matchAll(/^\| `((?:RULE|METHOD)-[^`]+\.md)` · `[\w-]+` \| ([^|]+) \|/gm);
-  return new Map([...table].map(([, file, clause]) => [file, clause.trim()]));
+function routerRoutes() {
+  const table = readFileSync(ROUTER_SRC, "utf-8").matchAll(/^\| `((?:RULE|METHOD)-[^`]+\.md)` · `[\w-]+` \| ([^|]+) \| ([^|]+) \|/gm);
+  return new Map([...table].map(([, file, clause, signals]) => [file, { clause: clause.trim(), signals: signals.trim() }]));
 }
 
-// Each entry: [ruleFile, trigger, globs] — globs is a raw JSON array string or ""; every model_decision description is derived from the router's route clause.
 const AG_RULE_MAP = [
-  ["RULE-agent-behavior.md", "always_on", ""],
-  ["RULE-coding.md", "model_decision", ""],
-  ["RULE-pattern-core.md", "model_decision", ""],
-  ["RULE-test.md", "model_decision", ""],
-  ["RULE-docs.md", "model_decision", ""],
-  ["RULE-content-write.md", "model_decision", ""],
-  ["RULE-stack-akiNuxtCf.md", "glob", '["**/*.vue", "nuxt.config.*", "wrangler.toml", "app/**", "server/**", "composables/**", "middleware/**", "plugins/**", "layouts/**"]'],
-  ["RULE-stack-tauri.md", "glob", '["src-tauri/**", "**/*.rs", "tauri.conf.json"]'],
-  ["RULE-ui-pattern.md", "model_decision", ""],
-  ["RULE-seo.md", "model_decision", ""],
-  ["RULE-release.md", "model_decision", ""],
-  ["RULE-db-design.md", "model_decision", ""],
-  ["RULE-biz.md", "model_decision", ""],
-  ["METHOD-audit-flow.md", "model_decision", ""],
-  ["METHOD-audit-zero-trust.md", "model_decision", ""],
-  ["METHOD-deep-think.md", "model_decision", ""],
-  ["METHOD-ux-psych.md", "model_decision", ""],
-  ["METHOD-proportionality.md", "model_decision", ""],
-  ["METHOD-audit-subtraction.md", "model_decision", ""],
-  ["METHOD-audit-frozen-reference.md", "model_decision", ""],
+  ["RULE-agent-behavior.md", "always_on", []],
+  ["RULE-coding.md", "model_decision", []],
+  ["RULE-pattern-core.md", "model_decision", []],
+  ["RULE-test.md", "model_decision", []],
+  ["RULE-docs.md", "model_decision", []],
+  ["RULE-content-write.md", "model_decision", []],
+  ["RULE-stack-akiNuxtCf.md", "glob", ["**/*.vue", "nuxt.config.*", "wrangler.toml", "app/**", "server/**", "composables/**", "middleware/**", "plugins/**", "layouts/**"]],
+  ["RULE-stack-tauri.md", "glob", ["src-tauri/**", "**/*.rs", "tauri.conf.json"]],
+  ["RULE-ui-pattern.md", "model_decision", []],
+  ["RULE-seo.md", "model_decision", []],
+  ["RULE-release.md", "model_decision", []],
+  ["RULE-db-design.md", "model_decision", []],
+  ["RULE-biz.md", "model_decision", []],
+  ["METHOD-audit-flow.md", "model_decision", []],
+  ["METHOD-audit-zero-trust.md", "model_decision", []],
+  ["METHOD-deep-think.md", "model_decision", []],
+  ["METHOD-ux-psych.md", "model_decision", []],
+  ["METHOD-proportionality.md", "model_decision", []],
+  ["METHOD-audit-subtraction.md", "model_decision", []],
+  ["METHOD-audit-frozen-reference.md", "model_decision", []],
 ];
 
 function agDestName(ruleFile) {
@@ -382,23 +380,24 @@ function agDestName(ruleFile) {
   return `akirule-${stem.toLowerCase()}.md`;
 }
 
-function agRuleDescription(ruleFile, clauses) {
-  if (!clauses.has(ruleFile)) throw new Error(`akirule has no route for ${ruleFile}`);
+function agRuleDescription(ruleFile, routes) {
+  if (!routes.has(ruleFile)) throw new Error(`akirule has no route for ${ruleFile}`);
+  const { clause, signals } = routes.get(ruleFile);
   // agy denies view_file on ~/.gemini/config/rules/ (hardcoded protection boundary, measured 2026-09-26), so the description names the readable copy.
-  return `Load when the task ${clauses.get(ruleFile)}: view_file ~/.aki/akidevrule/${ruleFile} (this rules directory itself is not readable).`;
+  return `Load when the task ${clause}. Signals (evidence of the domain, never a literal gate): ${signals}. view_file ~/.aki/akidevrule/${ruleFile} (this rules directory itself is not readable).`;
 }
 
 // Every rule file is rendered before any installed one is removed, so a bad map or router aborts with AG untouched.
 function installAgRules() {
-  const clauses = routerClauses();
+  const routes = routerRoutes();
   const mapped = new Set(AG_RULE_MAP.map(([f]) => f));
   const unmapped = listDir(join(REPO_ROOT, "payload")).filter((n) => /^(RULE|METHOD)-.*\.md$/.test(n) && !mapped.has(n));
   if (unmapped.length) throw new Error(`AG_RULE_MAP has no entry for: ${unmapped.join(", ")}`);
 
   const rendered = AG_RULE_MAP.map(([ruleFile, trigger, globs]) => {
     const lines = ["---", `trigger: ${trigger}`];
-    if (globs) lines.push(`globs: ${globs}`);
-    if (trigger !== "always_on") lines.push(`description: ${JSON.stringify(agRuleDescription(ruleFile, clauses))}`);
+    if (globs.length) lines.push(`globs: ${JSON.stringify(globs.join(", "))}`);
+    if (trigger !== "always_on") lines.push(`description: ${JSON.stringify(agRuleDescription(ruleFile, routes))}`);
     lines.push("---", "", `<!-- Generated by akidevrule from payload/${ruleFile}. Do not edit here. -->`, "");
     lines.push(readFileSync(join(REPO_ROOT, "payload", ruleFile), "utf-8"));
     return [join(GEMINI_RULES_DIR, agDestName(ruleFile)), lines.join("\n")];
@@ -662,6 +661,10 @@ function mergeSettings(settingsPath, installRoot, claudeDir) {
   data.skillOverrides.akirule = "on";
   if (!("akihelp" in data.skillOverrides)) data.skillOverrides.akihelp = "name-only";
 
+  // agent.B4 by mechanism: an empty attribution string hides Claude Code's commit/PR trailer, sessionUrl=false the Claude-Session link; other keys stay the user's.
+  if (typeof data.attribution !== "object" || data.attribution === null || Array.isArray(data.attribution)) data.attribution = {};
+  Object.assign(data.attribution, { commit: "", pr: "", sessionUrl: false });
+
   if (typeof data.hooks !== "object" || data.hooks === null || Array.isArray(data.hooks)) data.hooks = {};
   const hooks = data.hooks;
   if (!Array.isArray(hooks.SessionStart)) hooks.SessionStart = [];
@@ -860,12 +863,15 @@ function updateSkillsJson() {
   const skillsJson = join(GEMINI_DIR, "config", "skills.json");
   mkdirSync(dirname(skillsJson), { recursive: true });
   const data = isFile(skillsJson) ? JSON.parse(readFileSync(skillsJson, "utf-8")) : {};
-  if (!Array.isArray(data.entries)) data.entries = [];
-  const absPath = join(INSTALL_ROOT, "agskills");
-  const tildePath = "~/.aki/akidevrule/agskills";
-  for (const p of [absPath, tildePath]) {
-    if (!data.entries.some((e) => e && typeof e === "object" && e.path === p)) data.entries.push({ path: p });
-  }
+  const entries = [...(Array.isArray(data.entries) ? data.entries : []), { path: join(INSTALL_ROOT, "agskills") }];
+  const seen = new Set();
+  data.entries = entries.flatMap((e) => {
+    if (!e || typeof e !== "object" || typeof e.path !== "string") return [e];
+    const path = expandTilde(e.path);
+    if (seen.has(path)) return [];
+    seen.add(path);
+    return [{ ...e, path }];
+  });
   writeTextLf(skillsJson, JSON.stringify(data, null, 2) + "\n");
 }
 
@@ -973,7 +979,9 @@ async function inspectStatus(claudeDirs) {
         const readOk = allow.includes(readRule);
         const overrides = data.skillOverrides || {};
         const akiOk = overrides.akirule === "on";
-        console.log(`  Claude (${toTildePath(claudeDir)}): Read=${readOk ? "✅" : "⚠️ missing"}, Bash=${bashOk ? "✅" : "⚠️ missing"}, akirule=${akiOk ? "✅" : "⚠️ will enable"}`);
+        const attr = data.attribution || {};
+        const attrOff = attr.commit === "" && attr.pr === "" && attr.sessionUrl === false;
+        console.log(`  Claude (${toTildePath(claudeDir)}): Read=${readOk ? "✅" : "⚠️ missing"}, Bash=${bashOk ? "✅" : "⚠️ missing"}, akirule=${akiOk ? "✅" : "⚠️ will enable"}, attribution=${attrOff ? "✅ off" : "⚠️ will turn off"}`);
       } catch (e) {
         console.log(`  ❌ Error reading ${settingsPath}: ${e}`);
       }
@@ -1024,10 +1032,10 @@ function printSummary(claudeDirs, preAllow, codex, rtk) {
 
   console.log(cyanBold("Rules deployed:"));
   {
-    const clauses = routerClauses();
+    const routes = routerRoutes();
     for (const [ruleFile, trigger] of AG_RULE_MAP) {
       const [tier, color] = trigger === "always_on" ? ["Core", redBold] : ruleFile.startsWith("METHOD-") ? ["Analytical", blueBold] : ["Contextual", yellowBold];
-      const desc = trigger === "always_on" ? "behavior floor — resident every session" : `loads when the task ${clauses.get(ruleFile) || "?"}`;
+      const desc = trigger === "always_on" ? "behavior floor — resident every session" : `loads when the task ${routes.get(ruleFile)?.clause ?? "?"}`;
       console.log(`  ${color(tier.padEnd(12))} ${ruleFile.padEnd(34)} ${desc}`);
     }
   }
@@ -1072,7 +1080,7 @@ function printSummary(claudeDirs, preAllow, codex, rtk) {
 
   console.log();
   console.log(cyanBold("Skill scripts pre-allowed (no prompt when a skill runs its own scripts):"));
-  console.log("  ⚙️  claude       settings.json in every target above — plus Read(~/.aki/akidevrule/**)");
+  console.log("  ⚙️  claude       settings.json in every target above — plus Read(~/.aki/akidevrule/**) and attribution off (no Co-Authored-By, PR footer or session link — agent.B4)");
   for (const row of preAllow) {
     const state = row.error ? `⚠️  skipped: ${row.error}` : `${row.rules} invocation(s)${row.changed ? "" : ", unchanged"}`;
     console.log(`  ⚙️  ${row.id.padEnd(12)} ${toTildePath(row.file)} — ${state}`);

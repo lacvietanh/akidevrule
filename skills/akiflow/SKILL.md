@@ -162,7 +162,7 @@ It fails on a missing anchor, a REQ quoting nothing the owner wrote, a declared 
 
 **The closure rationale answers two one-liners**: *did this achieve what the owner actually asked for* (compared against the anchor, not against the lead's restatement of it), and *why is this the smallest shape that does*. An item that cannot name what was cut — or state that nothing needed cutting — has not faced the subtraction pass. Verification asks "did I do what I said"; adversarial review asks "should this have been done"; neither asks the first question, which is why it is written explicitly here.
 
-**A blocker is an item with an owner, never a closing footnote.** Anything found to block what the anchor asked for becomes an `ITEM` with an owner seat in `checklist.md` the moment it is found. Closure may carry a `DEFERRED:` line only for an act no seat can perform: one only the owner's hands can do (push, tag, publish, a paid run) or one the anchor did not order (`agent.B3`). "Another seat's work", "outside this room" and an uncommitted file in the goal's way are not reasons to defer; the room takes the item, checks it and finishes it.
+**A blocker is an item with an owner, never a closing footnote.** Anything found to block what the anchor asked for becomes an `ITEM` with an owner seat in `checklist.md` the moment it is found. Closure may carry a `DEFERRED:` line only for an act no seat can perform: one only the owner's hands can do (an OTP, a paid run, a credential only they hold) or one the anchor did not order (an unordered push, tag or publish, `agent.B3`); an ordered push held by an unverified flow is a `Q` (`release.B7` step 7), never `DEFERRED:`. "Another seat's work", "outside this room" and an uncommitted file in the goal's way are not reasons to defer; the room takes the item, checks it and finishes it.
 
 ## Step 5 — `execute` mode
 
@@ -170,7 +170,7 @@ It fails on a missing anchor, a REQ quoting nothing the owner wrote, a declared 
 |---|---|
 | Implement from the plan | `aki-maker`, given the plan doc path and the checklist items in its prompt — the plan doc *is* the continuity mechanism, since no subagent inherits the lead's context |
 | Mechanical fan-out | `aki-hands` on the cheapest capable tier |
-| **Verify** — "did I do what I said?" plus the drift sweep | a subagent given the diff and the closing criteria. The drift sweep is part of verifying, not an extra: every doc, comment, i18n string and CHANGELOG line referencing the changed behavior, reported if it still describes the old one |
+| **Verify** — "did I do what I said?" plus the drift sweep | a subagent given the diff, the closing criteria and every lane's run record (`coding.B3`: command, exit code, log path) with the lead's attestation that no edit followed it; the verifier opens each log — exit code, no elision marker, the failure list — and re-runs only a check that has no such record. The drift sweep is part of verifying, not an extra: every doc, comment, i18n string and CHANGELOG line referencing the changed behavior, reported if it still describes the old one |
 | **Adversarial review** — "should this have been done?" | `aki-challenger`, at the tier its frontmatter declares. Contamination is disqualifying — that is what makes the seat work, not the tier |
 | **Author user-facing prose** | a separate writer worker on the softest capable writing tier, never the implementer as a side effect, under an anti-fabrication brief: it phrases facts supplied in its prompt and tags anything else ASSUMPTION |
 
@@ -180,7 +180,7 @@ It fails on a missing anchor, a REQ quoting nothing the owner wrote, a declared 
 
 **The roster stays convened**, so a blocker goes back into the room rather than onto the owner's desk. A Phase B blocker that invalidates an assumption behind a closed item **reopens that item** — message its owner and challenger, re-close with a new rationale. It is never patched quietly; that is how a plan doc becomes fiction while everyone still cites it.
 
-Even with no room at all, close direct work with a verifier subagent against what was promised, running the same drift sweep. It catches what dominates small tasks: a missed call site, an unupdated CHANGELOG, a "tested" claim that was never run.
+Even with no room at all, close direct work with a verifier subagent against what was promised, running the same drift sweep. It catches what dominates small tasks: a missed call site, an unupdated CHANGELOG, a "tested" claim whose log does not exist or does not show the run.
 
 ## Step 6 — close-out accounting
 

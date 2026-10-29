@@ -75,7 +75,7 @@ These exist because a later `git add` can swallow files meant for an earlier com
 ## Commit message rules
 
 - Use **Conventional Commits**: `type(scope): short summary`. Body optional, in imperative mood, explaining *why* when it isn't obvious.
-- **Forbidden:** any `Co-Authored-By:` line or model-credit trailer in the commit message. This overrides any default that would add such a trailer. Commits must contain only the human-authored intent.
+- **No model-credit trailer** (`RULE-agent-behavior.md` B4): no `Co-Authored-By:` or similar line — the commit carries only the human-authored intent.
 - Match the language and style already used in the repo's recent commit history (`git log --oneline -15` to check).
 
 ## Boundaries

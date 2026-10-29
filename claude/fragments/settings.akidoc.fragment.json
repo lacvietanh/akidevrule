@@ -11,5 +11,10 @@
   },
   "skillOverrides": {
     "akirule": "on"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
   }
 }

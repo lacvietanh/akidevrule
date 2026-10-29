@@ -58,10 +58,10 @@
       "detail": "- tối ưu token context\n- tối ưu chi phí (sử dụng hands/crossCLI hiệu quả)\n- tối ưu luồng hoạt động của từng agent \n- tối ưu cách tương tác giữa các agent\n- quản lý chat hiệu quả",
       "done": false,
       "id": "task-1786757953125",
-      "pin": true,
+      "pin": false,
       "title": "Nghiên cứu tối ưu /akiflow",
-      "updated_at": 1786758013139,
-      "wish": false
+      "updated_at": 1793020204414,
+      "wish": true
     },
     {
       "created_at": 1787719224421,
@@ -142,7 +142,57 @@
       "title": "Route guard nhận transcript của Cursor",
       "updated_at": 1792430493683,
       "wish": false
+    },
+    {
+      "created_at": 1793020222485,
+      "detail": "akimcp.top rất nổi và seo tốt nhờ có trang web riêng. akidevrule lại không có, tìm google rất khó, cần tạo web riêng hoặc subdomain của akidev.org kết hợp với cả content chéo trong akimcp.top, akitao, akidev.org, akiapp,.. để được đẩy SEO tốt hơn\ncó thể cân nhắc tên miền rule.akimcp.top hoặc rule.akidev.org chỉ là một html cloudflare pages đơn giản nhưng motion trực quan giới thiệu cực kì tốt để ăn SEO tối đa, giới thiệu thuyết phục mọi khía cạnh tối đa, giúp quảng bá cho tất cả mọi người hiểu nhưng tinh túy của cả hệ sinh thái aki và các combo “cực mạnh” akimcp aiobox akirule",
+      "done": false,
+      "id": "task-1793020222485",
+      "pin": false,
+      "title": "Cần một trang web như akimcp.top để đẩy SEO",
+      "updated_at": 1793166519825,
+      "wish": false
+    },
+    {
+      "created_at": 1793073500445,
+      "detail": "Bằng chứng 2026-10-27 (chat akiship-audit, repo aki-mcp-sv): owner viết ec/sfx (edge case / side effect, đúng là signal của route think) khi hỏi nên bổ sung option gì cho curl. Agent KHÔNG Read METHOD-deep-think.md, chỉ grep repo rồi hỏi ngược owner ec/sfx là gì: vi phạm agent.A3 (a) sắp hỏi owner và (e) wording có nhiều cách đọc. Chỉ khi owner nói thẳng /akithink deep mới hiểu. Giả thuyết nguyên nhân (chưa kiểm chứng): 1) trigger deep-think là văn xuôi tự phát hiện trong agent.A3, không có cơ chế bắt buộc; code edit có hook aki-route-guard chặn tool call nên ăn, còn route think thì SKILL.md nói chỉ dựa vào bảng route. 2) câu hỏi ngắn bị xếp là lookup, mà lookup routes nothing nên think không bao giờ được xét. 3) lệnh no yapping cực ngắn của owner cộng brevity của harness làm model nén bước (agent.B7 SKIP). 4) signals chỉ có bản đầy đủ edge case / side effect, viết tắt ec, sfx, deep, akithink không nằm trong danh sách. Hướng đề xuất theo thứ tự: A) gate cơ học kiểu aki-route-guard: Stop hook hoặc PreToolUse đọc transcript, nếu lượt user chứa signal think (ec, sfx, deep, akithink, edge case, side effect, pre-mortem) hoặc câu trả lời cuối là câu hỏi gửi owner mà METHOD-deep-think.md chưa được Read nguyên file trong lượt đó thì chặn và nêu đúng tên file. B) thêm ec, sfx, deep, akithink vào signals của route think. C) đo tỉ lệ ăn bằng second_hop_audit.py trước và sau, vì thêm chữ vào rule đã thử nhiều đợt mà không đo được. Nguyên tắc: không thêm dòng nào vào RULE-agent-behavior cho vấn đề này trước khi có số đo.",
+      "done": false,
+      "id": "task-1793073500445",
+      "pin": true,
+      "title": "akithink / METHOD-deep-think vẫn không tự kích hoạt dù đã vá rất nhiều đợt: cần gate cơ học, không thêm chữ vào rule",
+      "updated_at": 1793073509848,
+      "wish": false
+    },
+    {
+      "created_at": 1793166568668,
+      "detail": "khi AI trả lời dài dòng, hoàn toàn có thể có cách rút gọn cực đoan lượng câu chữ, bảng, mọi thứ có thể rút gọn, skill này trải qua /akithink deep 2-4 rounds cho từng ý (ưu tiên nghiên cứu xem có thể chạy và áp trong luồng thinking không, để tránh xổ đống suy luận ra ngoài, ngược tiêu chí no yapping trong khi đây là skill để AI trả lời lại ngắn gọn hơn) => cần nghiên cứu và đúc kết mọi triết lý tối ưu nhất để đảm bảo không thể nào tối ưu hơn được nữa về việc rút gọn câu, từ, ý, các trình bày,.. mà không được mất  đi bất kì ý nào quan trọng. có những ý không hẳn trọng tâm nhưng vẫn là cần biết, quan trọng, vậy thì phải gộp thành các nhóm, user đọc sẽ có tâm lý dễ chịu hơn, cái nào trả lời thẳng vào trọng tâm một cách rút gọn cực đoan cực độ, cái nào là helpful .. side notes..",
+      "done": true,
+      "id": "task-1793166568668",
+      "pin": true,
+      "title": "cần một skill /noyap",
+      "updated_at": 1793261088954,
+      "wish": false
+    },
+    {
+      "created_at": 1793166819433,
+      "detail": "đúc kết lần lượt từng vấn đề nào lặp lại về mặt hành vi của agent, xếp theo \"lặp lại nhiều nhất\" lên đầu. list tối thiểu 30 điều.\nBổ sung 2026-10-28 (phiên akiopen trên box bien): mục tiêu 50 mục. Phạm vi: mọi phiên agy|claude trên Mac (qua AkiMCP) VÀ một số phiên claude trên chính box này (~/.claude/projects/*/ *.jsonl). Trọng tâm đau nhất: Opus 5.5 | Sonnet 5.5 không tuân thủ /akirule dù 3.8.0 đã có agent.B7 (bảng harness-override nhắm đúng 2 model này) — đo tỉ lệ ăn rule theo model, theo lượt có [RULES] receipt, trước khi vá thêm chữ. Sản phẩm: plan doc docs/plan/ + research doc docs/research/ theo docs.C2.",
+      "done": false,
+      "id": "task-1793166819433",
+      "pin": true,
+      "title": "/akistrict: audit: cho điều tra mọi phiên agy, claude trên máy trong suốt 1 tháng qua",
+      "updated_at": 1793172599128,
+      "wish": false
+    },
+    {
+      "created_at": 1793258166203,
+      "detail": "Để bỏ dòng \"Đồng tác giả: Claude\" / attribution phiền phức trong commit và PR:\n\nCấu hình tại ~/.claude/settings.json:\n{\n  \"attribution\": {\n    \"commit\": \"\",\n    \"pr\": \"\"\n  },\n  \"includeCoAuthoredBy\": false\n}\n\n(Nguồn: @tarasshyn. Có thể tích hợp vào installer / template settings của akidevrule để triệt tiêu trailer theo rule B4)",
+      "done": true,
+      "id": "task-1793258166203",
+      "pin": true,
+      "title": "Tắt dòng \"Đồng tác giả: Claude\" (Co-Authored-By) qua ~/.claude/settings.json",
+      "updated_at": 1793259799844,
+      "wish": false
     }
   ],
-  "updated_at": 1792473490141
+  "updated_at": 1793261088954
 }
