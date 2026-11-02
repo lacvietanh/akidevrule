@@ -192,7 +192,17 @@
       "title": "Tắt dòng \"Đồng tác giả: Claude\" (Co-Authored-By) qua ~/.claude/settings.json",
       "updated_at": 1793259799844,
       "wish": false
+    },
+    {
+      "created_at": 1793652894143,
+      "detail": "Owner 2026-11-03 (P3·W184, trong /akiship aki-mcp-sv 4.1.0): «changelog là thông tin thuần, phải phản ánh đủ, nhưng cũng phải ghi thực sự tâm lý, cái thay đổi nào nó viết cho điều gì, v.v.. không phải một changelog khô khan vô lý hoặc vô dụng». Hiện trạng: payload/RULE-release.md:226 (bảng C1) chỉ ghi developer/technical, English, Precise, may name files/symbols; :229 chỉ một câu The changelog explains what changed and why for maintainers; :231 shape C1 chỉ kiểm cơ học (heading, section, thứ tự — release_lint); B7 bước 4 (:175) chỉ đòi ĐỦ (mọi problem đóng có entry), không đòi nội dung từng dòng; skills/akiship/SKILL.md không có gì. Mẫu đúng đã có nhưng chỉ cho riêng repo này: CLAUDE.md:33 Release records carry their reasoning (why, observed failure/evidence, root cause, mechanism, tradeoff/rejected alternative; bare list = incomplete) — không nằm trong payload phân phối nên project khác không nhận. Đề xuất: (1) C1 thêm hợp đồng mỗi bullet: viết cho ai / tình huống nào (người dùng, client, agent nào), vấn đề quan sát được trước đó, hành vi sau, vì sao chọn cách này (+ tradeoff / phương án bỏ nếu có); verification là mệnh đề trên chính bullet; tên file/symbol là bằng chứng, không phải nội dung chính; cấm bullet chỉ liệt kê file/symbol hoặc mơ hồ (updated docs, misc fixes, cleanup, refactor). Vẫn giữ ĐỦ (B7.4) và CHÍNH XÁC. (2) release_lint thêm dòng [HILITE] heuristic: bullet dưới ~12 từ, bullet chủ yếu là path/backtick, hoặc từ mơ hồ (misc, various, cleanup, update docs) → trả lời viết tay theo C2. (3) akiship B7 bước 4 nhắc kiểm nội dung bullet trước mint, vì GitHub Release body = section CHANGELOG của version. Lần này chỉ ghi note, chưa sửa rule (theo lệnh owner).",
+      "done": false,
+      "id": "task-1793652894143",
+      "pin": false,
+      "title": "RULE-release C1: CHANGELOG thiếu hợp đồng nội dung từng dòng — mỗi entry phải ghi viết cho ai, vấn đề gì, trước→sau, vì sao; cấm changelog khô/vô dụng",
+      "updated_at": 1793652894143,
+      "wish": false
     }
   ],
-  "updated_at": 1793261088954
+  "updated_at": 1793652894143
 }
